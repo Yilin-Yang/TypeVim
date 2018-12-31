@@ -1,0 +1,10 @@
+{
+  "name": "TypeVim",
+  "description": "Don't lose features in translation; use good object-orientation!",
+  "version": "0.0.0",
+  "author": "Yilin Yang <yiliny@umich.edu>",
+  "repository": {"type": "git", "url": "git://github.com/Yilin-Yang/TypeVim"},
+  "dependencies": {
+    "maktaba": {"type": "git", "url": "git://github.com/google/maktaba"}
+  }
+}
