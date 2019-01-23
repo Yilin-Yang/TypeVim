@@ -42,6 +42,24 @@ Execute (typevim#PrettyPrint: Strings):
   let g:val = '     '
   AssertEqual "'     '", typevim#PrettyPrint(g:val)
 
+Execute (typevim#PrettyPrint: Funcref):
+  function! Foo(...) dict abort
+    echo l:self
+  endfunction
+  AssertEqual "function('Foo')", typevim#PrettyPrint(function('Foo'))
+
+Execute (typevim#PrettyPrint: Arg-Bound Partial):
+  let g:val = [1, 2]
+  call add(g:val, g:val)  " bound args are self-referencing
+  AssertEqual "function('Foo', [ 1, 2, {self-reference} ])",
+      \ typevim#PrettyPrint(function('Foo', g:val))
+
+Execute (typevim#PrettyPrint: Dict-Bound Partial):
+  let g:dict = {'num': 1, 'fun': 2}
+  let g:dict['Boo'] = function('Foo')
+  AssertEqual "function('Foo', {1, 2, {self-reference} ])",
+      \ typevim#PrettyPrint(function('Foo', g:dict))
+
 Execute (typevim#PrettyPrint: One Item List):
   AssertEqual "[ 1 ]", typevim#PrettyPrint([1])
 
@@ -76,6 +94,6 @@ Execute (typevim#PrettyPrint: Self-Referencing List):
 
 " Execute (typevim#PrettyPrint: Compound Object):
 
-" Execute (typevim#PrettyPrint: Self-Referencing Compound Object):
+" Execute (typevim#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
 
 " Execute (typevim#PrettyPrint: Multilevel Self-Referencing Compound Object):
