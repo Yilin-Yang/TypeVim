@@ -51,7 +51,10 @@ Execute (typevim#PrettyPrint: Funcref):
 Execute (typevim#PrettyPrint: Arg-Bound Partial):
   let g:val = [1, 2]
   call add(g:val, g:val)  " bound args are self-referencing
-  AssertEqual "function('Foo', [ 1, 2, {self-reference} ])",
+  " NOTE: binding an argument list to a Funcref effectively *copies* the list;
+  " if it didn't, then modifications to the original list would change the
+  " bound arguments inside the Partial!
+  AssertEqual "function('Foo', [ 1, 2, [ 1, 2, {self-reference} ] ])",
       \ typevim#PrettyPrint(function('Foo', g:val))
 
 Execute (typevim#PrettyPrint: Dict-Bound Partial):

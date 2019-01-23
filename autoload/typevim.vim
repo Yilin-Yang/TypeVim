@@ -88,11 +88,6 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:seen_objs)
   call maktaba#ensure#IsList(a:self_refs)
 
-  " let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
-  " if !empty(l:seen_and_msg)
-  "   return l:seen_and_msg[1]
-  " endif
-
   let l:starting_block = s:GetIndentBlock(a:starting_indent)
   let l:str = l:starting_block."{\n"
   let l:indent_level = a:starting_indent + 1
@@ -124,10 +119,7 @@ function! s:PrettyPrintList(Obj, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:Obj)
   call maktaba#ensure#IsList(a:seen_objs)
   call maktaba#ensure#IsList(a:self_refs)
-  " let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
-  " if !empty(l:seen_and_msg)
-  "   return l:seen_and_msg[1]
-  " endif
+
   if empty(a:Obj) | return '[  ]' | endif
   let l:str = '[ '
   for l:item in a:Obj
