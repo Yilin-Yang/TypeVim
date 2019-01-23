@@ -55,9 +55,10 @@ Execute (typevim#PrettyPrint: Primitive List):
 Execute (typevim#PrettyPrint: Self-Referencing List):
   let g:val = [ 0, 1, 2 ]
   call add(g:val, g:val)
-  AssertEqual '[ 0, 1, 2, self-reference, idx: 0 ], self-referencing objects: [ 0, 1, 2, [list] ]',
+  AssertEqual '[ 0, 1, 2, {self-reference} ]',
       \ typevim#PrettyPrint(g:val)
 
+  " AssertEqual '[ 0, 1, 2, {self-reference} ], self-referencing objects: [ 0, 1, 2, [list] ]',
 " Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
 
 " Execute (typevim#PrettyPrint: Primitive Dict):

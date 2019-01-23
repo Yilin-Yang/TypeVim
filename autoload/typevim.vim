@@ -55,7 +55,7 @@ function! s:CheckSelfReference(obj, seen_objects) abort
           \ 'Seen objects list contained a primitive: '.l:seen)
     endif
     if l:seen is a:obj
-      return [l:i, 'self-reference, idx: '.l:i]
+      return [l:i, l:i ? '{self-reference, idx: '.l:i.'}' : '{self-reference}']
     endif
   let l:i += 1 | endwhile
   " you have not been seen
