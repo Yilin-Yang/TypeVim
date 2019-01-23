@@ -1,0 +1,11 @@
+Execute (typevim#GetIndentBlock):
+  AssertEqual '', typevim#GetIndentBlock(0)
+  AssertEqual '  ', typevim#GetIndentBlock(1)
+  AssertEqual '    ', typevim#GetIndentBlock(2)
+  AssertEqual '    ', typevim#GetIndentBlock(2)
+  AssertEqual '                  ',
+      \ typevim#GetIndentBlock(9), 'Failed on 9'
+  AssertEqual '                    ', 
+      \ typevim#GetIndentBlock(10), 'Failed on 10'
+  AssertEqual '                        ', 
+      \ typevim#GetIndentBlock(12), 'Failed on 12'
