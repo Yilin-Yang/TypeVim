@@ -39,12 +39,13 @@ endfunction
 " returns an empty list. (This is so that the returned value will be `empty()`,
 " which can be checked in a conditional statement.)
 "
-" If it has, returns a two-element list containing the index of the seen
-" object, and a descriptive string, in that order.
+" If it has, appends {obj} to {self_refs} (if it's not already present) and
+" returns a two-element list containing the index of the seen object, and a
+" descriptive string, in that order.
 " @throws WrongType
 " @private
-function! s:CheckSelfReference(obj, seen_objects) abort
-  if !(maktaba#value#IsList(a:obj) || maktaba#value#IsDict(a:obj))
+function! s:CheckSelfReference(obj, seen_objects, self_refs) abort
+  if !maktaba#value#IsCollection(a:obj)
     return []
   endif
   call maktaba#ensure#IsList(a:seen_objects)
@@ -54,12 +55,19 @@ function! s:CheckSelfReference(obj, seen_objects) abort
       throw maktaba#error#Failure(
           \ 'Seen objects list contained a primitive: '.l:seen)
     endif
-    if l:seen is a:obj
-      return [l:i, l:i ? '{self-reference, idx: '.l:i.'}' : '{self-reference}']
+    if a:obj is l:seen
+      let l:j = 0 | while l:j <# len(a:self_refs)
+        let l:known_self_ref = a:self_refs[l:j]
+        if a:obj is l:known_self_ref | break | endif
+      let l:j += 1 | endwhile
+      if l:j ==# len(a:self_refs)  " wasn't in list
+        call add(a:self_refs, a:obj)
+      endif
+      return [l:j, l:j ? '{self-reference, idx: '.l:j.'}' : '{self-reference}']
     endif
   let l:i += 1 | endwhile
   " you have not been seen
-  call add(a:seen_objects, l:seen)
+  call add(a:seen_objects, a:obj)
   return []
 endfunction
 
@@ -73,14 +81,15 @@ function! s:PrettyPrintObject(...) abort
 endfunction
 
 ""
-" @usage s:PrettyPrintDict {obj} [starting_indent] [seen_objs]
 " @private
-function! s:PrettyPrintDict(obj, ...) abort
+function! s:PrettyPrintDict(obj, starting_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsDict(a:obj)
-  let a:starting_indent = maktaba#ensure#IsNumber(get(a:000, 0, 0))
-  let l:seen_objs = maktaba#ensure#IsList(get(a:000, 1, [a:obj]))
+  call maktaba#ensure#IsNumber(a:starting_indent)
+  call maktaba#ensure#IsList(a:seen_objs)
+  call maktaba#ensure#IsList(a:self_refs)
 
-  let l:str = s:GetIndentBlock(a:starting_indent)."{\n"
+  let l:starting_block = s:GetIndentBlock(a:starting_indent)
+  let l:str = l:starting_block."{\n"
   let l:indent_level = a:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
 
@@ -88,33 +97,35 @@ function! s:PrettyPrintDict(obj, ...) abort
     let l:str .= l:indent_block.'"'.l:key.'": '
 
     " check for, handle self-referencing objects
-    let l:seen_and_msg = s:CheckSelfReference(l:val, l:seen_objs)
-    if empty(l:seen_and_msg)
+    let l:seen_and_msg = s:CheckSelfReference(l:val, a:seen_objs, a:self_refs)
+    if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
+    elseif maktaba#value#IsString(l:val)
+      let l:str .= '"'.l:val.'"'  " don't 'double-wrap' the string
     else
-      let l:str .= typevim#PrettyPrint(l:val, l:seen_objs)
+      let l:str .= s:PrettyPrintImpl(l:val, a:seen_objs, a:self_refs)
     endif
 
     let l:str .= ",\n"
   endfor
 
-  return l:str
+  return l:str[:-3]."\n".l:starting_block.'}'
 endfunction
 
 ""
-" @usage s:PrettyPrintList {obj} [seen_objs]
 " @private
-function! s:PrettyPrintList(obj, ...) abort
+function! s:PrettyPrintList(obj, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:obj)
-  let l:seen_objs = maktaba#ensure#IsList(get(a:000, 0, [a:obj]))
+  call maktaba#ensure#IsList(a:seen_objs)
+  call maktaba#ensure#IsList(a:self_refs)
   if empty(a:obj) | return '[  ]' | endif
   let l:str = '[ '
   for l:item in a:obj
-    let l:seen_and_msg = s:CheckSelfReference(l:item, l:seen_objs)
+    let l:seen_and_msg = s:CheckSelfReference(l:item, a:seen_objs, a:self_refs)
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     else
-      let l:str .= s:PrettyPrintImpl(l:item, l:seen_objs)
+      let l:str .= s:PrettyPrintImpl(l:item, a:seen_objs, a:self_refs)
     endif
     let l:str .= ', '
   endfor
@@ -122,36 +133,36 @@ function! s:PrettyPrintList(obj, ...) abort
 endfunction
 
 ""
-" Return a string of 'shallow-printed' self-referencing items {seen_objects},
-" if the latter is has more than one element; else, return an empty string.
+" Return a string of 'shallow-printed' self-referencing items {self_refs},
+" if the latter has more than one element; else, return an empty string.
 " @private
-function! s:PrintSelfReferences(seen_objects) abort
-  call maktaba#ensure#IsList(a:seen_objects)
-  if empty(a:seen_objects) || len(a:seen_objects) ==# 1
+function! s:PrintSelfReferences(self_refs) abort
+  call maktaba#ensure#IsList(a:self_refs)
+  if len(a:self_refs) <=# 1
     return ''
   endif
 
   let l:str = 'self-referencing objects: [ '
-  for l:obj in a:seen_objects
+  for l:obj in a:self_refs
     if !maktaba#value#IsCollection(l:obj)
       throw maktaba#error#Failure(
-          \ 'Seen objects list contained a primitive: '.l:obj)
+          \ 'Self-referencing objects list contained a primitive: '.l:obj)
     endif
     let l:str .= typevim#ShallowPrint(l:obj).', '
   endfor
   return l:str[:-3].' ]'
 endfunction
 
-function! s:PrettyPrintImpl(obj, seen_objects) abort
+function! s:PrettyPrintImpl(obj, seen_objects, self_refs) abort
   call maktaba#ensure#IsList(a:seen_objects)
   if maktaba#value#IsDict(a:obj)
     if typevim#value#IsValidObject(a:obj)
-      return s:PrettyPrintObject(a:obj, 0, a:seen_objects)
+      return s:PrettyPrintObject(a:obj, 0, a:seen_objects, a:self_refs)
     else
-      return s:PrettyPrintDict(a:obj, 0, a:seen_objects)
+      return s:PrettyPrintDict(a:obj, 0, a:seen_objects, a:self_refs)
     endif
   elseif maktaba#value#IsList(a:obj)
-    return s:PrettyPrintList(a:obj, a:seen_objects)
+    return s:PrettyPrintList(a:obj, a:seen_objects, a:self_refs)
   else
     return string(a:obj)
   endif
@@ -170,8 +181,9 @@ function! typevim#PrettyPrint(obj) abort
   if maktaba#value#IsCollection(a:obj)
     call add(l:seen_objs, a:obj)
   endif
-  let l:str = s:PrettyPrintImpl(a:obj, l:seen_objs)
-  let l:self_ref = s:PrintSelfReferences(l:seen_objs)
+  let l:known_self_refs = []
+  let l:str = s:PrettyPrintImpl(a:obj, l:seen_objs, l:known_self_refs)
+  let l:self_ref = s:PrintSelfReferences(l:known_self_refs)
   return l:str . (empty(l:self_ref) ? '' : ', '.l:self_ref)
 endfunction
 
@@ -184,9 +196,13 @@ function! s:ShallowPrintDict(obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   let l:str = '{ '
-  for [l:key, l:val] in a:obj
+  for [l:key, l:val] in items(a:obj)
     let l:str .= '"'.l:key.'": '
-    let l:str .= s:ShallowPrintImpl(l:val, a:cur_depth + 1, a:max_depth)
+    if maktaba#value#IsString(l:val)
+      let l:str .= '"'.l:val.'"'
+    else
+      let l:str .= s:ShallowPrintImpl(l:val, a:cur_depth + 1, a:max_depth)
+    endif
     let l:str .= ', '
   endfor
   return l:str[:-3].' }'
@@ -198,7 +214,7 @@ function! s:ShallowPrintList(obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:max_depth)
   let l:str = '[ '
   for l:elt in a:obj
-    let l:str .= s:ShallowPrintImpl(l:elt, a:cur_depth + 1, a:max_depth)
+    let l:str .= s:ShallowPrintImpl(l:elt, a:cur_depth + 1, a:max_depth).', '
   endfor
   return l:str[:-3].' ]'
 endfunction
@@ -219,11 +235,11 @@ function! s:ShallowPrintImpl(obj, cur_depth, max_depth) abort
     endif
   elseif a:cur_depth <# a:max_depth
     if maktaba#value#IsList(a:obj)
-      return s:ShallowPrintList(a:obj, a:cur_depth + 1, a:max_depth)
+      return s:ShallowPrintList(a:obj, a:cur_depth, a:max_depth)
     elseif typevim#value#IsValidObject(a:obj)
-      return s:ShallowPrintObject(a:obj, a:cur_depth + 1, a:max_depth)
+      return s:ShallowPrintObject(a:obj, a:cur_depth, a:max_depth)
     else
-      return s:ShallowPrintDict(a:obj, a:cur_depth + 1, a:max_depth)
+      return s:ShallowPrintDict(a:obj, a:cur_depth, a:max_depth)
     endif
   else
     throw maktaba#error#Failure(
