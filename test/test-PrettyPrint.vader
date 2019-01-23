@@ -82,10 +82,21 @@ Execute (typevim#PrettyPrint: Self-Referencing List):
   AssertEqual '[ 0, 1, 2, {self-reference} ]',
       \ typevim#PrettyPrint(g:val)
 
-  " AssertEqual '[ 0, 1, 2, {self-reference} ], self-referencing objects: [ 0, 1, 2, [list] ]',
-" Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
+Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
+  let g:val = [ 0, 1, 2 ]
+  let g:grandchild = [ 1, 2, 3, g:val ]
+  let g:child = [ g:grandchild, 2, 4 ]
+  call add(g:val, g:child)
+  call add(g:val, g:grandchild)
 
-" Execute (typevim#PrettyPrint: Primitive Dict):
+  AssertEqual "[ 0, 1, 2, [ "
+      \ .   "[ 1, 2, 3, {self-reference} ], 2, 4 ], "
+      \ . "{self-reference, idx: 1} ], "
+      \ . "self-referencing objects: "
+      \ .   "[ [ 0, 1, 2, [list], [list] ], [ 1, 2, 3, [list] ] ]",
+      \ typevim#PrettyPrint(g:val)
+
+Execute (typevim#PrettyPrint: Primitive Dict):
 
 " Execute (typevim#PrettyPrint: Dict Containing Lists, Dicts):
 
