@@ -1,4 +1,3 @@
-
 " overelaborate memoized function for producing indentation blocks
 let s:block = '  '
 let s:indent_blocks = [
@@ -36,7 +35,7 @@ endfunction
 " Check whether or not {obj} (a list or a dictionary) has been seen
 " before.
 "
-" If it hasn't, appends the object to the list of seen objects, and
+" If it hasn't, appends {obj} to {seen_objects} if {obj} is a collection, and
 " returns an empty list. (This is so that the returned value will be `empty()`,
 " which can be checked in a conditional statement.)
 "
@@ -46,7 +45,7 @@ endfunction
 " @private
 function! s:CheckSelfReference(obj, seen_objects) abort
   if !(maktaba#value#IsList(a:obj) || maktaba#value#IsDict(a:obj))
-    throw maktaba#error#WrongType('Expected a list or a dictionary')
+    return []
   endif
   call maktaba#ensure#IsList(a:seen_objects)
   let l:i = 0 | while l:i <# len(a:seen_objects)
@@ -55,7 +54,7 @@ function! s:CheckSelfReference(obj, seen_objects) abort
       throw maktaba#error#Failure(
           \ 'Seen objects list contained a primitive: '.l:seen)
     endif
-    if l:seen ==# a:obj
+    if l:seen is a:obj
       return [l:i, 'self-reference, idx: '.l:i]
     endif
   let l:i += 1 | endwhile
@@ -112,22 +111,25 @@ function! s:PrettyPrintList(obj, ...) abort
   let l:str = '[ '
   for l:item in a:obj
     let l:seen_and_msg = s:CheckSelfReference(l:item, l:seen_objs)
-    if empty(l:seen_and_msg)
+    if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     else
-      let l:str .= typevim#PrettyPrint(l:item, l:seen_objs)
+      let l:str .= s:PrettyPrintImpl(l:item, l:seen_objs)
     endif
+    let l:str .= ', '
   endfor
   return l:str[:-3].' ]'  " trim final ', '
 endfunction
 
 ""
 " Return a string of 'shallow-printed' self-referencing items {seen_objects},
-" if the latter is nonempty, or an empty string.
+" if the latter is has more than one element; else, return an empty string.
 " @private
 function! s:PrintSelfReferences(seen_objects) abort
   call maktaba#ensure#IsList(a:seen_objects)
-  if empty(a:seen_objects) | return '' | endif
+  if empty(a:seen_objects) || len(a:seen_objects) ==# 1
+    return ''
+  endif
 
   let l:str = 'self-referencing objects: [ '
   for l:obj in a:seen_objects
