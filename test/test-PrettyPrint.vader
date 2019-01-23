@@ -1,11 +1,70 @@
-Execute (typevim#GetIndentBlock):
+Execute (typevim#GetIndentBlock: Ordinary):
   AssertEqual '', typevim#GetIndentBlock(0)
   AssertEqual '  ', typevim#GetIndentBlock(1)
   AssertEqual '    ', typevim#GetIndentBlock(2)
   AssertEqual '    ', typevim#GetIndentBlock(2)
+  AssertEqual '', typevim#GetIndentBlock(0)
+
+Execute (typevim#GetIndentBlock: Boundary):
   AssertEqual '                  ',
       \ typevim#GetIndentBlock(9), 'Failed on 9'
   AssertEqual '                    ', 
       \ typevim#GetIndentBlock(10), 'Failed on 10'
   AssertEqual '                        ', 
       \ typevim#GetIndentBlock(12), 'Failed on 12'
+  AssertEqual '  ', typevim#GetIndentBlock(1), 'Failed on 1'
+
+Execute (typevim#GetIndentBlock: Error Checking):
+  AssertThrows call typevim#GetIndentBlock(-5)
+  AssertEqual 0, match(g:vader_exception, '^ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  AssertThrows call typevim#GetIndentBlock('foobar')
+  AssertEqual 0, match(g:vader_exception, '^ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#PrettyPrint: Numbers):
+  AssertEqual '0', typevim#PrettyPrint(0)
+  AssertEqual '-78910', typevim#PrettyPrint(-78910)
+  AssertEqual '25', typevim#PrettyPrint(25)
+
+Execute (typevim#PrettyPrint: Floats):
+  AssertEqual '0.0', typevim#PrettyPrint(0.0)
+  AssertEqual '0.25', typevim#PrettyPrint(1/4.0)
+  AssertEqual '1.5e24', typevim#PrettyPrint(1500000000000000000000000.0)
+  AssertEqual '0.0', typevim#PrettyPrint(1-1.0)
+  AssertEqual '-0.5', typevim#PrettyPrint(0.5-1.0)
+
+Execute (typevim#PrettyPrint: Strings):
+  AssertEqual "'foobar foo'", typevim#PrettyPrint('foobar foo')
+  AssertEqual "'\n'", typevim#PrettyPrint("\n")
+  AssertEqual "'     '", typevim#PrettyPrint('     ')
+  let g:val = '     '
+  AssertEqual "'     '", typevim#PrettyPrint(g:val)
+
+Execute (typevim#PrettyPrint: Primitive List):
+  let g:val = '   '
+  AssertEqual "[ 1, 3, '   ', -0.5, 'foobar' ]", 
+      \ typevim#PrettyPrint([1,3, g:val, 0.5-1, 'foobar'])
+
+" Execute (typevim#PrettyPrint: List Containing Lists, Dicts):
+
+Execute (typevim#PrettyPrint: Self-Referencing List):
+
+" Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
+
+" Execute (typevim#PrettyPrint: Primitive Dict):
+
+" Execute (typevim#PrettyPrint: Dict Containing Lists, Dicts):
+
+" Execute (typevim#PrettyPrint: Self-Referencing Dict):
+
+" Execute (typevim#PrettyPrint: Multilevel Self-Referencing Dict):
+
+" Execute (typevim#PrettyPrint: Primitive Object):
+
+" Execute (typevim#PrettyPrint: Compound Object):
+
+" Execute (typevim#PrettyPrint: Self-Referencing Compound Object):
+
+" Execute (typevim#PrettyPrint: Multilevel Self-Referencing Compound Object):
