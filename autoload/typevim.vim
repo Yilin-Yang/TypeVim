@@ -88,10 +88,10 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:seen_objs)
   call maktaba#ensure#IsList(a:self_refs)
 
-  let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
-  if !empty(l:seen_and_msg)
-    return l:seen_and_msg[1]
-  endif
+  " let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
+  " if !empty(l:seen_and_msg)
+  "   return l:seen_and_msg[1]
+  " endif
 
   let l:starting_block = s:GetIndentBlock(a:starting_indent)
   let l:str = l:starting_block."{\n"
@@ -124,10 +124,10 @@ function! s:PrettyPrintList(Obj, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:Obj)
   call maktaba#ensure#IsList(a:seen_objs)
   call maktaba#ensure#IsList(a:self_refs)
-  let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
-  if !empty(l:seen_and_msg)
-    return l:seen_and_msg[1]
-  endif
+  " let l:seen_and_msg = s:CheckSelfReference(a:Obj, a:seen_objs, a:self_refs)
+  " if !empty(l:seen_and_msg)
+  "   return l:seen_and_msg[1]
+  " endif
   if empty(a:Obj) | return '[  ]' | endif
   let l:str = '[ '
   for l:item in a:Obj
@@ -184,11 +184,13 @@ function! s:PrettyPrintImpl(Obj, seen_objects, self_refs) abort
     let l:bound_args = l:args_and_dict[0]
     let l:bound_dict = l:args_and_dict[1]
     if !empty(l:bound_args)
+      call add(a:seen_objects, l:bound_args)
       let l:str .= ', '
           \ . s:PrettyPrintList(l:bound_args, a:seen_objects, a:self_refs)
     endif
     if !empty(l:bound_dict)
       " delegate 'is this a dict or object?' to the recursive call
+      call add(a:seen_objects, l:bound_dict)
       let l:str .= ', '
           \ . s:PrettyPrintImpl(l:bound_dict, a:seen_objects, a:self_refs)
     endif
@@ -208,6 +210,9 @@ endfunction
 function! typevim#PrettyPrint(Obj) abort
   " TODO support maktaba enums?
   let l:seen_objs = []
+  if maktaba#value#IsCollection(a:Obj)
+    call add(l:seen_objs, a:Obj)
+  endif
   let l:known_self_refs = []
   let l:str = s:PrettyPrintImpl(a:Obj, l:seen_objs, l:known_self_refs)
   let l:self_ref = s:PrintSelfReferences(l:known_self_refs)

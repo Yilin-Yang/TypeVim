@@ -70,7 +70,7 @@ Execute (typevim#PrettyPrint: Primitive List):
 
 Execute (typevim#PrettyPrint: List Containing Lists, Dicts):
   let g:val = [ [1, 2, 3, [] ], 1, {'foo': 'bar', 'bar': [1, 2, 3] } ]
-  AssertEqual "[ [ 1, 2, 3, [  ] ], 1, {\n  \"foo\": \"bar\",\n  \"bar\": [ 1, 2, 3 ]\n} ]",
+  AssertEqual "[ [ 1, 2, 3, [  ] ], 1, {\n  \"bar\": [ 1, 2, 3 ],\n  \"foo\": \"bar\"\n} ]",
       \ typevim#PrettyPrint(g:val)
 
 Execute (typevim#PrettyPrint: Self-Referencing List):
