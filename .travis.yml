@@ -1,0 +1,61 @@
+---
+language: vim
+
+before_script:
+  - export REPO_DIR=$(pwd)
+  - |
+    echo 'Build and install vim 7.4.1304.'
+    cd ~/
+    sudo apt-get remove vim -y
+    git clone https://github.com/vim/vim
+    cd vim
+    git checkout 7823a3bd2eed6ff9e544d201de96710bd5344aaf  # 7.4.1304
+    ./configure --with-features=huge
+    make
+    sudo make install
+  - |
+    echo 'Add neovim PPA.'
+    if [[ `lsb_release -r | awk '{print $2}'` < 16.04 ]]; then
+      echo "Using neovim-ppa/unstable for Ubuntu version older than 16.04."
+      sudo add-apt-repository ppa:neovim-ppa/unstable -y
+    else
+      echo "Using neovim-ppa/stable for Ubuntu version 16.04 or newer."
+      sudo add-apt-repository ppa:neovim-ppa/stable   -y
+    fi
+  - sudo apt-get update  -q
+  - |
+    echo 'Install foreign language packs for international tests.'
+    sudo apt-get install -y language-pack-de language-pack-es
+  - |
+    echo 'Install neovim.'
+    sudo apt-get install -y neovim
+    nvim --version
+  - |
+    echo 'Clone dependencies.'
+    mkdir -p ~/.vim/bundle
+    git clone https://github.com/junegunn/vader.vim.git ~/.vim/bundle/vader.vim
+    git clone https://github.com/Google/vim-maktaba.git ~/.vim/bundle/vim-maktaba
+
+script:
+  - cd "$REPO_DIR/test"  # to make handling filepaths easier
+  - |
+    echo 'Running Vim 7.4 tests.' \
+      && vim --version \
+      && ./run_tests.sh --vim --international
+  - echo 'Removing vim 7.4 installation.'
+    cd ~/vim
+    sudo make uninstall
+  - |
+    echo 'Running neovim tests.' \
+      && ./run_tests.sh --neovim --international
+  - |
+    echo 'Running Vim 8+ tests.' \
+      && cd ~/vim \
+      && git stash \
+      && git checkout master \
+      && ./configure --with-features=huge \
+      && make \
+      && sudo make install \
+      && cd "$REPO_DIR/test" \
+      && vim --version \
+      && ./run_tests.sh --vim --international
