@@ -98,7 +98,8 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   let l:indent_level = a:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
 
-  for [l:key, l:Val] in items(a:Obj)
+  let l:items = sort(items(a:Obj))
+  for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
     " check for, handle self-referencing objects
@@ -222,7 +223,8 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   let l:str = '{ '
-  for [l:key, l:Val] in items(a:Obj)
+  let l:items = sort(items(a:Obj))
+  for [l:key, l:Val] in l:items
     let l:str .= '"'.l:key.'": '
     if maktaba#value#IsString(l:Val)
       let l:str .= '"'.l:Val.'"'

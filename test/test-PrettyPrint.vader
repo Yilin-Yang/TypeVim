@@ -57,7 +57,7 @@ Execute (typevim#PrettyPrint: Arg-Bound Partial):
 Execute (typevim#PrettyPrint: Dict-Bound Partial):
   let g:dict = {'num': 1, 'fun': 2}
   let g:dict['Boo'] = function('Foo')
-  AssertEqual "function('Foo', {\n  \"fun\": 1,\n  \"num\": 2,\n  \"Boo\": {self-reference} ])",
+  AssertEqual "function('Foo', {\n  \"Boo\": function('Foo'),\n  \"fun\": 2,\n  \"num\": 1\n})",
       \ typevim#PrettyPrint(function('Foo', g:dict))
 
 Execute (typevim#PrettyPrint: One Item List):
