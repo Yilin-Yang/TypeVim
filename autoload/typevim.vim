@@ -163,6 +163,24 @@ function! s:PrettyPrintImpl(obj, seen_objects, self_refs) abort
     endif
   elseif maktaba#value#IsList(a:obj)
     return s:PrettyPrintList(a:obj, a:seen_objects, a:self_refs)
+  elseif maktaba#value#IsFuncref(a:obj)
+    let l:str = "function('".get(a:obj, 'name')
+    let l:args_and_dict = typevim#value#DecomposePartial(a:obj)
+    if empty(l:args_and_dict)  " not a Partial
+      return l:str."')"
+    endif
+
+    let l:bound_args = l:args_and_dict[0]
+    let l:bound_dict = l:args_and_dict[1]
+    if !empty(l:bound_args)
+      let l:str .= ', '
+          \ . s:PrettyPrintImpl(l:bound_args, a:seen_objects, a:self_refs)
+    endif
+    if !empty(l:bound_dict)
+      let l:str .= ', '
+          \ . s:PrettyPrintImpl(l:bound_dict, a:seen_objects, a:self_refs)
+    endif
+    return l:str.')'
   else
     return string(a:obj)
   endif
@@ -219,10 +237,29 @@ function! s:ShallowPrintList(obj, cur_depth, max_depth) abort
   return l:str[:-3].' ]'
 endfunction
 
+function! s:ShallowPrintFuncref(obj, cur_depth, max_depth) abort
+  let l:str = "function('".get(a:obj, 'name')."'"
+  let l:args_and_dict = typevim#value#DecomposePartial(a:obj)
+  if empty(l:args_and_dict)  " not a Partial
+    return l:str.')'
+  endif
+  let l:bound_args = l:args_and_dict[0]
+  let l:bound_dict = l:args_and_dict[1]
+  if !empty(l:bound_args)
+    let l:str .= ', '
+        \ . s:ShallowPrintImpl(l:bound_args, a:cur_depth + 1, a:max_depth)
+  endif
+  if !empty(l:bound_dict)
+    let l:str .= ', '
+        \ . s:ShallowPrintImpl(l:bound_dict, a:cur_depth + 1, a:max_depth)
+  endif
+  return l:str.')'
+endfunction
+
 function! s:ShallowPrintImpl(obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
-  if !maktaba#value#IsCollection(a:obj)
+  if !(maktaba#value#IsCollection(a:obj) || maktaba#value#IsFuncref(a:obj))
     return string(a:obj)
   endif
   if a:cur_depth ==# a:max_depth
@@ -230,16 +267,22 @@ function! s:ShallowPrintImpl(obj, cur_depth, max_depth) abort
       return '[list]'
     elseif typevim#value#IsValidObject(a:obj)
       return '{object}'
-    else
+    elseif maktaba#value#IsDict(a:obj)
       return '{dict}'
+    elseif typevim#value#IsPartial(a:obj)
+      return "function('".get(a:obj, 'name').", {partial}')"
+    else  " IsFuncref, but not Partial
+      return "function('".get(a:obj, 'name')."')"
     endif
   elseif a:cur_depth <# a:max_depth
     if maktaba#value#IsList(a:obj)
       return s:ShallowPrintList(a:obj, a:cur_depth, a:max_depth)
     elseif typevim#value#IsValidObject(a:obj)
       return s:ShallowPrintObject(a:obj, a:cur_depth, a:max_depth)
-    else
+    elseif maktaba#value#IsDict(a:obj)
       return s:ShallowPrintDict(a:obj, a:cur_depth, a:max_depth)
+    else  " IsFuncref
+      return s:ShallowPrintFuncref(a:obj, a:cur_depth, a:max_depth)
     endif
   else
     throw maktaba#error#Failure(
