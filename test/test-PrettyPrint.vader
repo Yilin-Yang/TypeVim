@@ -88,7 +88,6 @@ Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
   let g:child = [ g:grandchild, 2, 4 ]
   call add(g:val, g:child)
   call add(g:val, g:grandchild)
-
   AssertEqual "[ 0, 1, 2, [ "
       \ .   "[ 1, 2, 3, {self-reference} ], 2, 4 ], "
       \ . "{self-reference, idx: 1} ], "
@@ -97,6 +96,13 @@ Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
       \ typevim#PrettyPrint(g:val)
 
 Execute (typevim#PrettyPrint: Primitive Dict):
+  let g:val = { "a": "bcd" }
+  AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#PrettyPrint(g:val)
+
+Execute (typevim#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
+  let g:val = { "a": { "foo": "bar", "goo": "bar" }, "b": "bcd" }
+  AssertEqual "{\n  \"a\": {\n    \"foo\": \"bar\",\n    \"goo\": \"bar\"\n  },\n  \"b\": \"bcd\"\n}",
+      \ typevim#PrettyPrint(g:val)
 
 " Execute (typevim#PrettyPrint: Dict Containing Lists, Dicts):
 
