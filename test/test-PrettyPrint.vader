@@ -1,88 +1,88 @@
-Execute (typevim#GetIndentBlock: Ordinary):
-  AssertEqual '', typevim#GetIndentBlock(0)
-  AssertEqual '  ', typevim#GetIndentBlock(1)
-  AssertEqual '    ', typevim#GetIndentBlock(2)
-  AssertEqual '    ', typevim#GetIndentBlock(2)
-  AssertEqual '', typevim#GetIndentBlock(0)
+Execute (typevim#object#GetIndentBlock: Ordinary):
+  AssertEqual '', typevim#object#GetIndentBlock(0)
+  AssertEqual '  ', typevim#object#GetIndentBlock(1)
+  AssertEqual '    ', typevim#object#GetIndentBlock(2)
+  AssertEqual '    ', typevim#object#GetIndentBlock(2)
+  AssertEqual '', typevim#object#GetIndentBlock(0)
 
-Execute (typevim#GetIndentBlock: Boundary):
+Execute (typevim#object#GetIndentBlock: Boundary):
   AssertEqual '                  ',
-      \ typevim#GetIndentBlock(9), 'Failed on 9'
+      \ typevim#object#GetIndentBlock(9), 'Failed on 9'
   AssertEqual '                    ', 
-      \ typevim#GetIndentBlock(10), 'Failed on 10'
+      \ typevim#object#GetIndentBlock(10), 'Failed on 10'
   AssertEqual '                        ', 
-      \ typevim#GetIndentBlock(12), 'Failed on 12'
-  AssertEqual '  ', typevim#GetIndentBlock(1), 'Failed on 1'
+      \ typevim#object#GetIndentBlock(12), 'Failed on 12'
+  AssertEqual '  ', typevim#object#GetIndentBlock(1), 'Failed on 1'
 
-Execute (typevim#GetIndentBlock: Error Checking):
-  AssertThrows call typevim#GetIndentBlock(-5)
+Execute (typevim#object#GetIndentBlock: Error Checking):
+  AssertThrows call typevim#object#GetIndentBlock(-5)
   AssertEqual 0, match(g:vader_exception, '^ERROR(BadValue)'),
       \ 'Threw wrong exception: '.g:vader_exception
 
-  AssertThrows call typevim#GetIndentBlock('foobar')
+  AssertThrows call typevim#object#GetIndentBlock('foobar')
   AssertEqual 0, match(g:vader_exception, '^ERROR(WrongType)'),
       \ 'Threw wrong exception: '.g:vader_exception
 
-Execute (typevim#PrettyPrint: Numbers):
-  AssertEqual '0', typevim#PrettyPrint(0)
-  AssertEqual '-78910', typevim#PrettyPrint(-78910)
-  AssertEqual '25', typevim#PrettyPrint(25)
+Execute (typevim#object#PrettyPrint: Numbers):
+  AssertEqual '0', typevim#object#PrettyPrint(0)
+  AssertEqual '-78910', typevim#object#PrettyPrint(-78910)
+  AssertEqual '25', typevim#object#PrettyPrint(25)
 
-Execute (typevim#PrettyPrint: Floats):
-  AssertEqual '0.0', typevim#PrettyPrint(0.0)
-  AssertEqual '0.25', typevim#PrettyPrint(1/4.0)
-  AssertEqual '1.5e24', typevim#PrettyPrint(1500000000000000000000000.0)
-  AssertEqual '0.0', typevim#PrettyPrint(1-1.0)
-  AssertEqual '-0.5', typevim#PrettyPrint(0.5-1.0)
+Execute (typevim#object#PrettyPrint: Floats):
+  AssertEqual '0.0', typevim#object#PrettyPrint(0.0)
+  AssertEqual '0.25', typevim#object#PrettyPrint(1/4.0)
+  AssertEqual '1.5e24', typevim#object#PrettyPrint(1500000000000000000000000.0)
+  AssertEqual '0.0', typevim#object#PrettyPrint(1-1.0)
+  AssertEqual '-0.5', typevim#object#PrettyPrint(0.5-1.0)
 
-Execute (typevim#PrettyPrint: Strings):
-  AssertEqual "'foobar foo'", typevim#PrettyPrint('foobar foo')
-  AssertEqual "'\n'", typevim#PrettyPrint("\n")
-  AssertEqual "'     '", typevim#PrettyPrint('     ')
+Execute (typevim#object#PrettyPrint: Strings):
+  AssertEqual "'foobar foo'", typevim#object#PrettyPrint('foobar foo')
+  AssertEqual "'\n'", typevim#object#PrettyPrint("\n")
+  AssertEqual "'     '", typevim#object#PrettyPrint('     ')
   let g:val = '     '
-  AssertEqual "'     '", typevim#PrettyPrint(g:val)
+  AssertEqual "'     '", typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#PrettyPrint: Funcref):
+Execute (typevim#object#PrettyPrint: Funcref):
   function! Foo(...) dict abort
     echo l:self
   endfunction
-  AssertEqual "function('Foo')", typevim#PrettyPrint(function('Foo'))
+  AssertEqual "function('Foo')", typevim#object#PrettyPrint(function('Foo'))
 
-Execute (typevim#PrettyPrint: Arg-Bound Partial):
+Execute (typevim#object#PrettyPrint: Arg-Bound Partial):
   let g:val = [1, 2]
   call add(g:val, g:val)  " bound args are self-referencing
   " NOTE: binding an argument list to a Funcref effectively *copies* the list;
   " if it didn't, then modifications to the original list would change the
   " bound arguments inside the Partial!
   AssertEqual "function('Foo', [ 1, 2, [ 1, 2, {self-reference} ] ])",
-      \ typevim#PrettyPrint(function('Foo', g:val))
+      \ typevim#object#PrettyPrint(function('Foo', g:val))
 
-Execute (typevim#PrettyPrint: Dict-Bound Partial):
+Execute (typevim#object#PrettyPrint: Dict-Bound Partial):
   let g:dict = {'num': 1, 'fun': 2}
   let g:dict['Boo'] = function('Foo')
   AssertEqual "function('Foo', {\n  \"Boo\": function('Foo'),\n  \"fun\": 2,\n  \"num\": 1\n})",
-      \ typevim#PrettyPrint(function('Foo', g:dict))
+      \ typevim#object#PrettyPrint(function('Foo', g:dict))
 
-Execute (typevim#PrettyPrint: One Item List):
-  AssertEqual "[ 1 ]", typevim#PrettyPrint([1])
+Execute (typevim#object#PrettyPrint: One Item List):
+  AssertEqual "[ 1 ]", typevim#object#PrettyPrint([1])
 
-Execute (typevim#PrettyPrint: Primitive List):
+Execute (typevim#object#PrettyPrint: Primitive List):
   let g:val = '   '
   AssertEqual "[ 1, 3, '   ', -0.5, 'foobar' ]", 
-      \ typevim#PrettyPrint([1,3, g:val, 0.5-1, 'foobar'])
+      \ typevim#object#PrettyPrint([1,3, g:val, 0.5-1, 'foobar'])
 
-Execute (typevim#PrettyPrint: List Containing Lists, Dicts):
+Execute (typevim#object#PrettyPrint: List Containing Lists, Dicts):
   let g:val = [ [1, 2, 3, [] ], 1, {'foo': 'bar', 'bar': [1, 2, 3] } ]
   AssertEqual "[ [ 1, 2, 3, [  ] ], 1, {\n  \"bar\": [ 1, 2, 3 ],\n  \"foo\": \"bar\"\n} ]",
-      \ typevim#PrettyPrint(g:val)
+      \ typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#PrettyPrint: Self-Referencing List):
+Execute (typevim#object#PrettyPrint: Self-Referencing List):
   let g:val = [ 0, 1, 2 ]
   call add(g:val, g:val)
   AssertEqual '[ 0, 1, 2, {self-reference} ]',
-      \ typevim#PrettyPrint(g:val)
+      \ typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
+Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing List):
   let g:val = [ 0, 1, 2 ]
   let g:grandchild = [ 1, 2, 3, g:val ]
   let g:child = [ g:grandchild, 2, 4 ]
@@ -93,27 +93,27 @@ Execute (typevim#PrettyPrint: Multilevel Self-Referencing List):
       \ . "{self-reference, idx: 1} ], "
       \ . "self-referencing objects: "
       \ .   "[ [ 0, 1, 2, [list], [list] ], [ 1, 2, 3, [list] ] ]",
-      \ typevim#PrettyPrint(g:val)
+      \ typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#PrettyPrint: Primitive Dict):
+Execute (typevim#object#PrettyPrint: Primitive Dict):
   let g:val = { "a": "bcd" }
-  AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#PrettyPrint(g:val)
+  AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
+Execute (typevim#object#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
   let g:val = { "a": { "foo": "bar", "goo": "bar" }, "b": "bcd" }
   AssertEqual "{\n  \"a\": {\n    \"foo\": \"bar\",\n    \"goo\": \"bar\"\n  },\n  \"b\": \"bcd\"\n}",
-      \ typevim#PrettyPrint(g:val)
+      \ typevim#object#PrettyPrint(g:val)
 
-" Execute (typevim#PrettyPrint: Dict Containing Lists, Dicts):
+" Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
 
-" Execute (typevim#PrettyPrint: Self-Referencing Dict):
+" Execute (typevim#object#PrettyPrint: Self-Referencing Dict):
 
-" Execute (typevim#PrettyPrint: Multilevel Self-Referencing Dict):
+" Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
 
-" Execute (typevim#PrettyPrint: Primitive Object):
+" Execute (typevim#object#PrettyPrint: Primitive Object):
 
-" Execute (typevim#PrettyPrint: Compound Object):
+" Execute (typevim#object#PrettyPrint: Compound Object):
 
-" Execute (typevim#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
+" Execute (typevim#object#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
 
-" Execute (typevim#PrettyPrint: Multilevel Self-Referencing Compound Object):
+" Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Compound Object):
