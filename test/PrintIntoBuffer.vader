@@ -1,7 +1,7 @@
 Execute (PrintIntoBuffer: Declare Helpers):
   ""
   " Split a multiline string on newlines/carriage returns, returning a list
-  " of lines formatted like function(getbufline).
+  " of lines formatted like *getbufline*.
   function! ListifyString(str) abort
     call maktaba#ensure#IsString(a:str)
     return split(a:str, '\n\(\r\)\{0,1}', 1)

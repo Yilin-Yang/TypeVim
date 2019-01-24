@@ -1,0 +1,128 @@
+*TypeVim.txt*	Don't lose features in translation; use good object-orientation!
+Yilin Yang <yiliny@umich.edu>                              *TypeVim* *TypeVim*
+
+==============================================================================
+CONTENTS                                                    *TypeVim-contents*
+  1. Introduction..............................................|TypeVim-intro|
+  2. Configuration............................................|TypeVim-config|
+  3. Functions.............................................|TypeVim-functions|
+  4. Class Definitions..........................................|TypeVim-make|
+
+==============================================================================
+INTRODUCTION                                                   *TypeVim-intro*
+
+A library providing a crude, JavaScript-esque class system in vimscript.
+
+vimscript allows users to assign Funcrefs into a dictionary; these functions,
+if declared with the |[dict]| attribute, will be able to access and modify
+their "owner" dictionary through a variable (`l:self`) accessible from within
+their function body. This allows for object-oriented programming (OOP).
+
+Unfortunately, vimscript does not provide for safe and convenient OOP. It
+lacks inbuilt type checking (like what the TypeScript compiler might provide),
+for instance. It also lacks explicit support for OOP features like
+polymorphism.
+
+TypeVim is meant to provide a sensible, standardized framework for "native"
+object-oriented programming in vimscript.
+
+==============================================================================
+CONFIGURATION                                                 *TypeVim-config*
+
+This plugin uses maktaba flags for configuration. Install Glaive
+(https://github.com/google/glaive) and use the |:Glaive| command to configure
+them.
+
+                                                       *TypeVim:plugin[flags]*
+Configures whether plugin/flags.vim should be loaded.
+Default: 1 `
+
+==============================================================================
+FUNCTIONS                                                  *TypeVim-functions*
+
+typevim#make#Class({typename}, {prototype}, [Destructor])
+                                                        *typevim#make#Class()*
+  Return a 'prototypical' instance of a class. Meant to be called from inside
+  a type's constructor.
+
+  {typename} is the name of the type being declared.
+
+  {prototype} Dictionary object containing member variables (with default
+  values) and member functions, which might not be implemented.
+
+  [Destructor]  Optional dictionary function that performs cleanup for the
+  object.
+  [Destructor] is 0 if omitted.
+
+typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor])
+                                                      *typevim#make#Derived()*
+  Return a 'prototypical' instance of a type that inherits from another. Meant
+  to be called from inside a type's constructor.
+
+  {typename} is he name of the derived type being declared.
+
+  {Parent} is either a Funcref or a base class prototype. Funcref to the
+  constructor of the base class. If arguments are             being passed,
+  this should be a partial. {prototype} Dictionary object containing member
+  variables (with default values) and member functions, which might not be
+  implemented. [Destructor]  Optional dictionary function that performs
+  cleanup for the object.
+
+typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
+  Converts the given {object} into a string, suitable for error messages and
+  debug logging.
+
+  If it's already a string, encloses the string in quotes (useful when a
+  string is purely whitespace). If it's a TypeVim object or a dictionary, adds
+  newlines and tabs to make the resulting string human-readable.
+
+typevim#object#ShallowPrint({Obj}, [max_depth])
+                                               *typevim#object#ShallowPrint()*
+  Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
+  layers down into {Obj} if it's a container or a Partial.
+
+  [max_depth] is 1 if omitted.
+  Throws ERROR(BadValue) if the given depth is negative.
+
+typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
+  Returns 1 when the given {typename} is valid, 0 otherwise.
+
+  A valid typename is a string of uppercase Latin letters, lowercase Latin
+  letters, numbers, and underscores. It must start with a capital letter, and
+  cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
+  etc.
+
+  {typename} cannot be an empty string.
+
+typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
+  Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
+
+  A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
+  dictionary, whose keys are typenames (see |IsValidTypename()|) and whose
+  values can be anything, though it is suggested that they be an arbitrary
+  number (typically `1`).
+
+typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
+  Returns 1 when the given object is a Partial (see `:help Partial`) and 0
+  otherwise.
+
+typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
+  If the Funcref {Func} is a Partial, decomposes {Func} into a two-element
+  list containing: first, the bound arguments; and second, the bound
+  dictionary. Both elements can be empty if {Func} is not bound to arguments
+  or a dictionary, respectively.
+
+  If {Func} is a Funcref, but not a Partial, returns an empty list. This is so
+  that the return value of this function can be easily checked with `empty()`.
+  Throws ERROR(WrongType)
+
+==============================================================================
+CLASS DEFINITIONS                                               *TypeVim-make*
+
+TypeVim offers helper functions for defining new types. These are meant to be
+invoked from within an object's constructor.
+
+TODO expand
+
+
+vim:tw=78:ts=8:ft=help:norl:

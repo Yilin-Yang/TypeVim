@@ -12,20 +12,10 @@ endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
 
-" overelaborate memoized function for producing indentation blocks
-let s:block = '  '
-let s:indent_blocks = [
-    \ '',
-    \ '  ',
-    \ '    ',
-    \ '      ',
-    \ '        ',
-    \ '          ',
-    \ '            ',
-    \ '              ',
-    \ '                ',
-    \ '                  ',
-    \ ]
+""
+" Return a string of spaces that would indent text by {level} "levels." A
+" single indentation level is two spaces. Memoized, for efficiency(?).
+" @throws WrongType if {level} is not a number.
 function! s:GetIndentBlock(level) abort
   call maktaba#ensure#IsNumber(a:level)
   if a:level <# 0
@@ -39,6 +29,19 @@ function! s:GetIndentBlock(level) abort
   endif
   return s:indent_blocks[a:level]
 endfunction
+let s:block = '  '
+let s:indent_blocks = [
+    \ '',
+    \ '  ',
+    \ '    ',
+    \ '      ',
+    \ '        ',
+    \ '          ',
+    \ '            ',
+    \ '              ',
+    \ '                ',
+    \ '                  ',
+    \ ]
 ""
 " @private
 function typevim#object#GetIndentBlock(level) abort  " expose for tests
@@ -57,7 +60,6 @@ endfunction
 " returns a two-element list containing the index of the seen object, and a
 " descriptive string, in that order.
 " @throws WrongType
-" @private
 function! s:CheckSelfReference(Obj, seen_objects, self_refs) abort
   if !maktaba#value#IsCollection(a:Obj)
     return []
@@ -88,14 +90,30 @@ endfunction
 ""
 " Exactly the same as function(s:PrettyPrintDict), but prepends 'OBJECT: ' to
 " the pretty-print output.
-" @usage s:PrettyPrintObject {Obj} [starting_indent] [seen_objs]
-" @private
 function! s:PrettyPrintObject(...) abort
   return 'OBJECT: '.call('<SID>PrettyPrintDict', a:000)
 endfunction
 
 ""
-" @private
+" Returns a "human-readable" string representation of the given dictionary
+" {Obj}, splitting keys and values across multiple lines using newline
+" characters (`"\n"`). Values that are themselves dictionaries are printed in
+" the same fashion, but indented one additional level.
+"
+" {starting_indent} is the indentation level of this dictionary; it controls
+" how many spaces are prepended to the start of each line. A "top-level"
+" dictionary is printed from an indentation level of zero; key-value pairs
+" within that dictionary print with an indentation level of one; nested
+" dictionaries will have an indentation level of two, and so on.
+"
+" {seen_objs} is a list of collections (lists and dictionaries) that have been
+" "seen before," used to avoid infinitely recursing into self-referencing
+" containers. See @function(CheckSelfReference).
+"
+" {self_refs} is a list of "known" self-referencing objects, also used to
+" avoid infinite recursion. See @function(CheckSelfReference).
+"
+" @throws WrongType
 function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsDict(a:Obj)
   call maktaba#ensure#IsNumber(a:starting_indent)
@@ -132,7 +150,18 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
 endfunction
 
 ""
-" @private
+" Returns a string representation of the list {Obj}. Behaves very similarly to
+" how vim stringifies lists, except that it explicitly checks for
+" self-referencing objects.
+"
+" {seen_objs} is a list of collections (lists and dictionaries) that have been
+" "seen before," used to avoid infinitely recursing into self-referencing
+" containers. See @function(CheckSelfReference).
+"
+" {self_refs} is a list of "known" self-referencing objects, also used to
+" avoid infinite recursion. See @function(CheckSelfReference).
+"
+" @throws WrongType
 function! s:PrettyPrintList(Obj, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:Obj)
   call maktaba#ensure#IsList(a:seen_objs)
@@ -155,7 +184,6 @@ endfunction
 ""
 " Return a string of 'shallow-printed' self-referencing items {self_refs},
 " if the latter has more than one element; else, return an empty string.
-" @private
 function! s:PrintSelfReferences(self_refs) abort
   call maktaba#ensure#IsList(a:self_refs)
   if len(a:self_refs) <=# 1
@@ -174,9 +202,10 @@ function! s:PrintSelfReferences(self_refs) abort
 endfunction
 
 ""
-" @usage s:PrettyPrintImpl {Obj} {seen_objects} {self_refs} [cur_indent_level]
+" The actual implementation of function(typevim#object#PrettyPrint).
+"
+" TODO
 " @default cur_indent_level=0
-" @private
 function! s:PrettyPrintImpl(Obj, seen_objects, self_refs, ...) abort
   let a:cur_indent_level = maktaba#ensure#IsNumber(get(a:000, 0, 0))
   call maktaba#ensure#IsList(a:seen_objects)
@@ -327,7 +356,6 @@ endfunction
 " Like @function(typevim#object#PrettyPrint), but will recurse at most [max_depth]
 " layers down into {Obj} if it's a container or a Partial.
 "
-" @usage typevim#object#ShallowPrint {Obj} [max_depth]
 " @default max_depth=1
 " @throws BadValue  if the given depth is negative.
 function! typevim#object#ShallowPrint(Obj, ...) abort
