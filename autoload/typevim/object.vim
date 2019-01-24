@@ -10,6 +10,8 @@ function! typevim#object#Destroy() abort dict
   endwhile
 endfunction
 
+"""""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
+
 " overelaborate memoized function for producing indentation blocks
 let s:block = '  '
 let s:indent_blocks = [
@@ -116,8 +118,11 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
     elseif maktaba#value#IsString(l:Val)
       let l:str .= '"'.l:Val.'"'  " don't 'double-wrap' the string
     else
-      let l:str .= s:PrettyPrintImpl(
+      " trim indentation from start of this string before appending
+      let l:dict_str = s:PrettyPrintImpl(
           \ l:Val, a:seen_objs, a:self_refs, l:indent_level)
+      let l:dict_str = matchstr(l:dict_str, '\S.*$')
+      let l:str .= l:dict_str
     endif
 
     let l:str .= ",\n"

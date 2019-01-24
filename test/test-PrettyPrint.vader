@@ -1,3 +1,5 @@
+Include: PrintIntoBuffer.vader
+
 Execute (typevim#object#GetIndentBlock: Ordinary):
   AssertEqual '', typevim#object#GetIndentBlock(0)
   AssertEqual '  ', typevim#object#GetIndentBlock(1)
@@ -95,14 +97,24 @@ Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing List):
       \ .   "[ [ 0, 1, 2, [list], [list] ], [ 1, 2, 3, [list] ] ]",
       \ typevim#object#PrettyPrint(g:val)
 
+Given (Empty Buffer):
+
 Execute (typevim#object#PrettyPrint: Primitive Dict):
   let g:val = { "a": "bcd" }
   AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#object#PrettyPrint(g:val)
 
 Execute (typevim#object#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
   let g:val = { "a": { "foo": "bar", "goo": "bar" }, "b": "bcd" }
-  AssertEqual "{\n  \"a\": {\n    \"foo\": \"bar\",\n    \"goo\": \"bar\"\n  },\n  \"b\": \"bcd\"\n}",
-      \ typevim#object#PrettyPrint(g:val)
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Expect:
+  
+  {
+    "a": {
+      "foo": "bar",
+      "goo": "bar"
+    },
+    "b": "bcd"
+  }
 
 " Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
 
