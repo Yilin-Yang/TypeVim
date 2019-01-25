@@ -202,9 +202,13 @@ function! s:PrintSelfReferences(self_refs) abort
 endfunction
 
 ""
-" The actual implementation of function(typevim#object#PrettyPrint).
+" The actual implementation of function(typevim#object#PrettyPrint), as a
+" recursive function. Dispatches to helper functions based on the type of
+" {Obj}.
 "
-" TODO
+" Pretty print {Obj}, given lists of {seen_objects} and known {self_refs}, and
+" (optionally) a [cur_indent_level], used when pretty-printing dicts and
+" objects.
 " @default cur_indent_level=0
 function! s:PrettyPrintImpl(Obj, seen_objects, self_refs, ...) abort
   let a:cur_indent_level = maktaba#ensure#IsNumber(get(a:000, 0, 0))
@@ -269,6 +273,12 @@ function! s:ShallowPrintObject(Obj, cur_depth, max_depth) abort
   return 'OBJECT: '.s:ShallowPrintDict(a:Obj, a:cur_depth, a:max_depth)
 endfunction
 
+""
+" Shallow print the given dictionary {Obj} on a single line.
+"
+" {cur_depth} and {max_depth} are used for brevity, to avoid recursing too
+" deeply into large collections and bloating the output.
+" @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsDict(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
@@ -287,6 +297,12 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
   return l:str[:-3].' }'
 endfunction
 
+""
+" Shallow print the given list {Obj} on a single line.
+"
+" {cur_depth} and {max_depth} are used for brevity, to avoid recursing too
+" deeply into large collections and bloating the output.
+" @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintList(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsList(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
@@ -298,6 +314,13 @@ function! s:ShallowPrintList(Obj, cur_depth, max_depth) abort
   return l:str[:-3].' ]'
 endfunction
 
+""
+" Shallow print the given function reference {Obj}. Output will look similar
+" to that produced by `echo`ing a Partial.
+"
+" {cur_depth} and {max_depth} are used for brevity, to avoid recursing too
+" deeply into large collections and bloating the output.
+" @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintFuncref(Obj, cur_depth, max_depth) abort
   let l:str = "function('".get(a:Obj, 'name')."'"
   let l:args_and_dict = typevim#value#DecomposePartial(a:Obj)
@@ -317,6 +340,14 @@ function! s:ShallowPrintFuncref(Obj, cur_depth, max_depth) abort
   return l:str.')'
 endfunction
 
+""
+" Actual implementation of @function(typevim#object#ShallowPrint), as a
+" recursive function. Dispatches to helper functions based on the type of
+" {Obj}.
+"
+" Shallow print {Obj}, recursing from the current recursion depth of
+" {cur_depth} down to at most {max_depth} levels of recursion.
+" @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintImpl(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
@@ -353,11 +384,12 @@ function! s:ShallowPrintImpl(Obj, cur_depth, max_depth) abort
 endfunction
 
 ""
-" Like @function(typevim#object#PrettyPrint), but will recurse at most [max_depth]
-" layers down into {Obj} if it's a container or a Partial.
+" Like @function(typevim#object#PrettyPrint), but will recurse at most
+" [max_depth] levels down into {Obj} if it's a container or a Partial.
 "
 " @default max_depth=1
 " @throws BadValue  if the given depth is negative.
+" @throws WrongType
 function! typevim#object#ShallowPrint(Obj, ...) abort
   let a:max_depth = maktaba#ensure#IsNumber(get(a:000, 0, 1))
   if a:max_depth <# 0

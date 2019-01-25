@@ -79,10 +79,11 @@ typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
 typevim#object#ShallowPrint({Obj}, [max_depth])
                                                *typevim#object#ShallowPrint()*
   Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
-  layers down into {Obj} if it's a container or a Partial.
+  levels down into {Obj} if it's a container or a Partial.
 
   [max_depth] is 1 if omitted.
   Throws ERROR(BadValue) if the given depth is negative.
+  Throws ERROR(WrongType)
 
 typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   Returns 1 when the given {typename} is valid, 0 otherwise.
