@@ -4,6 +4,12 @@
 " be invoked from within an object's constructor.
 "
 " TODO expand
+" attributes are properties that are "reserved" by TypeVim that shall not be
+" directly modified by the end user.
+
+let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
+let s:TYPE_ATTR = typevim#attribute#TYPE()
+let s:DTOR_LIST_ATTR = typevim#attribute#DESTRUCTOR_LIST()
 
 ""
 " Returns a string containing an error message complaining that the user tried
@@ -12,17 +18,17 @@
 "
 " @throws InvalidArguments if more than one optional argument is given.
 " @throws WrongType if either {property} or [value] are not strings.
-function! s:IllegalRedefinition(property, ...) abort
-  call maktaba#ensure#IsString(a:property)
+function! s:IllegalRedefinition(attribute, ...) abort
+  call maktaba#ensure#IsString(a:attribute)
   if a:0 ==# 1
     let a:value = a:1
     call maktaba#ensure#IsString(a:value)
     return maktaba#error#NotAuthorized(
         \ 'Tried to (re)define reserved attribute "%s" with value: %s',
-        \ a:property, a:value)
+        \ a:attribute, a:value)
   elseif !a:0
     return maktaba#error#NotAuthorized(
-        \ 'Tried to (re)define reserved attribute: "%s"', a:property)
+        \ 'Tried to (re)define reserved attribute: "%s"', a:attribute)
   else
     throw maktaba#error#InvalidArguments(
         \ 'Gave wrong number of optional arguments (should be 0 or 1): %d', a:0)
@@ -30,18 +36,18 @@ function! s:IllegalRedefinition(property, ...) abort
 endfunction
 
 ""
-" Assigns the given {Value} into the {property} attribute of the given {dict},
-" throwing an "IllegalRedefinition" exception if the given {property} has a
+" Assigns the given {Value} into the {attribute} of the given {dict},
+" throwing an "IllegalRedefinition" exception if the given {attribute} has a
 " preexisting value.
 "
-" @throws NotAuthorized if {property} is already defined on {dict}.
+" @throws NotAuthorized if {attribute} is already defined on {dict}.
 " @throws WrongType
-function! s:AssignReserved(dict, property, Value) abort
+function! s:AssignReserved(dict, attribute, Value) abort
   call maktaba#ensure#IsDict(a:dict)
-  call maktaba#ensure#IsString(a:property)
-  if has_key(a:dict, a:property)
+  call maktaba#ensure#IsString(a:attribute)
+  if has_key(a:dict, a:attribute)
     throw s:IllegalRedefinition(
-        \ a:property, typevim#object#ShallowPrint(a:Value))
+        \ a:attribute, typevim#object#ShallowPrint(a:Value))
   endif
 endfunction
 
@@ -60,16 +66,16 @@ endfunction
 " the object.
 "
 " @default Destructor = 0
-" @throws NotAuthorized if {prototype} defines attributes that should've been
-" initialized by this function.
-" @throws WrongType
+" @throws BadValue if the given {typename} is not a valid typename, see @function(typevim#value#IsValidTypename).
+" @throws NotAuthorized if {prototype} defines attributes that should've been initialized by this function.
+" @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
   let a:Destructor = get(a:000, 0, 0)
-  call maktaba#ensure#IsString(a:typename)
+  call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
   let l:new = a:prototype  " technically l:new is just an alias
-  call s:AssignReserved(l:new, '___TYPE___', a:typename)
+  call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
 
   if maktaba#value#IsFuncref(a:Destructor)
       \ || maktaba#value#IsNumber(a:Destructor)
@@ -84,7 +90,7 @@ function! typevim#make#Class(typename, prototype, ...) abort
 endfunction
 
 ""
-" Return a 'prototypical' instance of a type that inherits from another. Meant
+" Return a "prototypical" instance of a type that inherits from another. Meant
 " to be called from inside a type's constructor.
 "
 " {typename} is the name of the derived type being declared.
@@ -109,13 +115,15 @@ endfunction
 " modification of base class member variables is generally considered bad
 " style.
 "
-" @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref
-" member variable of the base class, and [clobber_base_vars] is not 1.
-" @throws WrongType
+" @default clobber_base_vars=0
+"
+" @throws BadValue if {typename} is not a valid typename.
+" @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
+" @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   let a:Destructor = get(a:000, 0, 0)
   let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
-  call maktaba#ensure#IsString(a:typename)
+  call typevim#ensure#IsValidTypename(a:typename)
 
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()
@@ -129,18 +137,22 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   endif
 
   if maktaba#value#IsFuncref(a:Destructor)
-    if !has_key(l:base, '___DESTRUCTORS___')
-      let l:old_dtor = l:base['Destroy']
+    if !has_key(l:base, s:DTOR_LIST_ATTR)
+      let l:Old_dtor = l:base['Destroy']
       let l:base['Destroy'] = function('typevim#Destroy')
-      let l:base['___DESTRUCTORS___'] = [l:old_dtor]
+      let l:base[s:DTOR_LIST_ATTR] =
+          \ maktaba#value#IsFuncref(l:Old_dtor) ? [l:Old_dtor] : []
     endif
-    call add(l:base['___DESTRUCTORS___'], a:Destructor)
+    call add(l:base[s:DTOR_LIST_ATTR], a:Destructor)
   endif
 
   let l:new = l:base  " declare alias; we'll be assigning into the base
   let l:derived = typevim#make#Class(a:typename, a:prototype)
 
   for [l:key, l:Value] in items(l:derived)
+    if has_key(s:RESERVED_ATTRIBUTES, l:key)
+      continue
+    endif
     if has_key(l:base, l:key) && !maktaba#value#IsFuncref(l:base[l:key])
         \ && !a:clobber_base_vars
       throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
