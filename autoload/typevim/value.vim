@@ -8,9 +8,11 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 " cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
 " etc.
 "
-" {typename} cannot be an empty string.
+" {typename} cannot be an empty string, nor can it be a "reserved attribute".
+" See @section(reserved) for more details.
 function! typevim#value#IsValidTypename(typename) abort
   if !maktaba#value#IsString(a:typename) || empty(a:typename)
+      \ || has_key(s:TYPE_ATTR, a:typename)
     return 0
   endif
   return match(a:typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
@@ -23,7 +25,7 @@ endfunction
 " @function(typevim#value#IsValidTypename)), but does not need to start with a
 " capital letter.
 function! typevim#value#IsValidIdentifier(id) abort
-  if !maktaba#value#IsString(a:id) || empty(a:id)
+  if !maktaba#value#IsString(a:id) || empty(a:id) || has_key(s:TYPE_ATTR, a:id)
     return 0
   endif
   return match(a:id, '^[A-Za-z0-9_]*$') ==# 0

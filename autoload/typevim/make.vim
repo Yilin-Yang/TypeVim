@@ -1,11 +1,93 @@
 ""
 " @section Class Definitions, make
-" TypeVim offers helper functions for defining new types. These are meant to
-" be invoked from within an object's constructor.
+" TypeVim offers helper functions for defining new object types. These are
+" meant to be invoked from within an object's constructor.
+
+""
+" @section Declaring a Class, basic_decl
+" @parentsection make
+" In general, to declare a new class, one should:
 "
-" TODO expand
-" attributes are properties that are "reserved" by TypeVim that shall not be
-" directly modified by the end user.
+" 1. Create a "namespaced" *.vim file for this class, i.e. a file in:
+" >
+"   myplugin/  # plugin root dir
+"     autoload/
+"       myplugin/  # autoload subdirectory; name matters
+"         ExampleClass.vim
+" <
+" Unless you have a good reason not to, all of `ExampleClass`'s relevant
+" functions should be declared in `ExampleClass.vim`. This has the benefit of
+" placing all of `ExampleClass`'s function definitions in an appropriate
+" "namespace": based on vim's naming rules for autoload scripts (see `:help
+" autoload`), a function in `ExampleClass.vim` named `Foo()` will be invocable
+" through `:call myplugin#ExampleClass#Foo()`."
+"
+" 2. Declare a class constructor. By convention, a class constructor should be
+" named `New`, e.g. `myplugin#ExampleClass#New()`. It may have any number of
+" arguments.
+"
+" 3. Inside the constructor, construct a class "prototype." This is a
+" dictionary object initialized with your class's member variables and
+" functions (sometimes called "class properties," like in JavaScript):
+" >
+" " in myplugin/autoload/myplugin/ExampleClass.vim
+" function! myplugin#ExampleClass#New(num1, str2, ...) abort
+"   " type checking (with vim-maktaba) not required, but strongly encouraged
+"   call maktaba#ensure#IsNumber(a:num1)
+"   call maktaba#ensure#IsString(a:str2)
+"
+"   " optional parameter with a default value of 3.14
+"   let a:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
+"
+"   let l:example_prototype = {
+"       \ '_single_underscore': a:num1,
+"       \ '_implies_var_is_private': a:str2,
+"       \ '__double_underscore': a:optional_float,
+"       \ '__means_definitely_private': 42,
+"       \ 'PublicFunction': typevim#get#ClassFunc('PublicFunction'),
+"       \ '__PrivateFunction': typevim#get#ClassFunc('__PrivateFunction'),
+"       \ }
+"
+"   return typevim#make#Class(l:example_prototype)
+" endfunction
+" <
+"
+" 4. Implement the rest of the class. In the example given, we referred to a
+" `PublicFunction()` and a `__PrivateFunction()`.
+" >
+" " still myplugin/autoload/myplugin/ExampleClass.vim
+" function! myplugin#ExampleClass#PublicFunction() dict abort
+"   " NOTE: `dict` keyword is necessary to have access to l:self variable
+"   echo 'Hello, World! My number is: ' . l:self['_single_underscore']
+" endfunction
+"
+" function! myplugin#ExampleClass#__PrivateFunction() dict abort
+"   " ...
+" endfunction
+" <
+" Note how the functions are named. In step (3), the calls to
+" function(typevim#get#ClassFunc) return Funcrefs equivalent to
+" `function('myplugin#ExampleClass#PublicFunction')` and
+" `function('myplugin#ExampleClass#__PrivateFunction')`, respectively. (See
+" `:help function()` and `:help Funcref` for more details on what this means.)
+"
+" You can see that the full `function('...')` expression is very verbose;
+" `get#ClassFunc()` is a helper function to help eliminate that boilerplate.
+"
+" 5. Test your class, or just start using it!
+" >
+"   let ex_1 = myplugin#ExampleObject#new(1, 'foo')
+"   let ex_2 = myplugin#ExampleObject#new(2, 'boo', 6.28)
+"
+"   call ex_1.PublicFunction()  " echoes 'Hello, World! My number is: 1'
+"   call ex_2.PublicFunction()  " echoes 'Hello, World! My number is: 2'
+" <
+
+""
+" @section Declaring a Derived Class (Polymorphism), poly_decl
+" @parentsection make
+"
+" TODO
 
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()

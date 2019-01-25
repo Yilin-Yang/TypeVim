@@ -1,6 +1,12 @@
 """"""""""""""""""""""""""""""""OBJECT METHODS""""""""""""""""""""""""""""""""""
 
 ""
+" Returns the script number of this file. Taken from vim's docs.
+function s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
+endfun
+
+""
 " "Default" "virtual" destructor, used when destroying a derived class with
 " multiple declared constructors. Calls destructors in reverse order, i.e.
 " from the most- to least-derived classes in the object's class hierarchy.
@@ -118,7 +124,7 @@ function! typevim#object#Virtual(typename, funcname, parameters) abort
       \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual "'."\n"
       \ . '      \ ."function: %s", "'.a:funcname.'")'."\n"
       \ . 'endfunction'
-  return function('<SID>'.l:script_funcname)
+  return function('<SNR>'.SID().l:script_funcname)
 endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""

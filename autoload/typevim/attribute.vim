@@ -1,3 +1,25 @@
+""
+" @section Reserved Attributes, reserved
+" @parentsection make
+"
+" Reserved attributes are properties of TypeVim objects that are "reserved" by
+" TypeVim for "bookkeeping." These include the attributes used for tracking an
+" object's dynamic type, its class hierarchy, its order of destructor calls,
+" and so on.
+"
+" Users shall not modify these properties, as doing so will lead to undefined
+" behavior. Attempting to explicitly set the values of these attributes (e.g.
+" in a class constructor) will sometimes cause TypeVim to throw
+" ERROR(NotAuthorized) exceptions.
+"
+" In general, the names of these attributes are fully capitalized and enclosed
+" in triple-underscores (e.g. `"___TYPE___"`), roughly similar to how
+" Python names its "dunder methods" (e.g. `"__main__", "__call__"`). Declaring
+" class members with names that use this format (e.g. declaring an object with
+" a `"___SIZE___"` property) is strongly discouraged, though not disallowed.
+"
+" Typenames and identifiers shall not share the name of a reserved attribute.
+
 let s:AttributesDict = {
     \ 'TYPE': '___TYPE___',
     \ 'DESTRUCTOR_LIST': '___DESTRUCTORS___',
