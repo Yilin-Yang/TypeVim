@@ -8,13 +8,15 @@
 " @parentsection make
 " In general, to declare a new class, one should:
 "
-" 1. Create a "namespaced" *.vim file for this class, i.e. a file in:
+" First, create a "namespaced" *.vim file for this class, i.e. a file in:
+"
 " >
 "   myplugin/  # plugin root dir
 "     autoload/
 "       myplugin/  # autoload subdirectory; name matters
 "         ExampleClass.vim
 " <
+"
 " Unless you have a good reason not to, all of `ExampleClass`'s relevant
 " functions should be declared in `ExampleClass.vim`. This has the benefit of
 " placing all of `ExampleClass`'s function definitions in an appropriate
@@ -22,13 +24,14 @@
 " autoload`), a function in `ExampleClass.vim` named `Foo()` will be invocable
 " through `:call myplugin#ExampleClass#Foo()`."
 "
-" 2. Declare a class constructor. By convention, a class constructor should be
+" Second, declare a class constructor. By convention, a class constructor should be
 " named `New`, e.g. `myplugin#ExampleClass#New()`. It may have any number of
 " arguments.
 "
-" 3. Inside the constructor, construct a class "prototype." This is a
+" Third, inside the constructor, construct a class "prototype." This is a
 " dictionary object initialized with your class's member variables and
 " functions (sometimes called "class properties," like in JavaScript):
+"
 " >
 " " in myplugin/autoload/myplugin/ExampleClass.vim
 " function! myplugin#ExampleClass#New(num1, str2, ...) abort
@@ -52,9 +55,11 @@
 " endfunction
 " <
 "
-" 4. Implement the rest of the class. In the example given, we referred to a
+" Fourth, implement the rest of the class. In the example given, we referred to a
 " `PublicFunction()` and a `__PrivateFunction()`.
+"
 " >
+"
 " " still myplugin/autoload/myplugin/ExampleClass.vim
 " function! myplugin#ExampleClass#PublicFunction() dict abort
 "   " NOTE: `dict` keyword is necessary to have access to l:self variable
@@ -64,7 +69,9 @@
 " function! myplugin#ExampleClass#__PrivateFunction() dict abort
 "   " ...
 " endfunction
+"
 " <
+"
 " Note how the functions are named. In step (3), the calls to
 " function(typevim#get#ClassFunc) return Funcrefs equivalent to
 " `function('myplugin#ExampleClass#PublicFunction')` and
@@ -74,7 +81,8 @@
 " You can see that the full `function('...')` expression is very verbose;
 " `get#ClassFunc()` is a helper function to help eliminate that boilerplate.
 "
-" 5. Test your class, or just start using it!
+" Finally, est your class, or just start using it!
+"
 " >
 "   let ex_1 = myplugin#ExampleObject#new(1, 'foo')
 "   let ex_2 = myplugin#ExampleObject#new(2, 'boo', 6.28)
