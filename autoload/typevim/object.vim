@@ -27,6 +27,100 @@ function! typevim#object#Destroy() dict abort
   endwhile
 endfunction
 
+""
+" Returns a Partial, assignable into an object with type {typename}, standing
+" in for a function named {funcname}, that takes in arguments with the names
+" given in {parameters}.
+"
+" To specify optional parameters, enclose the parameter name in square
+" brackets. To specify that a variable number of arguments are acceptable,
+" write "...".
+"
+" Example invocation:
+" >
+"   let l:new['PureVirtualFunc'] = typevim#object#Virtual(
+"         \ 'ExampleObject`, 'exampleMethod', '['arg1', '[optional1]', '...'])
+" <
+"
+" An argument list, if specified, must come after all other parameters named.
+" Optional parameters, if specified, must come after all non-optional
+" parameters, if any.
+"
+" Parameters names must be strings and cannot be empty strings, and must be
+" valid identifiers (see @function(typevim#value#IsValidIdentifier)).
+"
+" The returned function, when invoked, will throw ERROR(InvalidArguments) if
+" given the wrong number of arguments (and if Vim itself doesn't throw an
+" "|E116|: Invalid arguments for function" exception or an "|E119|: Not enough
+" arguments for function" exception).
+"
+" If the number of arguments is correct, the returned function will throw an
+" exception saying that it is an unimplemented virtual function
+" " @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
+" @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
+function! typevim#object#Virtual(typename, funcname, parameters) abort
+  call typevim#ensure#IsValidTypename(a:typename)
+  call typevim#ensure#IsValidIdentifier(a:funcname)
+  call maktaba#ensure#IsList(a:parameters)
+  let l:named = []
+  let l:opt_named = []
+  let l:opt_arglist = []
+
+  for l:param in a:parameters
+    if !maktaba#value#IsString(l:param)
+      throw maktaba#error#WrongType(
+          \ 'Specified a non-string parameter "%s" in parameter list: %s',
+          \ typevim#object#ShallowPrint(l:param),
+          \ typevim#object#ShallowPrint(a:parameters))
+    elseif empty(l:param)
+      throw maktaba#error#WrongType(
+          \ 'Gave an empty string when naming a param in parameter list: %s',
+          \ typevim#object#ShallowPrint(a:parameters))
+    endif
+    if !empty(l:opt_arglist)
+        throw maktaba#error#BadValue(
+            \ 'Specified a parameter "%s" after the optional argslist in '
+            \ .'parameter list: %s',
+            \ l:param, typevim#object#ShallowPrint(a:parameters))
+    endif
+    if l:param ==# '...'
+      call add(l:opt_arglist, l:param)
+      continue
+    endif
+
+    if l:param[0] ==# '[' && l:param[-1] ==# ']'
+      let l:param_id = l:param[1:-2]
+      call typevim#ensure#IsValidIdentifier(l:param_id)
+      call add(l:opt_named, l:param_id)
+    else
+      if !empty(l:opt_named)
+        throw maktaba#error#BadValue(
+            \ 'Specified a parameter "%s" after the optional parameter "%s" in '
+              \ .'parameter list: %s',
+            \ l:param, l:opt_named[-1],
+            \ typevim#object#ShallowPrint(a:parameters))
+      endif
+      call typevim#ensure#IsValidIdentifier(l:param)
+      call add(l:opt_named, l:param)
+    endif
+  endfor
+
+  let l:param_list = join(l:named + l:opt_named + l:opt_arglist, ', ')
+  let l:script_funcname = a:typename.'_NotImplemented'
+  let l:argnum_cond =
+      \ empty(l:opt_arglist) ? 'a:0 ># '.len(l:opt_named) : '1 ==# 0'
+  execute 'function! s:'.l:script_funcname.'('.l:param_list.") abort\n"
+      \ . '  if '.l:argnum_cond."\n"
+      \ . '    throw maktaba#error#InvalidArguments("Too many optional "'."\n"
+      \ . '        \."arguments (Expected %d or fewer, got %d)",'."\n"
+      \ . '        \ '.len(l:opt_named).', a:0)'."\n"
+      \ . '  endif'."\n"
+      \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual "'."\n"
+      \ . '      \ ."function: %s", "'.a:funcname.'")'."\n"
+      \ . 'endfunction'
+  return function('<SID>'.l:script_funcname)
+endfunction
+
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
 
 ""
@@ -125,7 +219,7 @@ endfunction
 "
 " {seen_objs} is a list of collections (lists and dictionaries) that have been
 " "seen before," used to avoid infinitely recursing into self-referencing
-" containers. See @function(CheckSelfReference).
+" collections. See @function(CheckSelfReference).
 "
 " {self_refs} is a list of "known" self-referencing objects, also used to
 " avoid infinite recursion. See @function(CheckSelfReference).
@@ -173,7 +267,7 @@ endfunction
 "
 " {seen_objs} is a list of collections (lists and dictionaries) that have been
 " "seen before," used to avoid infinitely recursing into self-referencing
-" containers. See @function(CheckSelfReference).
+" collections. See @function(CheckSelfReference).
 "
 " {self_refs} is a list of "known" self-referencing objects, also used to
 " avoid infinite recursion. See @function(CheckSelfReference).
@@ -402,11 +496,11 @@ endfunction
 
 ""
 " Like @function(typevim#object#PrettyPrint), but will recurse at most
-" [max_depth] levels down into {Obj} if it's a container or a Partial.
+" [max_depth] levels down into {Obj} if it's a collection or a Partial.
 "
 " @default max_depth=1
-" @throws BadValue  if the given depth is negative.
-" @throws WrongType
+" @throws BadValue  if [max_depth] is negative.
+" @throws WrongType if [max_depth] is not a number.
 function! typevim#object#ShallowPrint(Obj, ...) abort
   let a:max_depth = maktaba#ensure#IsNumber(get(a:000, 0, 1))
   if a:max_depth <# 0
