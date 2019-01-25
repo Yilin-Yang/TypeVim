@@ -40,33 +40,110 @@ Default: 1 `
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
+  Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
+  along with the reason it's not a valid typename; otherwise, does nothing.
+
+  Throws ERROR(WrongType) if the given {typename} is not a string.
+
+typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
+  Throws an ERROR(BadValue) if the given {id} is not a valid identifier, along
+  with the reason it's not a valid identifier; otherwise, does nothing.
+
+  Throws ERROR(WrongType) if the given {id} is not a string.
+
 typevim#make#Class({typename}, {prototype}, [Destructor])
                                                         *typevim#make#Class()*
-  Return a 'prototypical' instance of a class. Meant to be called from inside
-  a type's constructor.
+  Return a "typevim-configured" instance of a class. Meant to be called from
+  inside a type's constructor, where it will take a {prototype} dictionary
+  (containing member functions and member variables), annotate it with type
+  information, and perform additional configuration (e.g. adding destructors).
 
   {typename} is the name of the type being declared.
 
-  {prototype} Dictionary object containing member variables (with default
+  {prototype} is a dictionary object containing member variables (with default
   values) and member functions, which might not be implemented.
 
-  [Destructor]  Optional dictionary function that performs cleanup for the
-  object.
-  [Destructor] is 0 if omitted.
+  [Destructor] is an optional dictionary function that performs cleanup for
+  the object.
 
-typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor])
-                                                      *typevim#make#Derived()*
-  Return a 'prototypical' instance of a type that inherits from another. Meant
+  [Destructor] is 0 if omitted.
+  Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
+  |typevim#value#IsValidTypename()|.
+  Throws ERROR(NotAuthorized) if {prototype} defines attributes that should've
+  been initialized by this function.
+  Throws ERROR(WrongType) if arguments don't have the types named above.
+
+typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor],
+  [clobber_base_vars])                                *typevim#make#Derived()*
+  Return a "prototypical" instance of a type that inherits from another. Meant
   to be called from inside a type's constructor.
 
-  {typename} is he name of the derived type being declared.
+  {typename} is the name of the derived type being declared.
 
-  {Parent} is either a Funcref or a base class prototype. Funcref to the
-  constructor of the base class. If arguments are             being passed,
-  this should be a partial. {prototype} Dictionary object containing member
-  variables (with default values) and member functions, which might not be
-  implemented. [Destructor]  Optional dictionary function that performs
-  cleanup for the object.
+  {Parent} is either a Funcref to the base class constructor, or a base class
+  prototype. If arguments must be passed to said constructor, in the former
+  case, this should be a Partial.
+
+  {prototype} is a dictionary object containing member variables (with default
+  values) and member functions, which might be virtual. If the parent class
+  defines functions with the same name (i.e. same dictionary key), they will
+  be overridden with those of the {prototype}.
+
+  [Destructor] is an optional dictionary function that performs cleanup for
+  the object. On destruction, defined destructors will be called in reverse
+  order, i.e.  the "most derived" destructor will be called first, with the
+  "original" base class destructor being called last.
+
+  [clobber_base_vars] is a boolean flag that, if true, will allow member
+  variables of the base class to be overwritten by member variables of the
+  derived class being declared. This is discouraged, since direct access and
+  modification of base class member variables is generally considered bad
+  style.
+
+  [clobber_base_vars] is 0 if omitted.
+
+  Throws ERROR(BadValue) if {typename} is not a valid typename.
+  Throws ERROR(NotAuthorized) when the given {prototype} would redeclare a
+  non-Funcref member variable of the base class, and [clobber_base_vars] is
+  not 1.
+  Throws ERROR(WrongType) if arguments don't have the types named above.
+
+typevim#object#Virtual({typename}, {funcname}, {parameters})
+                                                    *typevim#object#Virtual()*
+  Returns a Partial, assignable into an object with type {typename}, standing
+  in for a function named {funcname}, that takes in arguments with the names
+  given in {parameters}.
+
+  To specify optional parameters, enclose the parameter name in square
+  brackets. To specify that a variable number of arguments are acceptable,
+  write "...".
+
+  Example invocation:
+>
+    let l:new['PureVirtualFunc'] = typevim#object#Virtual(
+          \ 'ExampleObject`, 'exampleMethod', '['arg1', '[optional1]', '...'])
+<
+
+  An argument list, if specified, must come after all other parameters named.
+  Optional parameters, if specified, must come after all non-optional
+  parameters, if any.
+
+  Parameters names must be strings and cannot be empty strings, and must be
+  valid identifiers (see |typevim#value#IsValidIdentifier()|).
+
+  The returned function, when invoked, will throw ERROR(InvalidArguments) if
+  given the wrong number of arguments (and if Vim itself doesn't throw an
+  "|E116|: Invalid arguments for function" exception or an "|E119|: Not enough
+  arguments for function" exception).
+
+  If the number of arguments is correct, the returned function will throw an
+  exception saying that it is an unimplemented virtual function " @throws
+  BadValue if {parameters} does not adhere to the requirements above; or if
+  {typename} s not a valid typename; or if {funcname} is not a valid
+  identifier.
+  Throws ERROR(WrongType) if {typename} isn't a string or {parameters} isn't a
+  list of strings.
 
 typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
   Converts the given {object} into a string, suitable for error messages and
@@ -79,11 +156,11 @@ typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
 typevim#object#ShallowPrint({Obj}, [max_depth])
                                                *typevim#object#ShallowPrint()*
   Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
-  levels down into {Obj} if it's a container or a Partial.
+  levels down into {Obj} if it's a collection or a Partial.
 
   [max_depth] is 1 if omitted.
-  Throws ERROR(BadValue) if the given depth is negative.
-  Throws ERROR(WrongType)
+  Throws ERROR(BadValue) if [max_depth] is negative.
+  Throws ERROR(WrongType) if [max_depth] is not a number.
 
 typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   Returns 1 when the given {typename} is valid, 0 otherwise.
@@ -94,6 +171,13 @@ typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   etc.
 
   {typename} cannot be an empty string.
+
+typevim#value#IsValidIdentifier({id})      *typevim#value#IsValidIdentifier()*
+  Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
+
+  A valid identifier must meet the same requirements as a valid typename (see
+  |typevim#value#IsValidTypename()|), but does not need to start with a
+  capital letter.
 
 typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
@@ -123,7 +207,8 @@ CLASS DEFINITIONS                                               *TypeVim-make*
 TypeVim offers helper functions for defining new types. These are meant to be
 invoked from within an object's constructor.
 
-TODO expand
+TODO expand attributes are properties that are "reserved" by TypeVim that
+shall not be directly modified by the end user.
 
 
 vim:tw=78:ts=8:ft=help:norl:
