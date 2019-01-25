@@ -1,1 +1,3 @@
-*.vim
+Session.vim
+*.swo
+*.swp
