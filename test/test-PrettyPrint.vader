@@ -172,7 +172,16 @@ Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
   let g:val['bcd']['abc'] = g:val
   call add(g:val['def'], g:val['bcd'])
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
-Then:
+Expect:
+
+  {
+    "abc": "thoom",
+    "bcd": {
+      "abc": {self-reference}
+    },
+    "cde": 243,
+    "def": [ {self-reference, idx: 1} ]
+  }, self-referencing objects: [ { "abc": "thoom", "bcd": {dict}, "cde": 243, "def": [list] }, { "abc": {dict} } ]
 
 " Execute (typevim#object#PrettyPrint: Primitive Object):
 

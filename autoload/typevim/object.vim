@@ -439,7 +439,7 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   let l:str = '{ '
-  let l:items = sort(items(a:Obj))
+  let l:items = sort(items(a:Obj), 's:CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= '"'.l:key.'": '
     if maktaba#value#IsString(l:Val)
