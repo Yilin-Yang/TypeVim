@@ -10,9 +10,9 @@ Execute (typevim#object#GetIndentBlock: Ordinary):
 Execute (typevim#object#GetIndentBlock: Boundary):
   AssertEqual '                  ',
       \ typevim#object#GetIndentBlock(9), 'Failed on 9'
-  AssertEqual '                    ', 
+  AssertEqual '                    ',
       \ typevim#object#GetIndentBlock(10), 'Failed on 10'
-  AssertEqual '                        ', 
+  AssertEqual '                        ',
       \ typevim#object#GetIndentBlock(12), 'Failed on 12'
   AssertEqual '  ', typevim#object#GetIndentBlock(1), 'Failed on 1'
 
@@ -70,7 +70,7 @@ Execute (typevim#object#PrettyPrint: One Item List):
 
 Execute (typevim#object#PrettyPrint: Primitive List):
   let g:val = '   '
-  AssertEqual "[ 1, 3, '   ', -0.5, 'foobar' ]", 
+  AssertEqual "[ 1, 3, '   ', -0.5, 'foobar' ]",
       \ typevim#object#PrettyPrint([1,3, g:val, 0.5-1, 'foobar'])
 
 Execute (typevim#object#PrettyPrint: List Containing Lists, Dicts):
@@ -118,8 +118,8 @@ Expect:
 
 Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
   let g:val = {
-      \ 'abc': 'thoom', 
-      \ 'bcd': [1, 2, 3], 
+      \ 'abc': 'thoom',
+      \ 'bcd': [1, 2, 3],
       \ 'cde': {'abc': 'thoom', 'bcd': [1, 2, 3]},
       \ 'def': 243,
       \ }
@@ -162,7 +162,17 @@ Expect:
     "def": 243
   }
 
-" Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
+Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
+  let g:val = {
+      \ 'abc': 'thoom',
+      \ 'bcd': {},
+      \ 'cde': 243,
+      \ 'def': [],
+      \ }
+  let g:val['bcd']['abc'] = g:val
+  call add(g:val['def'], g:val['bcd'])
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Then:
 
 " Execute (typevim#object#PrettyPrint: Primitive Object):
 
