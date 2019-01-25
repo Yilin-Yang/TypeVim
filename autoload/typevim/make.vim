@@ -9,14 +9,12 @@
 " In general, to declare a new class, one should:
 "
 " First, create a "namespaced" *.vim file for this class, i.e. a file in:
-"
 " >
 "   myplugin/  # plugin root dir
 "     autoload/
 "       myplugin/  # autoload subdirectory; name matters
 "         ExampleClass.vim
 " <
-"
 " Unless you have a good reason not to, all of `ExampleClass`'s relevant
 " functions should be declared in `ExampleClass.vim`. This has the benefit of
 " placing all of `ExampleClass`'s function definitions in an appropriate
@@ -31,47 +29,42 @@
 " Third, inside the constructor, construct a class "prototype." This is a
 " dictionary object initialized with your class's member variables and
 " functions (sometimes called "class properties," like in JavaScript):
-"
 " >
-" " in myplugin/autoload/myplugin/ExampleClass.vim
-" function! myplugin#ExampleClass#New(num1, str2, ...) abort
-"   " type checking (with vim-maktaba) not required, but strongly encouraged
-"   call maktaba#ensure#IsNumber(a:num1)
-"   call maktaba#ensure#IsString(a:str2)
+"   " in myplugin/autoload/myplugin/ExampleClass.vim
+"   function! myplugin#ExampleClass#New(num1, str2, ...) abort
+"     " type checking (with vim-maktaba) not required, but strongly encouraged
+"     call maktaba#ensure#IsNumber(a:num1)
+"     call maktaba#ensure#IsString(a:str2)
 "
-"   " optional parameter with a default value of 3.14
-"   let a:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
+"     " optional parameter with a default value of 3.14
+"     let a:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
 "
-"   let l:example_prototype = {
-"       \ '_single_underscore': a:num1,
-"       \ '_implies_var_is_private': a:str2,
-"       \ '__double_underscore': a:optional_float,
-"       \ '__means_definitely_private': 42,
-"       \ 'PublicFunction': typevim#get#ClassFunc('PublicFunction'),
-"       \ '__PrivateFunction': typevim#get#ClassFunc('__PrivateFunction'),
-"       \ }
+"     let l:example_prototype = {
+"         \ '_single_underscore': a:num1,
+"         \ '_implies_var_is_private': a:str2,
+"         \ '__double_underscore': a:optional_float,
+"         \ '__means_definitely_private': 42,
+"         \ 'PublicFunction': typevim#get#ClassFunc('PublicFunction'),
+"         \ '__PrivateFunction': typevim#get#ClassFunc('__PrivateFunction'),
+"         \ }
 "
-"   return typevim#make#Class(l:example_prototype)
-" endfunction
+"     return typevim#make#Class(l:example_prototype)
+"   endfunction
 " <
 "
 " Fourth, implement the rest of the class. In the example given, we referred to a
-" `PublicFunction()` and a `__PrivateFunction()`.
-"
+" `PublicFunction()` and a `__PrivateFunction()`, so we implement both here:
 " >
+"   " still myplugin/autoload/myplugin/ExampleClass.vim
+"   function! myplugin#ExampleClass#PublicFunction() dict abort
+"     " NOTE: `dict` keyword is necessary to have access to l:self variable
+"     echo 'Hello, World! My number is: ' . l:self['_single_underscore']
+"   endfunction
 "
-" " still myplugin/autoload/myplugin/ExampleClass.vim
-" function! myplugin#ExampleClass#PublicFunction() dict abort
-"   " NOTE: `dict` keyword is necessary to have access to l:self variable
-"   echo 'Hello, World! My number is: ' . l:self['_single_underscore']
-" endfunction
-"
-" function! myplugin#ExampleClass#__PrivateFunction() dict abort
-"   " ...
-" endfunction
-"
+"   function! myplugin#ExampleClass#__PrivateFunction() dict abort
+"     " ...
+"   endfunction
 " <
-"
 " Note how the functions are named. In step (3), the calls to
 " function(typevim#get#ClassFunc) return Funcrefs equivalent to
 " `function('myplugin#ExampleClass#PublicFunction')` and
@@ -81,8 +74,7 @@
 " You can see that the full `function('...')` expression is very verbose;
 " `get#ClassFunc()` is a helper function to help eliminate that boilerplate.
 "
-" Finally, est your class, or just start using it!
-"
+" Finally, test your class, or just start using it!
 " >
 "   let ex_1 = myplugin#ExampleObject#new(1, 'foo')
 "   let ex_2 = myplugin#ExampleObject#new(2, 'boo', 6.28)
