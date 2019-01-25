@@ -1,11 +1,28 @@
+""""""""""""""""""""""""""""""""OBJECT METHODS""""""""""""""""""""""""""""""""""
+
 ""
+" "Default" "virtual" destructor, used when destroying a derived class with
+" multiple declared constructors. Calls destructors in reverse order, i.e.
+" from the most- to least-derived classes in the object's class hierarchy.
 " @private
-function! typevim#object#Destroy() abort dict
-  let l:destructors = l:self['DESTRUCTORS']
-  let l:i = len(l:destructors) - 1
+function! typevim#object#Destroy() dict abort
+  if has_key(l:self, '___DESTRUCTORS___')
+    let l:Destructors = l:self['___DESTRUCTORS___']
+  else
+    throw maktaba#error#Failure(
+        \ 'Object should have a list of its multiple destructors, but could '
+        \ . 'find none! Object: %s', typevim#object#ShallowPrint(l:self))
+  endif
+  if !maktaba#value#IsList(l:Destructors)
+    throw maktaba#error#Failure(
+        \ "Object's list of destructors somehow replaced with non-list object? "
+        \ . 'Found: %s, Object: %s', typevim#object#ShallowPrint(l:Destructors),
+        \ typevim#object#ShallowPrint(l:self))
+  endif
+  let l:i = len(l:Destructors) - 1
   while l:i ># -1
-    let l:Destructor = l:destructors[l:i]
-    call function(l:Destructor, l:self)
+    let l:Destructor = l:Destructors[l:i]
+    call l:Destructor()
     let l:i -= 1
   endwhile
 endfunction
