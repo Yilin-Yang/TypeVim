@@ -1,3 +1,5 @@
+let s:TYPE_ATTR = typevim#attribute#TYPE()
+
 ""
 " Returns 1 when the given {typename} is valid, 0 otherwise.
 "
@@ -15,6 +17,19 @@ function! typevim#value#IsValidTypename(typename) abort
 endfunction
 
 ""
+" Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
+"
+" A valid identifier must meet the same requirements as a valid typename (see
+" @function(typevim#value#IsValidTypename)), but does not need to start with a
+" capital letter.
+function! typevim#value#IsValidIdentifier(id) abort
+  if !maktaba#value#IsString(a:id) || empty(a:id)
+    return 0
+  endif
+  return match(a:id, '^[A-Za-z0-9_]*$') ==# 0
+endfunction
+
+""
 " Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 "
 " A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
@@ -22,10 +37,10 @@ endfunction
 " whose values can be anything, though it is suggested that they be an
 " arbitrary number (typically `1`).
 function! typevim#value#IsValidObject(Val) abort
-  if !(maktaba#value#IsDict(a:Val) && has_key(a:Val, 'TYPE'))
+  if !(maktaba#value#IsDict(a:Val) && has_key(a:Val, s:TYPE_ATTR))
     return 0
   endif
-  let l:type_val = a:Val['TYPE']
+  let l:type_val = a:Val[s:TYPE_ATTR]
   if maktaba#value#IsDict(l:type_val)
     for l:key in keys(l:type_val)
       if !typevim#value#IsValidTypename(l:key)
