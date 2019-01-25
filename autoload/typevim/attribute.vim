@@ -39,7 +39,7 @@ endfunction
 " queried using |has_key()|.
 " @private
 function! typevim#attribute#ATTRIBUTES_AS_DICT() abort
-  if !exists(s:AttributesDict)
+  if !exists('s:AttributesDict')
     let s:AttributesDict = {}
     for l:attr in s:Attributes
       let s:AttributesDict[l:attr] = 1

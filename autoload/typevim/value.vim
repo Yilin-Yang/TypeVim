@@ -1,4 +1,5 @@
 let s:TYPE_ATTR = typevim#attribute#TYPE()
+let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 
 ""
 " Returns 1 when the given {typename} is valid, 0 otherwise.
@@ -12,7 +13,7 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 " See @section(reserved) for more details.
 function! typevim#value#IsValidTypename(typename) abort
   if !maktaba#value#IsString(a:typename) || empty(a:typename)
-      \ || has_key(s:TYPE_ATTR, a:typename)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:typename)
     return 0
   endif
   return match(a:typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
@@ -22,13 +23,14 @@ endfunction
 " Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
 "
 " A valid identifier must meet the same requirements as a valid typename (see
-" @function(typevim#value#IsValidTypename)), but does not need to start with a
-" capital letter.
+" @function(typevim#value#IsValidTypename)), but can start with either a
+" lowercase or uppercase letter.
 function! typevim#value#IsValidIdentifier(id) abort
-  if !maktaba#value#IsString(a:id) || empty(a:id) || has_key(s:TYPE_ATTR, a:id)
+  if !maktaba#value#IsString(a:id) || empty(a:id)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:id)
     return 0
   endif
-  return match(a:id, '^[A-Za-z0-9_]*$') ==# 0
+  return match(a:id, '^[A-Za-z]\{1}[A-Za-z0-9_]*$') ==# 0
 endfunction
 
 ""

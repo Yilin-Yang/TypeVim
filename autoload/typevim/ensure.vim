@@ -2,6 +2,8 @@
 " Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
 " along with the reason it's not a valid typename; otherwise, does nothing.
 "
+" Returns the given {typename} for convenience.
+"
 " @throws WrongType if the given {typename} is not a string.
 function! typevim#ensure#IsValidTypename(typename) abort
   if !maktaba#value#IsString(a:typename)
@@ -28,11 +30,14 @@ function! typevim#ensure#IsValidTypename(typename) abort
         \ 'Reported that typename "%s" was invalid, but it seems to be okay?',
         \ a:typename)
   endif
+  return a:typename
 endfunction
 
 ""
 " Throws an ERROR(BadValue) if the given {id} is not a valid identifier,
 " along with the reason it's not a valid identifier; otherwise, does nothing.
+"
+" Returns the given {id} for convenience.
 "
 " @throws WrongType if the given {id} is not a string.
 function! typevim#ensure#IsValidIdentifier(id) abort
@@ -45,7 +50,10 @@ function! typevim#ensure#IsValidIdentifier(id) abort
       throw maktaba#error#BadValue(
           \ 'Expected a non-empty string for an identifier.')
     endif
-    let l:idx = 0 | while l:idx <# len(a:id)
+    if match(a:id[0], '[A-Za-z]') ==# -1
+      throw maktaba#error#BadValue('identifier must start with letter: '.a:id)
+    endif
+    let l:idx = 1 | while l:idx <# len(a:id)
       let l:char = a:id[l:idx]
       if match(l:char, '[A-Za-z0-9_]') ==# -1
       throw maktaba#error#BadValue(
@@ -57,4 +65,5 @@ function! typevim#ensure#IsValidIdentifier(id) abort
         \ 'Reported that identifier "%s" was invalid, but it seems to be okay?',
         \ a:id)
   endif
+  return a:id
 endfunction

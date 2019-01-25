@@ -1,0 +1,43 @@
+Execute (typevim#ensure#IsValidTypename: Valid):
+  AssertEqual 'Foo', typevim#ensure#IsValidTypename('Foo')
+
+Execute (typevim#ensure#IsValidTypename: Valid, With Underscore):
+  AssertEqual 'Foo_Bar', typevim#ensure#IsValidTypename('Foo_Bar')
+
+Execute (typevim#ensure#IsValidTypename: Invalid, Non-Lowercase First):
+  AssertThrows call typevim#ensure#IsValidTypename('foo')
+  AssertEqual 'ERROR(BadValue): typename must start with a capital letter: foo', g:vader_exception
+
+Execute (typevim#ensure#IsValidTypename: Invalid, Underscore First):
+  AssertThrows call typevim#ensure#IsValidTypename('_Foo')
+  AssertEqual 'ERROR(BadValue): typename must start with a capital letter: _Foo', g:vader_exception
+
+Execute (typevim#ensure#IsValidTypename: Invalid, Number First):
+  AssertThrows call typevim#ensure#IsValidTypename('1Foo')
+  AssertEqual 'ERROR(BadValue): typename must start with a capital letter: 1Foo', g:vader_exception
+
+Execute (typevim#ensure#IsValidTypename: Invalid, Empty String):
+  AssertThrows call typevim#ensure#IsValidTypename('')
+  AssertEqual 'ERROR(BadValue): Expected a non-empty string for typename.', g:vader_exception
+
+Execute (typevim#ensure#IsValidTypename: Invalid, Illegal Character):
+  AssertThrows call typevim#ensure#IsValidTypename('Foo-Bar')
+  AssertEqual 'ERROR(BadValue): Given typename has illegal character ''-'' at index: 3', g:vader_exception
+
+Execute (typevim#ensure#IsValidIdentifier: Valid, Lowercase First):
+  AssertEqual 'foo_Bar', typevim#ensure#IsValidIdentifier('foo_Bar')
+
+Execute (typevim#ensure#IsValidIdentifier: Valid, Uppercase First):
+  AssertEqual 'Abcdefg', typevim#ensure#IsValidIdentifier('Abcdefg')
+
+Execute (typevim#ensure#IsValidIdentifier: Invalid, Underscore First):
+  AssertThrows call typevim#ensure#IsValidIdentifier('_Abcdefg')
+  AssertEqual 'ERROR(BadValue): identifier must start with letter: _Abcdefg', g:vader_exception
+
+Execute (typevim#ensure#IsValidIdentifier: Invalid, Number First):
+  AssertThrows call typevim#ensure#IsValidIdentifier('1Abcdefg')
+  AssertEqual 'ERROR(BadValue): identifier must start with letter: 1Abcdefg', g:vader_exception
+
+Execute (typevim#ensure#IsValidIdentifier: Invalid, Illegal Character):
+  AssertThrows call typevim#ensure#IsValidIdentifier('Abcdefg-')
+  AssertEqual 'ERROR(BadValue): Given identifier has illegal character ''-'' at index: 7', g:vader_exception
