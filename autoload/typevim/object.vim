@@ -212,6 +212,31 @@ function! s:PrettyPrintObject(...) abort
 endfunction
 
 ""
+" Comparison function that only compares the zero-indexed element of two
+" two-element lists, {lhs} and {rhs}. Used for sorting the two-element lists
+" returned by a call to |items()| based exclusively on keys, without
+" considering the values associated with those keys.
+function! s:CompareKeys(lhs, rhs)
+  call maktaba#ensure#IsList(a:lhs)
+  call maktaba#ensure#IsList(a:rhs)
+  if len(a:lhs) !=# 2 || len(a:rhs) !=# 2
+    throw maktaba#error#BadValue('s:CompareKeys only sorts "pairs" '
+        \ . '(2-elem lists), gave: %s, %s',
+        \ typevim#object#ShallowPrint(a:lhs),
+        \ typevim#object#ShallowPrint(a:rhs))
+  endif
+  let l:lkey = string(a:lhs[0])
+  let l:rkey = string(a:rhs[0])
+  if l:lkey ># l:rkey
+    return 1
+  elseif l:lkey ==# l:rkey
+    return 0
+  else  " l:lkey <# l:rkey
+    return -1
+  endif
+endfunction
+
+""
 " Returns a "human-readable" string representation of the given dictionary
 " {Obj}, splitting keys and values across multiple lines using newline
 " characters (`"\n"`). Values that are themselves dictionaries are printed in
@@ -242,10 +267,9 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   let l:indent_level = a:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
 
-  " sort keys, then access items in that order
-  " let l:keys = sort(keys(a:Obj))
-  " for l:key in l:keys | let l:Val = a:Obj[l:key]
-  let l:items = sort(items(a:Obj))
+  " only sort on keys, not values, so that sort() doesn't recurse into a
+  " self-referencing list
+  let l:items = sort(items(a:Obj), 's:CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
