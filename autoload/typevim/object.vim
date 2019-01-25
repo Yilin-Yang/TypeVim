@@ -318,6 +318,11 @@ function! s:PrintSelfReferences(self_refs) abort
   return l:str[:-3].' ]'
 endfunction
 
+function! s:StripLeadingSpaces(str) abort
+  call maktaba#ensure#IsString(a:str)
+  return matchstr(a:str, '\S.*$')
+endfunction
+
 ""
 " The actual implementation of function(typevim#object#PrettyPrint), as a
 " recursive function. Dispatches to helper functions based on the type of
