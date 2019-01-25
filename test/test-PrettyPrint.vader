@@ -116,7 +116,25 @@ Expect:
     "b": "bcd"
   }
 
-" Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
+Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
+  let g:val = {
+      \ 'abc': 'thoom', 
+      \ 'bcd': [1, 2, 3], 
+      \ 'cde': {'abc': 'thoom', 'bcd': [1, 2, 3]},
+      \ 'def': 243,
+      \ }
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Expect:
+
+  {
+    "abc": "thoom",
+    "bcd": [ 1, 2, 3 ],
+    "cde": {
+      "abc": "thoom",
+      "bcd": [ 1, 2, 3 ]
+    },
+    "def": 243
+  }
 
 " Execute (typevim#object#PrettyPrint: Self-Referencing Dict):
 
