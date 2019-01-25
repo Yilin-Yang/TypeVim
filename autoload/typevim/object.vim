@@ -242,22 +242,23 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   let l:indent_level = a:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
 
+  " sort keys, then access items in that order
+  " let l:keys = sort(keys(a:Obj))
+  " for l:key in l:keys | let l:Val = a:Obj[l:key]
   let l:items = sort(items(a:Obj))
   for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
     " check for, handle self-referencing objects
-    let l:seen_and_msg = s:CheckSelfReference(l:Val, a:seen_objs, a:self_refs)
+    let l:seen_and_msg = s:CheckSelfReference(a:Obj[l:key], a:seen_objs, a:self_refs)
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     elseif maktaba#value#IsString(l:Val)
       let l:str .= '"'.l:Val.'"'  " don't 'double-wrap' the string
     else
-      " trim indentation from start of this string before appending
-      let l:dict_str = s:PrettyPrintImpl(
-          \ l:Val, a:seen_objs, a:self_refs, l:indent_level)
-      let l:dict_str = matchstr(l:dict_str, '\S.*$')
-      let l:str .= l:dict_str
+      let l:str .= s:StripLeadingSpaces(
+          \ s:PrettyPrintImpl(
+            \ l:Val, l:indent_level, a:seen_objs, a:self_refs))
     endif
 
     let l:str .= ",\n"
@@ -271,6 +272,10 @@ endfunction
 " how vim stringifies lists, except that it explicitly checks for
 " self-referencing objects.
 "
+" {cur_indent} is the current indentation level; it's only passed to this
+" function to "remember" it for later invocations of
+" @function(s:PrettyPrintDict).
+"
 " {seen_objs} is a list of collections (lists and dictionaries) that have been
 " "seen before," used to avoid infinitely recursing into self-referencing
 " collections. See @function(CheckSelfReference).
@@ -279,8 +284,9 @@ endfunction
 " avoid infinite recursion. See @function(CheckSelfReference).
 "
 " @throws WrongType
-function! s:PrettyPrintList(Obj, seen_objs, self_refs) abort
+function! s:PrettyPrintList(Obj, cur_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:Obj)
+  call maktaba#ensure#IsNumber(a:cur_indent)
   call maktaba#ensure#IsList(a:seen_objs)
   call maktaba#ensure#IsList(a:self_refs)
 
@@ -291,7 +297,9 @@ function! s:PrettyPrintList(Obj, seen_objs, self_refs) abort
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     else
-      let l:str .= s:PrettyPrintImpl(l:item, a:seen_objs, a:self_refs)
+      let l:str .= s:StripLeadingSpaces(
+          \ s:PrettyPrintImpl(
+            \ l:item, a:cur_indent, a:seen_objs, a:self_refs))
     endif
     let l:str .= ', '
   endfor
@@ -332,8 +340,8 @@ endfunction
 " (optionally) a [cur_indent_level], used when pretty-printing dicts and
 " objects.
 " @default cur_indent_level=0
-function! s:PrettyPrintImpl(Obj, seen_objects, self_refs, ...) abort
-  let a:cur_indent_level = maktaba#ensure#IsNumber(get(a:000, 0, 0))
+function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
+  call maktaba#ensure#IsNumber(a:cur_indent_level)
   call maktaba#ensure#IsList(a:seen_objects)
   if maktaba#value#IsDict(a:Obj)
     if typevim#value#IsValidObject(a:Obj)
@@ -344,7 +352,8 @@ function! s:PrettyPrintImpl(Obj, seen_objects, self_refs, ...) abort
           \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
     endif
   elseif maktaba#value#IsList(a:Obj)
-    return s:PrettyPrintList(a:Obj, a:seen_objects, a:self_refs)
+    return s:PrettyPrintList(
+        \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
   elseif maktaba#value#IsFuncref(a:Obj)
     let l:str = "function('".get(a:Obj, 'name')
     let l:args_and_dict = typevim#value#DecomposePartial(a:Obj)
@@ -357,14 +366,14 @@ function! s:PrettyPrintImpl(Obj, seen_objects, self_refs, ...) abort
     let l:bound_dict = l:args_and_dict[1]
     if !empty(l:bound_args)
       call add(a:seen_objects, l:bound_args)
-      let l:str .= ', '
-          \ . s:PrettyPrintList(l:bound_args, a:seen_objects, a:self_refs)
+      let l:str .= ', ' . s:PrettyPrintList(
+          \ l:bound_args, a:cur_indent_level, a:seen_objects, a:self_refs)
     endif
     if !empty(l:bound_dict)
       " delegate 'is this a dict or object?' to the recursive call
       call add(a:seen_objects, l:bound_dict)
-      let l:str .= ', '
-          \ . s:PrettyPrintImpl(l:bound_dict, a:seen_objects, a:self_refs)
+      let l:str .= ', '.  s:PrettyPrintImpl(
+          \ l:bound_dict, a:cur_indent_level, a:seen_objects, a:self_refs)
     endif
     return l:str.')'
   else
@@ -386,7 +395,7 @@ function! typevim#object#PrettyPrint(Obj) abort
     call add(l:seen_objs, a:Obj)
   endif
   let l:known_self_refs = []
-  let l:str = s:PrettyPrintImpl(a:Obj, l:seen_objs, l:known_self_refs)
+  let l:str = s:PrettyPrintImpl(a:Obj, 0, l:seen_objs, l:known_self_refs)
   let l:self_ref = s:PrintSelfReferences(l:known_self_refs)
   return l:str . (empty(l:self_ref) ? '' : ', '.l:self_ref)
 endfunction
