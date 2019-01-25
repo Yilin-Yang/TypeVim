@@ -136,7 +136,31 @@ Expect:
     "def": 243
   }
 
-" Execute (typevim#object#PrettyPrint: Self-Referencing Dict):
+Execute (typevim#object#PrettyPrint: Self-Referencing Dict):
+  let g:val = {
+      \ 'abc': 'thoom',
+      \ 'bcd': [1, 2, 3],
+      \ 'cde': {'abc': 'thoom', 'bcd': [1, 2, 3]},
+      \ 'def': 243,
+      \ }
+  let g:val['cde']['cde'] = g:val
+  call add(g:val['bcd'], g:val)
+  call add(g:val['bcd'], {'foo':'bar'})
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Expect:
+
+  {
+    "abc": "thoom",
+    "bcd": [ 1, 2, 3, {self-reference}, {
+      "foo": "bar"
+    } ],
+    "cde": {
+      "abc": "thoom",
+      "bcd": [ 1, 2, 3 ],
+      "cde": {self-reference}
+    },
+    "def": 243
+  }
 
 " Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
 
