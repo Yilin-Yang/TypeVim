@@ -43,19 +43,6 @@ Default: 1 `
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
-typevim#PrefixFunc([funcname])                          *typevim#PrefixFunc()*
-  When invoked from a namespaced autoload function, returns a string
-  containing the namespace of the calling function, e.g. if invoked from
-  `myplugin#ExampleObject#New()`, this function will return the string
-  `'myplugin#ExampleObject#'`.
-
-  If [funcname] is provided, it will be appended to the returned string.
-
-  [funcname] is "" if omitted.
-  Throws ERROR(BadValue) when the invoking function is not a namespaced
-  function inside an `autoload/` directory, or if its name is malformed.
-  Throws ERROR(WrongType) if [funcname] is not a string.
-
 typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
   Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
   along with the reason it's not a valid typename; otherwise, does nothing.
@@ -71,6 +58,11 @@ typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
   Returns the given {id} for convenience.
 
   Throws ERROR(WrongType) if the given {id} is not a string.
+
+typevim#ensure#IsValidObject({Val})           *typevim#ensure#IsValidObject()*
+  Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
+
+  Returns {Val} for convenience.
 
 typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
   Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
@@ -138,8 +130,69 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor],
   not 1.
   Throws ERROR(WrongType) if arguments don't have the types named above.
 
-typevim#object#Virtual({typename}, {funcname}, {parameters})
-                                                    *typevim#object#Virtual()*
+typevim#make#Member({funcname})                        *typevim#make#Member()*
+  Return a Funcref to the function with the name constructed by concatenating
+  the following: (1) the "autoload prefix" from which this function was called
+  (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim` the
+  prefix would be "myplugin#foo#"); (2) the given {funcname}.
+
+  This is meant as a convenience function to reduce boilerplate when declaring
+  TypeVim objects. Instead of long, explicit assignments like,
+>
+    " ~/.vim/bundle/myplugin/autoload
+    function! myplugin#subdirectory#LongClassName##New() abort
+      " ...
+      let l:new = {
+        " ...
+        \ 'DoAThing':
+      function('myplugin#subdirectory#LongClassName##DoAThing'),
+      " ...
+      return typevim#make#Class(l:new)
+    endfunction
+
+    function! myplugin#subdirectory#LongClassName##DoAThing() dict abort
+      " ...
+<
+
+  One can instead write,
+>
+      " ...
+      let l:new = {
+        " ...
+        \ 'DoAThing': typevim#make#Member('DoAThing'),
+      " ...
+<
+
+  Which is functionally equivalent.
+
+typevim#object#Bind({obj}, {member_funcname})          *typevim#object#Bind()*
+  Returns a Partial consisting of the member function with name
+  {member_funcname} (in {obj}) that is bound to this particular {obj}, i.e.
+  return: `function(a:obj[a:member_funcname], a:obj)`.
+
+  This function is comparable to the `bind()` method on class member functions
+  in JavaScript, and to the `std::bind()` function in the C++ standard
+  library. Its primary purpose is to extract a "self-contained" class member
+  Funcref that "remembers" its original `l:self`, even when it is assigned
+  into another object. (This is done frequently in asynchronous event-based
+  programming when passing callback functions.)
+
+  See `:help Partial` for an explanation of why it would be bad not to do
+  this. (In short, when a "non-bound" Funcref is assigned into another object,
+  then when that object calls it, every `l:self` variable in the Funcref's
+  definition will point to the NEW object, and NOT to the Funcref's original
+  `l:self`; that invocation will then modify that new object as if it were the
+  original `l:self`, even if it's of a different class entirely.)
+
+  Throws ERROR(BadValue) if a {obj} has a variable with the name
+  {member_funcname}, but not a Funcref.
+  Throws ERROR(NotFound) if a function with the name {member_funcname} doesn't
+  exist on {obj}.
+  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if
+  {member_funcname} is not a string.
+
+typevim#object#AbstractFunc({typename}, {funcname}, {parameters})
+                                               *typevim#object#AbstractFunc()*
   Returns a Partial, assignable into an object with type {typename}, standing
   in for a function named {funcname}, that takes in arguments with the names
   given in {parameters}.
@@ -159,7 +212,8 @@ typevim#object#Virtual({typename}, {funcname}, {parameters})
   parameters, if any.
 
   Parameters names must be strings and cannot be empty strings, and must be
-  valid identifiers (see |typevim#value#IsValidIdentifier()|).
+  valid identifiers (see |typevim#value#IsValidIdentifier()|). They must also
+  be unique.
 
   The returned function, when invoked, will throw ERROR(InvalidArguments) if
   given the wrong number of arguments (and if Vim itself doesn't throw an
@@ -167,10 +221,10 @@ typevim#object#Virtual({typename}, {funcname}, {parameters})
   arguments for function" exception).
 
   If the number of arguments is correct, the returned function will throw an
-  exception saying that it is an unimplemented virtual function " @throws
-  BadValue if {parameters} does not adhere to the requirements above; or if
-  {typename} s not a valid typename; or if {funcname} is not a valid
-  identifier.
+  exception saying that it is an unimplemented virtual function
+  Throws ERROR(BadValue) if {parameters} does not adhere to the requirements
+  above; or if {typename} s not a valid typename; or if {funcname} is not a
+  valid identifier.
   Throws ERROR(WrongType) if {typename} isn't a string or {parameters} isn't a
   list of strings.
 
@@ -239,6 +293,41 @@ typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
   If {Func} is a Funcref, but not a Partial, returns an empty list. This is so
   that the return value of this function can be easily checked with `empty()`.
   Throws ERROR(WrongType)
+
+typevim#value#GetStackFrame({num_levels_down}, [funcname])
+                                               *typevim#value#GetStackFrame()*
+  When invoked from a namespaced autoload function, return the name of the
+  function {num_levels_down} the callstack, e.g. if called with
+  {num_levels_down} = 2, get the callstack (as as string), strip this function
+  from its top, then strip the function that called this function from its
+  top, and then return the topmost function remaining
+
+  If [funcname] is provided, it will be prefixed with `"#"` and appended to
+  the returned string.
+
+  Example inputs and outputs:
+>
+    function! Foo() abort
+    " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
+
+    " echoes 'Foo', the name of the calling function
+    echo typevim#value#GetStackFrame(0)
+
+    " echoes '<SNR>215_ScriptFunc'
+    echo typevim#value#GetStackFrame(1)
+
+    " echoes 'MainFunc'
+    echo typevim#value#GetStackFrame(2)
+
+    " ERROR(NotFound)
+    echo typevim#value#GetStackFrame(3)
+<
+  endfunction <
+
+  [funcname] is "" if omitted.
+  Throws ERROR(NotFound) if there is no stack frame {num_levels_down}.
+  Throws ERROR(WrongType) if {num_levels_down} is not a number or [funcname]
+  is not a string.
 
 ==============================================================================
 CLASS DEFINITIONS                                               *TypeVim-make*

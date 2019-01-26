@@ -283,14 +283,11 @@ endfunction
 "
 " One can instead write,
 " >
-"   function! myplugin#subdirectory#LongClassName##New() abort
 "     " ...
 "     let l:new = {
 "       " ...
 "       \ 'DoAThing': typevim#make#Member('DoAThing'),
 "     " ...
-"     return typevim#make#Class(l:new)
-"   endfunction
 " <
 "
 " Which is functionally equivalent.

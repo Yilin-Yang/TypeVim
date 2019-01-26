@@ -128,10 +128,10 @@ endfunction
 
 ""
 " When invoked from a namespaced autoload function, return the name of the
-" function {num_levels_down} the callstack, e.g. if called with {num_levels}
-" = 2, get the callstack (as as string), strip this function from its top,
-" then strip the function that called this function from its top, and then
-" return the topmost function remaining
+" function {num_levels_down} the callstack, e.g. if called with
+" {num_levels_down} = 2, get the callstack (as as string), strip this function
+" from its top, then strip the function that called this function from its
+" top, and then return the topmost function remaining
 "
 " If [funcname] is provided, it will be prefixed with `"#"` and appended to
 " the returned string.
