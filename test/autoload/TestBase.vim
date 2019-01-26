@@ -4,8 +4,8 @@ function! TestBase#New(Val, ...) abort
   let a:Dtor = get(a:000, 0, 0)
   let l:new = {
       \ '__val': a:Val,
-      \ 'GetVal': typevim#PrefixFunc('GetVal'),
-      \ 'SetVal': typevim#PrefixFunc('SetVal'),
+      \ 'GetVal': typevim#make#Member('GetVal'),
+      \ 'SetVal': typevim#make#Member('SetVal'),
       \ }
   if maktaba#value#IsFuncref(a:Dtor)
     return typevim#make#Class(s:typename, l:new, a:Dtor)

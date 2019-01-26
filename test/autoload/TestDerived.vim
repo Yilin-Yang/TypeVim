@@ -6,7 +6,7 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
   call maktaba#ensure#IsBool(a:enable_clobber)
 
   let l:new = {
-      \ 'GetVal': typevim#PrefixFunc('GetVal'),
+      \ 'GetVal': typevim#make#Member('GetVal'),
       \ 'SmallVirtual': typevim#object#AbstractFunc(
           \ s:typename, 'BasicVirtual', ['foo']),
       \ 'MediumVirtual': typevim#object#AbstractFunc(
