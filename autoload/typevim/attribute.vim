@@ -20,18 +20,18 @@
 "
 " Typenames and identifiers shall not share the name of a reserved attribute.
 
-let s:AttributesDict = {
+let s:Attributes = {
     \ 'TYPE': '___TYPE___',
     \ 'DESTRUCTOR_LIST': '___DESTRUCTORS___',
     \ }
 
-let s:Attributes = values(s:AttributesDict)
+let s:AttributesList = values(s:Attributes)
 
 ""
 " Return a list of all of TypeVim's reserved attributes.
 " @private
 function! typevim#attribute#ATTRIBUTES() abort
-  return deepcopy(s:Attributes)
+  return deepcopy(s:AttributesList)
 endfunction
 
 ""
@@ -41,7 +41,7 @@ endfunction
 function! typevim#attribute#ATTRIBUTES_AS_DICT() abort
   if !exists('s:AttributesDict')
     let s:AttributesDict = {}
-    for l:attr in s:Attributes
+    for l:attr in s:AttributesList
       let s:AttributesDict[l:attr] = 1
     endfor
   endif
@@ -52,12 +52,12 @@ endfunction
 " Return the key used for storing an object's TYPE attribute.
 " @private
 function! typevim#attribute#TYPE() abort
-  return s:AttributesDict['TYPE']
+  return s:Attributes['TYPE']
 endfunction
 
 ""
 " Return the key used for storing an object's list of destructor Funcrefs.
 " @private
 function typevim#attribute#DESTRUCTOR_LIST() abort
-  return s:AttributesDict['DESTRUCTOR_LIST']
+  return s:Attributes['DESTRUCTOR_LIST']
 endfunction
