@@ -111,18 +111,23 @@ function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
     endif
   endfor
 
-  let l:param_list = join(l:named + l:opt_named + l:opt_arglist, ', ')
-  let l:script_funcname = a:typename.'_NotImplemented'
+  if empty(l:opt_named) && empty(l:opt_arglist)
+    let l:ellipsis = []
+  else
+    let l:ellipsis = ['...']
+  endif
+  let l:param_list = join(l:named + l:ellipsis, ', ')
+  let l:script_funcname = a:typename.'_'.a:funcname.'_NotImplemented'
   let l:argnum_cond =
       \ empty(l:opt_arglist) ? 'a:0 ># '.len(l:opt_named) : '1 ==# 0'
   let l:decl = 'function! s:'.l:script_funcname.'('.l:param_list.") abort\n"
       \ . '  if '.l:argnum_cond."\n"
-      \ . '    throw maktaba#error#InvalidArguments("Too many optional "'."\n"
-      \ . '        \."arguments (Expected %d or fewer, got %d)",'."\n"
-      \ . '        \ '.len(l:opt_named).', a:0)'."\n"
+      \ . '    throw maktaba#error#InvalidArguments("Too many optional '
+      \ .              'arguments (Expected %d or fewer, got %d)", '
+      \ .              len(l:opt_named).', a:0)'."\n"
       \ . '  endif'."\n"
-      \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual "'."\n"
-      \ . '      \ ."function: %s", "'.a:funcname.'")'."\n"
+      \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual '
+      \ .           'function: %s", "'.a:funcname.'")'."\n"
       \ . 'endfunction'
   " echoerr l:decl
   execute l:decl
