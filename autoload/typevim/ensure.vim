@@ -69,6 +69,18 @@ function! typevim#ensure#IsValidIdentifier(id) abort
 endfunction
 
 ""
+" Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
+"
+" Returns {Val} for convenience.
+function! typevim#ensure#IsValidObject(Val) abort
+  if !typevim#value#IsValidObject(a:Val)
+    throw maktaba#error#WrongType('Given item is not a TypeVim object: %s',
+        \ typevim#object#ShallowPrint(a:Val))
+  endif
+  return a:Val
+endfunction
+
+""
 " Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
 " {typename}.
 "

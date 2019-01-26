@@ -34,6 +34,44 @@ function! typevim#object#Destroy() dict abort
 endfunction
 
 ""
+" Returns a Partial consisting of the member function with name
+" {member_funcname} (in {obj}) that is bound to this particular {obj}, i.e.
+" return: `function(a:obj[a:member_funcname], a:obj)`.
+"
+" This function is comparable to the `bind()` method on class member
+" functions in JavaScript, and to the `std::bind()` function in the C++
+" standard library. Its primary purpose is to extract a "self-contained"
+" class member Funcref that "remembers" its original `l:self`, even when
+" it is assigned into another object. (This is done frequently in asynchronous
+" event-based programming when passing callback functions.)
+"
+" See `:help Partial` for an explanation of why it would be bad not to do
+" this. (In short, when a "non-bound" Funcref is assigned into another object,
+" then when that object calls it, every `l:self` variable in the Funcref's
+" definition will point to the NEW object, and NOT to the Funcref's original
+" `l:self`; that invocation will then modify that new object as if it were the
+" original `l:self`, even if it's of a different class entirely.)
+"
+" @throws BadValue if a {obj} has a variable with the name {member_funcname}, but not a Funcref.
+" @throws NotFound if a function with the name {member_funcname} doesn't exist on {obj}.
+" @throws WrongType if {obj} is not a TypeVim object, or if {member_funcname} is not a string.
+function! typevim#object#Bind(obj, member_funcname) abort
+  call typevim#ensure#IsValidObject(a:obj)
+  call maktaba#ensure#IsString(a:member_funcname)
+  if !has_key(a:obj, a:member_funcname)
+    throw maktaba#error#NotFound(
+        \ 'No member function with name "%s" found on object: %s',
+        \ typevim#object#ShallowPrint(a:obj))
+  elseif !maktaba#value#IsFuncref(a:obj[a:member_funcname])
+    throw maktaba#error#BadValue(
+        \ 'Property "%s" of object is not a function: %s',
+        \ a:member_funcname,
+        \ typevim#object#ShallowPrint(a:obj))
+  endif
+  return funcref(a:obj[a:member_funcname], a:obj)
+endfunction
+
+""
 " Returns a Partial, assignable into an object with type {typename}, standing
 " in for a function named {funcname}, that takes in arguments with the names
 " given in {parameters}.
