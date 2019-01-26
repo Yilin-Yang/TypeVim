@@ -43,6 +43,19 @@ Default: 1 `
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#AutoloadPrefix([funcname])                  *typevim#AutoloadPrefix()*
+  When invoked from a namespaced autoload function, returns a string
+  containing the namespace of the calling function, e.g. if invoked from
+  `myplugin#ExampleObject#New()`, this function will return the string
+  `'myplugin#ExampleObject#'`.
+
+  If [funcname] is provided, it will be appended to the returned string.
+
+  [funcname] is "" if omitted.
+  Throws ERROR(BadValue) when the invoking function is not a namespaced
+  function inside an `autoload/` directory, or if its name is malformed.
+  Throws ERROR(WrongType) if [funcname] is not a string.
+
 typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
   Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
   along with the reason it's not a valid typename; otherwise, does nothing.
@@ -178,19 +191,6 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
 
-typevim#object#AutoloadPrefix([funcname])    *typevim#object#AutoloadPrefix()*
-  When invoked from a namespaced autoload function, returns a string
-  containing the namespace of the calling function, e.g. if invoked from
-  `myplugin#ExampleObject#New()`, this function will return the string
-  `'myplugin#ExampleObject#'`.
-
-  If [funcname] is provided, it will be appended to the returned string.
-
-  [funcname] is "" if omitted.
-  Throws ERROR(BadValue) when the invoking function is not a namespaced
-  function inside an `autoload/` directory, or if its name is malformed.
-  Throws ERROR(WrongType) if [funcname] is not a string.
-
 typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   Returns 1 when the given {typename} is valid, 0 otherwise.
 
@@ -288,9 +288,9 @@ dictionary object initialized with your class's member variables and functions
         \ '__double_underscore': a:optional_float,
         \ '__means_definitely_private': 42,
         \ 'PublicFunction':
-            \ typevim#object#AutoloadPrefix('PublicFunction'),
+            \ typevim#AutoloadPrefix('PublicFunction'),
         \ '__PrivateFunction':
-            \ typevim#object#AutoloadPrefix('__PrivateFunction'),
+            \ typevim#AutoloadPrefix('__PrivateFunction'),
         \ }
 
     return typevim#make#Class(l:example_prototype)
@@ -311,7 +311,7 @@ a `PublicFunction()` and a `__PrivateFunction()`, so we implement both here:
   endfunction
 <
 Note how the functions are named. In step (3), the calls to
-|typevim#object#AutoloadPrefix()| return Funcrefs equivalent to
+|typevim#AutoloadPrefix()| return Funcrefs equivalent to
 `function('myplugin#ExampleClass#PublicFunction')` and
 `function('myplugin#ExampleClass#__PrivateFunction')`, respectively. See
 `:help function()` and `:help Funcref` for more details on what this means.

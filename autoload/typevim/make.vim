@@ -45,9 +45,9 @@
 "         \ '__double_underscore': a:optional_float,
 "         \ '__means_definitely_private': 42,
 "         \ 'PublicFunction':
-"             \ typevim#object#AutoloadPrefix('PublicFunction'),
+"             \ typevim#AutoloadPrefix('PublicFunction'),
 "         \ '__PrivateFunction':
-"             \ typevim#object#AutoloadPrefix('__PrivateFunction'),
+"             \ typevim#AutoloadPrefix('__PrivateFunction'),
 "         \ }
 "
 "     return typevim#make#Class(l:example_prototype)
@@ -68,7 +68,7 @@
 "   endfunction
 " <
 " Note how the functions are named. In step (3), the calls to
-" @function(typevim#object#AutoloadPrefix) return Funcrefs equivalent to
+" @function(typevim#AutoloadPrefix) return Funcrefs equivalent to
 " `function('myplugin#ExampleClass#PublicFunction')` and
 " `function('myplugin#ExampleClass#__PrivateFunction')`, respectively. See
 " `:help function()` and `:help Funcref` for more details on what this means.
