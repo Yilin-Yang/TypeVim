@@ -62,9 +62,9 @@ endfunction
 "
 " If the number of arguments is correct, the returned function will throw an
 " exception saying that it is an unimplemented virtual function
-" " @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
+" @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
 " @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
-function! typevim#object#Virtual(typename, funcname, parameters) abort
+function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
   call typevim#ensure#IsValidTypename(a:typename)
   call typevim#ensure#IsValidIdentifier(a:funcname)
   call maktaba#ensure#IsList(a:parameters)
@@ -115,7 +115,7 @@ function! typevim#object#Virtual(typename, funcname, parameters) abort
   let l:script_funcname = a:typename.'_NotImplemented'
   let l:argnum_cond =
       \ empty(l:opt_arglist) ? 'a:0 ># '.len(l:opt_named) : '1 ==# 0'
-  execute 'function! s:'.l:script_funcname.'('.l:param_list.") abort\n"
+  let l:decl = 'function! s:'.l:script_funcname.'('.l:param_list.") abort\n"
       \ . '  if '.l:argnum_cond."\n"
       \ . '    throw maktaba#error#InvalidArguments("Too many optional "'."\n"
       \ . '        \."arguments (Expected %d or fewer, got %d)",'."\n"
@@ -124,7 +124,9 @@ function! typevim#object#Virtual(typename, funcname, parameters) abort
       \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual "'."\n"
       \ . '      \ ."function: %s", "'.a:funcname.'")'."\n"
       \ . 'endfunction'
-  return function('<SNR>'.SID().l:script_funcname)
+  " echoerr l:decl
+  execute l:decl
+  return function('<SNR>'.s:SID().'_'.l:script_funcname)
 endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""

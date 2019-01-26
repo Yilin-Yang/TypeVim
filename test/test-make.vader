@@ -3,9 +3,64 @@ Execute (typevim#make#Class: Rudimentary Class):
   call typevim#ensure#IsType(g:obj, 'TestBase')
   AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
   AssertEqual 0, g:obj.Destroy(), 'Object not initialized with default destructor.'
+  Assert !has_key(g:obj, typevim#attribute#DESTRUCTOR_LIST()),
+      \ printf('Had a destructor list when it should not have: %s',
+      \ typevim#object#ShallowPrint(g:obj))
 
 Execute (typevim#make#Class: Class with Simple Destructor):
   let g:obj = TestBase#New(3.14, { -> 1})
   call typevim#ensure#IsType(g:obj, 'TestBase')
   AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
-  AssertEqual 1, g:obj.Destroy(), 'Object not initialized with given destructor.'
+  AssertEqual 1, g:obj.Destroy(),
+      \ 'Object not initialized with given destructor.'
+  Assert !has_key(g:obj, typevim#attribute#DESTRUCTOR_LIST()),
+      \ printf('Had a destructor list when it should not have: %s',
+      \ typevim#object#ShallowPrint(g:obj))
+
+Execute (typevim#make#Derived: Derived Class, No Base Dtor):
+  let g:der = TestDerived#New(0, 0, 0)
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  call typevim#ensure#IsType(g:obj, 'TestDerived')
+  AssertEqual ['TestBase', 'TestDerived'], g:der[typevim#attribute#TYPE()]
+  Assert !has_key(g:obj, typevim#attribute#DESTRUCTOR_LIST()),
+      \ printf('Had a destructor list when it should not have: %s',
+      \ typevim#object#ShallowPrint(g:obj, 2))
+  AssertEqual 'overridden', g:der.GetVal()
+
+Execute (typevim#make#Derived: Derived Class, With Base Dtor):
+  let g:der = TestDerived#New(1, 0, 0)
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  call typevim#ensure#IsType(g:obj, 'TestDerived')
+  AssertEqual ['TestBase', 'TestDerived'], g:der[typevim#attribute#TYPE()]
+  Assert has_key(g:obj, typevim#attribute#DESTRUCTOR_LIST()),
+      \ printf('Did not have a destructor list when it should have: %s',
+      \ typevim#object#ShallowPrint(g:obj, 2))
+  AssertEqual 2, len(g:der[typevim#ATTRIBUTE#DESTRUCTOR_LIST()])
+
+Then (Check Error Messages from Default Virtual Function):
+  AssertThrows call g:der.SmallVirtual()
+  AssertEqual 0, match(g:vader_exception, 'E119'),  " Not enough arguments...
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  AssertThrows call g:der.SmallVirtual('foo', 'boo')
+  AssertEqual 0, match(g:vader_exception, 'E116'),  " Invalid arguments for...
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  AssertThrows call g:der.MediumVirtual('foo', 'boo')
+  AssertEqual 0, match(g:vader_exception, '^ERROR(NotImplemented)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  " specify optional
+  AssertThrows call g:der.MediumVirtual('foo', 'boo', 'roo')
+  AssertEqual 0, match(g:vader_exception, '^ERROR(NotImplemented)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  " specify too many optional
+  AssertThrows call g:der.MediumVirtual('foo', 'boo', 'roo', 'aaaaah')
+  AssertEqual 0, match(g:vader_exception, '^ERROR(InvalidArguments)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  " specify too many optional
+  AssertThrows call g:der.BigVirtual('foo', 'boo', 'roo', 'aaaaah')
+  AssertEqual 0, match(g:vader_exception, '^ERROR(NotImplemented)'),
+      \ 'Threw wrong exception: '.g:vader_exception
