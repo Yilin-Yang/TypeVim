@@ -94,7 +94,7 @@ function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
       continue
     endif
 
-    if l:param[0] ==# '[' && l:param[-1] ==# ']'
+    if l:param[0] ==# '[' && l:param[len(l:param) - 1] ==# ']'
       let l:param_id = l:param[1:-2]
       call typevim#ensure#IsValidIdentifier(l:param_id)
       call add(l:opt_named, l:param_id)
@@ -107,7 +107,7 @@ function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
             \ typevim#object#ShallowPrint(a:parameters))
       endif
       call typevim#ensure#IsValidIdentifier(l:param)
-      call add(l:opt_named, l:param)
+      call add(l:named, l:param)
     endif
   endfor
 
@@ -465,8 +465,8 @@ function! s:ShallowPrintList(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   let l:str = '[ '
-  for l:elt in a:Obj
-    let l:str .= s:ShallowPrintImpl(l:elt, a:cur_depth + 1, a:max_depth).', '
+  for l:Elt in a:Obj
+    let l:str .= s:ShallowPrintImpl(l:Elt, a:cur_depth + 1, a:max_depth).', '
   endfor
   return l:str[:-3].' ]'
 endfunction
