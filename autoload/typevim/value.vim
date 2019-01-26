@@ -76,7 +76,7 @@ function! typevim#value#IsType(Obj, typename) abort
     throw s:NotTypeVimObject(a:Obj)
   endif
   for l:type in l:type_list
-    if !maktaba#value#IsValidTypename(l:type)
+    if !typevim#value#IsValidTypename(l:type)
       throw maktaba#error#Failure(
           \ 'Object typelist contains invalid typename: %s, object is %s '
             \ . 'with typelist %s',
@@ -93,7 +93,7 @@ endfunction
 
 function! s:NotTypeVimObject(Obj) abort
   throw maktaba#error#BadValue('Given object is not a TypeVim object: %s',
-      \ typevim#ShallowPrint(a:Obj))
+      \ typevim#object#ShallowPrint(a:Obj))
 endfunction
 
 ""

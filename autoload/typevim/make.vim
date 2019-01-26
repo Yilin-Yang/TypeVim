@@ -96,6 +96,8 @@ let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:DTOR_LIST_ATTR = typevim#attribute#DESTRUCTOR_LIST()
 
+let s:Default_dtor = { -> 0}
+
 ""
 " Returns a string containing an error message complaining that the user tried
 " to illegally assign to the "reserved attribute" {property}. Optionally
@@ -134,6 +136,7 @@ function! s:AssignReserved(dict, attribute, Value) abort
     throw s:IllegalRedefinition(
         \ a:attribute, typevim#object#ShallowPrint(a:Value))
   endif
+  let a:dict[a:attribute] = a:Value
 endfunction
 
 ""
@@ -155,7 +158,7 @@ endfunction
 " @throws NotAuthorized if {prototype} defines attributes that should've been initialized by this function.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
-  let a:Destructor = get(a:000, 0, 0)
+  let a:Destructor = get(a:000, 0, s:Default_dtor)
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
@@ -206,7 +209,7 @@ endfunction
 " @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
-  let a:Destructor = get(a:000, 0, 0)
+  let a:Destructor = get(a:000, 0, s:Default_dtor)
   let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
   call typevim#ensure#IsValidTypename(a:typename)
 

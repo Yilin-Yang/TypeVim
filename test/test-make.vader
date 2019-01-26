@@ -1,0 +1,11 @@
+Execute (typevim#make#Class: Rudimentary Class):
+  let g:obj = TestBase#New(3.14)
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
+  AssertEqual 0, g:obj.Destroy(), 'Object not initialized with default destructor.'
+
+Execute (typevim#make#Class: Class with Simple Destructor):
+  let g:obj = TestBase#New(3.14, { -> 1})
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
+  AssertEqual 1, g:obj.Destroy(), 'Object not initialized with given destructor.'
