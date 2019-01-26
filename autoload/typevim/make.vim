@@ -45,9 +45,9 @@
 "         \ '__double_underscore': a:optional_float,
 "         \ '__means_definitely_private': 42,
 "         \ 'PublicFunction':
-"             \ typevim#AutoloadPrefix('PublicFunction'),
+"             \ typevim#PrefixFunc('PublicFunction'),
 "         \ '__PrivateFunction':
-"             \ typevim#AutoloadPrefix('__PrivateFunction'),
+"             \ typevim#PrefixFunc('__PrivateFunction'),
 "         \ }
 "
 "     return typevim#make#Class(l:example_prototype)
@@ -68,13 +68,13 @@
 "   endfunction
 " <
 " Note how the functions are named. In step (3), the calls to
-" @function(typevim#AutoloadPrefix) return Funcrefs equivalent to
+" @function(typevim#PrefixFunc) return Funcrefs equivalent to
 " `function('myplugin#ExampleClass#PublicFunction')` and
 " `function('myplugin#ExampleClass#__PrivateFunction')`, respectively. See
 " `:help function()` and `:help Funcref` for more details on what this means.
 "
 " You can see that the full `function('...')` expression is very verbose;
-" `object#AutoloadPrefix()` is a helper function to help eliminate that
+" `object#PrefixFunc()` is a helper function to help eliminate that
 " boilerplate.
 "
 " Finally, test your class, or just start using it!

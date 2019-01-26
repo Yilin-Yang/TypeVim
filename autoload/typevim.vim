@@ -32,12 +32,12 @@
 " @default funcname=""
 " @throws BadValue when the invoking function is not a namespaced function inside an `autoload/` directory, or if its name is malformed.
 " @throws WrongType if [funcname] is not a string.
-function! typevim#AutoloadPrefix(...) abort
+function! typevim#PrefixFunc(...) abort
   let a:funcname = maktaba#ensure#IsString(get(a:000, 0, ''))
   let l:callstack = expand('<sfile>')
 
   let l:invoker = matchstr(l:callstack,
-      \ '\zs[^ .]*\ze\.\.typevim#AutoloadPrefix')
+      \ '\zs[^ .]*\ze\.\.typevim#PrefixFunc')
 
   let l:i = len(l:invoker) - 1 | while l:i ># -1
     let l:char = l:invoker[l:i]
