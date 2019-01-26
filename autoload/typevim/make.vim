@@ -225,13 +225,15 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   endif
 
   if maktaba#value#IsFuncref(a:Destructor)
+    " only create destructor list if actually necessary
     if !has_key(l:base, s:DTOR_LIST_ATTR)
       let l:Old_dtor = l:base['Destroy']
-      let l:base['Destroy'] = function('typevim#Destroy')
-      let l:base[s:DTOR_LIST_ATTR] =
-          \ maktaba#value#IsFuncref(l:Old_dtor) ? [l:Old_dtor] : []
+      if l:Old_dtor !=# s:Default_dtor
+        let l:base[s:DTOR_LIST_ATTR] = [l:Old_dtor, a:Destructor]
+      else
+        let l:base['Destroy'] = a:Destructor
+      endif
     endif
-    call add(l:base[s:DTOR_LIST_ATTR], a:Destructor)
   endif
 
   let l:new = l:base  " declare alias; we'll be assigning into the base
