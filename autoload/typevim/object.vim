@@ -53,7 +53,8 @@ endfunction
 " parameters, if any.
 "
 " Parameters names must be strings and cannot be empty strings, and must be
-" valid identifiers (see @function(typevim#value#IsValidIdentifier)).
+" valid identifiers (see @function(typevim#value#IsValidIdentifier)). They
+" must also be unique.
 "
 " The returned function, when invoked, will throw ERROR(InvalidArguments) if
 " given the wrong number of arguments (and if Vim itself doesn't throw an
@@ -78,8 +79,8 @@ function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
           \ 'Specified a non-string parameter "%s" in parameter list: %s',
           \ typevim#object#ShallowPrint(l:param),
           \ typevim#object#ShallowPrint(a:parameters))
-    elseif empty(l:param)
-      throw maktaba#error#WrongType(
+    elseif empty(l:param) || l:param ==# '[]'
+      throw maktaba#error#BadValue(
           \ 'Gave an empty string when naming a param in parameter list: %s',
           \ typevim#object#ShallowPrint(a:parameters))
     endif
@@ -109,6 +110,17 @@ function! typevim#object#AbstractFunc(typename, funcname, parameters) abort
       call typevim#ensure#IsValidIdentifier(l:param)
       call add(l:named, l:param)
     endif
+  endfor
+
+  let l:uniq_names = {}
+  let l:all_named = l:named + l:opt_named
+  for l:name in l:all_named
+    if has_key(l:uniq_names, l:name)
+      throw maktaba#error#BadValue(
+          \ 'Specified a parameter name "%s" twice in parameter list: %s',
+          \ l:name, typevim#object#ShallowPrint(a:parameters))
+    endif
+    let l:uniq_names[l:name] = 1
   endfor
 
   if empty(l:opt_named) && empty(l:opt_arglist)

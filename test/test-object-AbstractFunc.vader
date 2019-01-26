@@ -1,0 +1,57 @@
+" Note that the actual use of AbstractFunc is primarily tested in
+" `test-make.vader`, through invocation of abstract functions on a class
+" instance.
+
+Execute (typevim#object#AbstractFunc: Empty String Argname):
+  let g:params = ['']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(BadValue): Gave an empty'),
+      \ 'Threw wrong exception, should be BadValue: '.g:vader_exception
+
+  let g:params = ['abc', '[]']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(BadValue): Gave an empty'),
+      \ 'Threw wrong exception, should be BadValue: '.g:vader_exception
+
+  let g:params = ['abc', 'cde', ""]
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(BadValue): Gave an empty'),
+      \ 'Threw wrong exception, should be BadValue: '.g:vader_exception
+
+Execute (typevim#object#AbstractFunc: Argname is Bad Identifier):
+  let g:params = ['abc', 'cde@']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(BadValue):.*illegal character'),
+      \ 'Threw wrong exception, should be BadValue: '.g:vader_exception
+
+  let g:params = ['-abc', 'cde']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(BadValue):.*start with letter'),
+      \ 'Threw wrong exception, should be BadValue: '.g:vader_exception
+
+Execute (typevim#object#AbstractFunc: Named after Argslist):
+  let g:params = ['abc', 'cde', '[bcd]', '...', 'def']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 'ERROR(BadValue): Specified a parameter "def" after the optional '
+      \ . "argslist in parameter list: [ 'abc', 'cde', '[bcd]', '...', 'def' ]",
+      \ g:vader_exception
+
+Execute (typevim#object#AbstractFunc: Non-Optional after Optional):
+  let g:params = ['[abc]', 'cde']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 'ERROR(BadValue): Specified a parameter "cde" after the optional '
+      \ . "parameter \"abc\" in parameter list: [ '[abc]', 'cde' ]",
+      \ g:vader_exception
+
+  let g:params = ['abc', '[bcd]', 'cde']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 'ERROR(BadValue): Specified a parameter "cde" after the optional '
+      \ . "parameter \"bcd\" in parameter list: [ 'abc', '[bcd]', 'cde' ]",
+      \ g:vader_exception
+
+Execute (typevim#object#AbstractFunc: Duplicate Names):
+  let g:params = ['abc', 'bcd', 'abc']
+  AssertThrows call typevim#object#AbstractFunc('Typename', 'funcname', g:params)
+  AssertEqual 'ERROR(BadValue): Specified a parameter name "abc" twice in '
+      \ . "parameter list: [ 'abc', 'bcd', 'abc' ]",
+      \ g:vader_exception
