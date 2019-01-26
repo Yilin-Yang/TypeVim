@@ -59,6 +59,15 @@ typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
 
   Throws ERROR(WrongType) if the given {id} is not a string.
 
+typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
+  Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
+  {typename}.
+
+  Returns {Obj} for convenience.
+
+  Throws ERROR(WrongType) if {Obj} is not a dict or {typename} is not a
+  string.
+
 typevim#make#Class({typename}, {prototype}, [Destructor])
                                                         *typevim#make#Class()*
   Return a "typevim-configured" instance of a class. Meant to be called from
@@ -169,6 +178,19 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
 
+typevim#object#AutoloadPrefix([funcname])    *typevim#object#AutoloadPrefix()*
+  When invoked from a namespaced autoload function, returns a string
+  containing the namespace of the calling function, e.g. if invoked from
+  `myplugin#ExampleObject#New()`, this function will return the string
+  `'myplugin#ExampleObject#'`.
+
+  If [funcname] is provided, it will be appended to the returned string.
+
+  [funcname] is "" if omitted.
+  Throws ERROR(BadValue) when the invoking function is not a namespaced
+  function inside an `autoload/` directory, or if its name is malformed.
+  Throws ERROR(WrongType) if [funcname] is not a string.
+
 typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   Returns 1 when the given {typename} is valid, 0 otherwise.
 
@@ -194,6 +216,15 @@ typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   dictionary, whose keys are typenames (see |IsValidTypename()|) and whose
   values can be anything, though it is suggested that they be an arbitrary
   number (typically `1`).
+
+typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
+  Returns 1 when the given {Obj} is an instance of the type {typename}, and 0
+  otherwise.
+
+  Throws ERROR(BadValue) if {typename} isn't a valid typename, or if {Obj} is
+  not a TypeVim object.
+  Throws ERROR(WrongType) if {Obj} is not a dict, or if {typename} isn't a
+  string.
 
 typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
   Returns 1 when the given object is a Partial (see `:help Partial`) and 0
@@ -256,8 +287,10 @@ dictionary object initialized with your class's member variables and functions
         \ '_implies_var_is_private': a:str2,
         \ '__double_underscore': a:optional_float,
         \ '__means_definitely_private': 42,
-        \ 'PublicFunction': typevim#get#ClassFunc('PublicFunction'),
-        \ '__PrivateFunction': typevim#get#ClassFunc('__PrivateFunction'),
+        \ 'PublicFunction':
+            \ typevim#object#AutoloadPrefix('PublicFunction'),
+        \ '__PrivateFunction':
+            \ typevim#object#AutoloadPrefix('__PrivateFunction'),
         \ }
 
     return typevim#make#Class(l:example_prototype)
@@ -278,13 +311,14 @@ a `PublicFunction()` and a `__PrivateFunction()`, so we implement both here:
   endfunction
 <
 Note how the functions are named. In step (3), the calls to
-function(typevim#get#ClassFunc) return Funcrefs equivalent to
+|typevim#object#AutoloadPrefix()| return Funcrefs equivalent to
 `function('myplugin#ExampleClass#PublicFunction')` and
-`function('myplugin#ExampleClass#__PrivateFunction')`, respectively. (See
-`:help function()` and `:help Funcref` for more details on what this means.)
+`function('myplugin#ExampleClass#__PrivateFunction')`, respectively. See
+`:help function()` and `:help Funcref` for more details on what this means.
 
 You can see that the full `function('...')` expression is very verbose;
-`get#ClassFunc()` is a helper function to help eliminate that boilerplate.
+`object#AutoloadPrefix()` is a helper function to help eliminate that
+boilerplate.
 
 Finally, test your class, or just start using it!
 >

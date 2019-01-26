@@ -562,20 +562,17 @@ endfunction
 " `myplugin#ExampleObject#New()`, this function will
 " return the string `'myplugin#ExampleObject#'`.
 "
-" @throws ERROR(BadValue) when the invoking function is not a namespaced function inside an `autoload/` directory, or if its name is malformed.
-function! typevim#object#AutoloadPrefix() abort
+" If [funcname] is provided, it will be appended to the returned string.
+"
+" @default funcname=""
+" @throws BadValue when the invoking function is not a namespaced function inside an `autoload/` directory, or if its name is malformed.
+" @throws WrongType if [funcname] is not a string.
+function! typevim#object#AutoloadPrefix(...) abort
+  let a:funcname = maktaba#ensure#IsString(get(a:000, 0, ''))
   let l:callstack = expand('<sfile>')
 
-  " trim this function from end of callstack: match everything, zero-width
-  " match this function's name
   let l:invoker = matchstr(l:callstack,
-      \ '.*\%(\.\.typevim#object#AutoloadPrefix\)\@=')
-
-  " trim preceding functions from start of callstack; zero-width match the
-  " trailing line number, match as many non-space, non '..' characters as
-  " possible to the left of that match
-  let l:invoker = matchstr(l:invoker,
-      \ '[^ .]*\(\[[0-9]\{-}\]$\)\@=')
+      \ '\zs[^ .]*\ze\.\.typevim#object#AutoloadPrefix')
 
   let l:i = len(l:invoker) - 1 | while l:i ># -1
     let l:char = l:invoker[l:i]
@@ -587,8 +584,9 @@ function! typevim#object#AutoloadPrefix() abort
         \ "Invoking function doesn't appear(?) to be an autoload function: %s, "
         \ . 'from callstack: %s', l:invoker, l:callstack)
   elseif l:i ==# 0  " funcname like: '#Foo()' (no filename?)
-    throw maktaba#error#BadValue('Malformed function name: %s', l:invoker)
+    throw maktaba#error#Failure('Failed to parse function name: %s, '
+        \ . 'from callstack: %s', l:invoker, l:callstack)
   endif
 
-  return l:invoker[ : l:i]
+  return l:invoker[ : l:i].a:funcname
 endfunction
