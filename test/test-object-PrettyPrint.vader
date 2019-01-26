@@ -183,7 +183,22 @@ Expect:
     "def": [ {self-reference, idx: 1} ]
   }, self-referencing objects: [ { "abc": "thoom", "bcd": {dict}, "cde": 243, "def": [list] }, { "abc": {dict} } ]
 
-" Execute (typevim#object#PrettyPrint: Primitive Object):
+Execute (typevim#object#PrettyPrint: Primitive Object):
+  let g:val = TestBase#New(3.14)
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Expect:
+
+  {
+    "Destroy": function('<lambda>1'),
+    "GetVal": function('TestBase#GetVal'),
+    "SetVal": function('TestBase#SetVal'),
+    "___TYPE___": [ 'TestBase' ],
+    "__val": 3.14
+  }
+
+Execute (typevim#object#ShallowPrint: Derived Object (No Throw Exception)):
+  let g:val = TestDerived#New(0, 0, 0)
+  call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
 
 " Execute (typevim#object#PrettyPrint: Compound Object):
 
