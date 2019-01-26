@@ -125,3 +125,59 @@ function! typevim#value#DecomposePartial(Func) abort
   endif
   return [l:bound_args, l:bound_dict]
 endfunction
+
+""
+" When invoked from a namespaced autoload function, return the name of the
+" function {num_levels_down} the callstack, e.g. if called with {num_levels}
+" = 2, get the callstack (as as string), strip this function from its top,
+" then strip the function that called this function from its top, and then
+" return the topmost function remaining
+"
+" If [funcname] is provided, it will be prefixed with `"#"` and appended to
+" the returned string.
+"
+" Example inputs and outputs:
+" >
+"   function! Foo() abort
+  "   " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
+  "
+  "   " echoes 'Foo', the name of the calling function
+  "   echo typevim#value#GetStackFrame(0)
+  "
+  "   " echoes '<SNR>215_ScriptFunc'
+  "   echo typevim#value#GetStackFrame(1)
+  "
+  "   " echoes 'MainFunc'
+  "   echo typevim#value#GetStackFrame(2)
+  "
+  "   " ERROR(NotFound)
+  "   echo typevim#value#GetStackFrame(3)
+  " endfunction
+" <
+"
+" @default funcname=""
+" @throws NotFound if there is no stack frame {num_levels_down}.
+" @throws WrongType if {num_levels_down} is not a number or [funcname] is not a string.
+function! typevim#value#GetStackFrame(num_levels_down, ...) abort
+  call maktaba#ensure#IsNumber(a:num_levels_down)
+  let a:funcname = maktaba#ensure#IsString(get(a:000, 0, ''))
+
+  " strip GetStackFrame from the callstack to get initial_callstack
+  let l:strip_topmost_pat = '\zs.*\ze\.\.[^ .]\{-}$'
+  let l:initial_callstack = matchstr(expand('<sfile>'), l:strip_topmost_pat)
+  let l:callstack = l:initial_callstack
+
+  let l:removed = 0 | while l:removed <# a:num_levels_down && !empty(l:callstack)
+    let l:callstack = matchstr(l:callstack, l:strip_topmost_pat)
+  let l:removed += 1 | endwhile
+
+  if l:removed <# a:num_levels_down || empty(l:callstack)
+    throw maktaba#error#NotFound(
+        \ 'Popping to num_levels_down: %d would pop entire callstack: %s',
+        \ a:num_levels_down,
+        \ l:initial_callstack)
+  endif
+
+  let l:to_return = matchstr(l:callstack, '\zs[^ .]*\ze\[[0-9]*\]$')
+  return l:to_return
+endfunction

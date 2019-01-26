@@ -237,7 +237,7 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   let l:new = l:base  " declare alias; we'll be assigning into the base
   let l:derived = typevim#make#Class(a:typename, a:prototype)
 
-  call add(l:new[s:TYPE_ATTR], l:derived[s:TYPE_ATTR][0])
+  call add(l:new[s:TYPE_ATTR], a:typename)
 
   for [l:key, l:Value] in items(l:derived)
     if has_key(s:RESERVED_ATTRIBUTES, l:key)
@@ -248,10 +248,63 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
       throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
           \ . 'class member variable: "%s" (Set [clobber_base_vars] if this '
           \ . 'is intentional.) Would overwrite with value: %s',
-          \ typevim#object#ShallowPrint(l:Value))
+          \ l:key, typevim#object#ShallowPrint(l:Value))
     endif
     let l:new[l:key] = l:Value
   endfor
 
   return l:new
+endfunction
+
+""
+" Return a Funcref to the function with the name constructed by concatenating
+" the following: (1) the "autoload prefix" from which this function was
+" called (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim`
+" the prefix would be "myplugin#foo#"); (2) the given {funcname}.
+"
+" This is meant as a convenience function to reduce boilerplate when declaring
+" TypeVim objects. Instead of long, explicit assignments like,
+" >
+"   " ~/.vim/bundle/myplugin/autoload
+"   function! myplugin#subdirectory#LongClassName##New() abort
+"     " ...
+"     let l:new = {
+"       " ...
+"       \ 'DoAThing': function('myplugin#subdirectory#LongClassName##DoAThing'),
+"     " ...
+"     return typevim#make#Class(l:new)
+"   endfunction
+"
+"   function! myplugin#subdirectory#LongClassName##DoAThing() dict abort
+"     " ...
+" <
+"
+" One can instead write,
+" >
+"   function! myplugin#subdirectory#LongClassName##New() abort
+"     " ...
+"     let l:new = {
+"       " ...
+"       \ 'DoAThing': typevim#make#Member('DoAThing'),
+"     " ...
+"     return typevim#make#Class(l:new)
+"   endfunction
+" <
+"
+" Which is functionally equivalent.
+function! typevim#make#Member(funcname) abort
+  call maktaba#ensure#IsString(a:funcname)
+  let l:full_name = typevim#value#GetStackFrame(1)
+
+  " strip everything after the last '#'
+  " (presumably, this is being called from a 'New' function or similar)
+  let l:prefix = matchstr(l:full_name, '\zs.*\ze#.\{-}$')
+
+  if empty(l:prefix)
+    throw maktaba#error#BadValue(
+        \ 'Not invoking this function from an autoload function '
+        \ . '(called from: "%s")', l:full_name)
+  endif
+
+  return function(l:prefix.'#'.a:funcname)
 endfunction
