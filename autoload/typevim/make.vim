@@ -231,6 +231,8 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   let l:new = l:base  " declare alias; we'll be assigning into the base
   let l:derived = typevim#make#Class(a:typename, a:prototype)
 
+  call add(l:new[s:TYPE_ATTR], l:derived[s:TYPE_ATTR][0])
+
   for [l:key, l:Value] in items(l:derived)
     if has_key(s:RESERVED_ATTRIBUTES, l:key)
       continue

@@ -2,7 +2,7 @@
 
 ""
 " Returns the script number of this file. Taken from vim's docs.
-function s:SID()
+function! s:SID()
   return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
 endfun
 
@@ -161,7 +161,7 @@ let s:indent_blocks = [
     \ ]
 ""
 " @private
-function typevim#object#GetIndentBlock(level) abort  " expose for tests
+function! typevim#object#GetIndentBlock(level) abort  " expose for tests
   return s:GetIndentBlock(a:level)
 endfunction
 
@@ -552,4 +552,43 @@ function! typevim#object#ShallowPrint(Obj, ...) abort
         \ 'Gave negative max recursion depth: %d', a:max_depth)
   endif
   return s:ShallowPrintImpl(a:Obj, 0, a:max_depth)
+endfunction
+
+"""""""""""""""""""""""""""""""""""AUTOLOAD"""""""""""""""""""""""""""""""""""""
+
+""
+" When invoked from a namespaced autoload function, returns a string
+" containing the namespace of the calling function, e.g. if invoked from
+" `myplugin#ExampleObject#New()`, this function will
+" return the string `'myplugin#ExampleObject#'`.
+"
+" @throws ERROR(BadValue) when the invoking function is not a namespaced function inside an `autoload/` directory, or if its name is malformed.
+function! typevim#object#AutoloadPrefix() abort
+  let l:callstack = expand('<sfile>')
+
+  " trim this function from end of callstack: match everything, zero-width
+  " match this function's name
+  let l:invoker = matchstr(l:callstack,
+      \ '.*\%(\.\.typevim#object#AutoloadPrefix\)\@=')
+
+  " trim preceding functions from start of callstack; zero-width match the
+  " trailing line number, match as many non-space, non '..' characters as
+  " possible to the left of that match
+  let l:invoker = matchstr(l:invoker,
+      \ '[^ .]*\(\[[0-9]\{-}\]$\)\@=')
+
+  let l:i = len(l:invoker) - 1 | while l:i ># -1
+    let l:char = l:invoker[l:i]
+    if l:char ==# '#' | break | endif
+  let l:i -= 1 | endwhile
+  if l:i ==# -1
+    " if the funcname contains no #'s, then this isn't an autoload function
+    throw maktaba#error#BadValue(
+        \ "Invoking function doesn't appear(?) to be an autoload function: %s, "
+        \ . 'from callstack: %s', l:invoker, l:callstack)
+  elseif l:i ==# 0  " funcname like: '#Foo()' (no filename?)
+    throw maktaba#error#BadValue('Malformed function name: %s', l:invoker)
+  endif
+
+  return l:invoker[ : l:i]
 endfunction

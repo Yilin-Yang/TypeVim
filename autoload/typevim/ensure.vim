@@ -67,3 +67,20 @@ function! typevim#ensure#IsValidIdentifier(id) abort
   endif
   return a:id
 endfunction
+
+""
+" Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
+" {typename}.
+"
+" Returns {Obj} for convenience.
+"
+" @throws WrongType if {Obj} is not a dict or {typename} is not a string.
+function! typevim#ensure#IsType(Obj, typename) abort
+  call maktaba#ensure#IsDict(a:Obj)
+  call maktaba#ensure#IsString(a:typename)
+  if !typevim#value#IsType(a:Obj, a:typename)
+    throw maktaba#error#WrongType('Given object %s is not of type: %s',
+        \ typevim#object#ShallowPrint(a:Obj), a:typename)
+  endif
+  return a:Obj
+endfunction

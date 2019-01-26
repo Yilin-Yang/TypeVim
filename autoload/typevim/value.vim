@@ -58,6 +58,45 @@ function! typevim#value#IsValidObject(Val) abort
 endfunction
 
 ""
+" Returns 1 when the given {Obj} is an instance of the type {typename}, and 0
+" otherwise.
+"
+" @throws BadValue if {typename} isn't a valid typename, or if {Obj} is not a TypeVim object.
+" @throws WrongType if {Obj} is not a dict, or if {typename} isn't a string.
+function! typevim#value#IsType(Obj, typename) abort
+  call maktaba#ensure#IsDict(a:Obj)
+  call maktaba#ensure#IsString(a:typename)
+  call typevim#ensure#IsValidTypename(a:typename)
+  if !has_key(a:Obj, s:TYPE_ATTR)
+    throw s:NotTypeVimObject(a:Obj)
+  endif
+
+  let l:type_list = a:Obj[s:TYPE_ATTR]
+  if !maktaba#value#IsList(l:type_list)
+    throw s:NotTypeVimObject(a:Obj)
+  endif
+  for l:type in l:type_list
+    if !maktaba#value#IsValidTypename(l:type)
+      throw maktaba#error#Failure(
+          \ 'Object typelist contains invalid typename: %s, object is %s '
+            \ . 'with typelist %s',
+          \ typevim#object#ShallowPrint(l:type),
+          \ typevim#object#ShallowPrint(a:Obj),
+          \ typevim#object#ShallowPrint(l:type_list))
+    endif
+    if l:type ==# a:typename
+      return 1
+    endif
+  endfor
+  return 0
+endfunction
+
+function! s:NotTypeVimObject(Obj) abort
+  throw maktaba#error#BadValue('Given object is not a TypeVim object: %s',
+      \ typevim#ShallowPrint(a:Obj))
+endfunction
+
+""
 " Returns 1 when the given object is a Partial (see `:help Partial`) and 0
 " otherwise.
 function! typevim#value#IsPartial(Obj) abort
