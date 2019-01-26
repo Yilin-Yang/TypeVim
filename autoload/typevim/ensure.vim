@@ -80,7 +80,7 @@ function! typevim#ensure#IsType(Obj, typename) abort
   call maktaba#ensure#IsString(a:typename)
   if !typevim#value#IsType(a:Obj, a:typename)
     throw maktaba#error#WrongType('Given object %s is not of type: %s',
-        \ typevim#object#ShallowPrint(a:Obj), a:typename)
+        \ typevim#object#ShallowPrint(a:Obj, 2), a:typename)
   endif
   return a:Obj
 endfunction
