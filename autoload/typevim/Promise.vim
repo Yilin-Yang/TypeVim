@@ -79,6 +79,7 @@ function! typevim#Promise#New(Doer) abort
       \ '__state': s:PENDING,
       \ '__value': 0,
       \ '__handlers': [],
+      \ '__Clear': typevim#make#Member('__Clear'),
       \ 'Resolve': typevim#make#Member('Resolve'),
       \ 'Reject': typevim#make#Member('Reject'),
       \ 'Then': typevim#make#Member('Then'),
@@ -115,6 +116,24 @@ function! s:ThrowUnhandledReject(Val, self) abort
         \ . 'reason: %s, inside of Promise: %s',
       \ typevim#object#ShallowPrint(a:Val, 2),
       \ typevim#object#ShallowPrint(a:self, 2))
+  call a:self.__Clear()
+endfunction
+
+""
+" @dict Promise
+" @private
+" Clear this Promise object's list of success and error handlers.
+"
+" Intended to trigger vim's garbage collection: success and error handlers are
+" likely to be dict-bound Partials, and if those dictionaries were created
+" once and then discarded (e.g. "chained" promises returned by
+" @function(Promise.Then)), then the Partial success/error handler is the only
+" reference-keeping object preventing the dictionary from being
+" garbage-collected.
+function! typevim#Promise#__Clear() dict abort
+  call s:TypeCheck(l:self)
+  unlet l:self['__handlers']
+  let l:self['__handlers'] = []
 endfunction
 
 ""
@@ -128,6 +147,8 @@ endfunction
 " resolve with the same value; if {Val} rejects, then this Promise will reject
 " with the same value. Note that if {Val} returns ITSELF on resolution or
 " rejection, then this function will infinitely recurse.
+"
+" Returns this Promise.
 function! typevim#Promise#Resolve(Val) dict abort
   call s:TypeCheck(l:self)
   let l:self['__value'] = a:Val
@@ -146,6 +167,7 @@ function! typevim#Promise#Resolve(Val) dict abort
     endif
     call l:Callback(a:Val)
   endfor
+  call l:self.__Clear()
 endfunction
 
 ""
@@ -163,6 +185,8 @@ endfunction
 " behave like @function(Promise.Resolve): it will not "wait" for {Val} to
 " resolve or reject, but will start immediately calling back its error
 " handlers with {Val} as its "reason".
+"
+" Returns this Promise.
 "
 " @throws NotFound if an attached success handler did not have a "matched"
 " error handler.
@@ -193,6 +217,7 @@ function! typevim#Promise#Reject(Val) dict abort
   if l:rejection_unhandled
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
+  call l:self.__Clear()
 endfunction
 
 ""
@@ -210,11 +235,16 @@ endfunction
 " It is strongly suggested that a [Reject] handler be provided in calls to
 " this function.
 "
+" Returns a "child" Promise that will be fulfilled, or rejected, with the
+" value of this Promise, unless [no_chain] is 1.
+"
+" @default no_chain=0
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
 function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Resolve)
   let a:Reject = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
+  let a:no_chain = maktaba#ensure#IsBool(get(a:000, 1, 0))
   let l:no_error_handler = a:Reject ==# s:default_handler
 
   " resolve/reject immediately, if necessary
@@ -238,9 +268,12 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   endif
   call add(l:self['__handlers'], l:handler_pair)
 
+  if a:no_chain | return | endif
+
   " enable Promise chaining
-  let l:doer =
-  let l:next_link = typevim#Promise#New()
+  let l:doer = typevim#ChainDoer#New(l:self)
+  let l:next_link = typevim#Promise#New(l:doer)
+  return l:next_link
 endfunction
 
 ""

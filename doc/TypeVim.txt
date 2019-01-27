@@ -44,6 +44,24 @@ Default: 1 `
 ==============================================================================
 DICTIONARIES                                                   *TypeVim-dicts*
 
+                                                                *TypeVim.Doer*
+An abstract Doer, for use with |TypeVim.Promise|.
+
+In the future, TypeVim may provide Doer's that encapsulate the use of vim
+channels and neovim job control.
+
+Doer.New()                                                        *Doer.New()*
+  Return a new Doer. Will start after a call to its virtual `StartDoing()`
+  member function, which takes no arguments.
+
+  Note that a Doer will not actually start running until a call to
+  |Doer.SetCallbacks()|, to ensure that the job does not finish before a
+  success (or error) handler has been attached.
+
+Doer.SetCallbacks({Resolve}, {Reject})                   *Doer.SetCallbacks()*
+  Set {Resolve} and {Reject} callbacks on this Doer, to be called when this
+  Doer resolves or rejects after doing its assigned task.
+
                                                              *TypeVim.Promise*
 A JavaScript-style Promise datatype for handling asynchronous operations.
 |TypeVim.Promise| is meant to very roughly mimic JavaScript Promise objects in
@@ -110,6 +128,8 @@ Promise.Resolve({Val})                                     *Promise.Resolve()*
   with the same value. Note that if {Val} returns ITSELF on resolution or
   rejection, then this function will infinitely recurse.
 
+  Returns this Promise.
+
 Promise.Reject({Val})                                       *Promise.Reject()*
   Break ("reject") this Promise. Calls back all attached error handlers with
   the given {Val}, and updates the |Promise.State()| of this Promise to
@@ -125,11 +145,13 @@ Promise.Reject({Val})                                       *Promise.Reject()*
   reject, but will start immediately calling back its error handlers with
   {Val} as its "reason".
 
+  Returns this Promise.
+
   Throws ERROR(NotFound) if an attached success handler did not have a
   "matched"
   error handler.
 
-Promise.Then({Resolve}, [Reject])                             *Promise.Then()*
+Promise.Then({Resolve}, [Reject], [no_chain])                 *Promise.Then()*
   Attach a success handler {Resolve} and optionally an error handler [Reject]
   to this Promise. If this Promise resolves, it will call back {Resolve} with
   the resolved value. If it rejects, it will call back [Reject], or throw an
@@ -143,6 +165,10 @@ Promise.Then({Resolve}, [Reject])                             *Promise.Then()*
   It is strongly suggested that a [Reject] handler be provided in calls to
   this function.
 
+  Returns a "child" Promise that will be fulfilled, or rejected, with the
+  value of this Promise, unless [no_chain] is 1.
+
+  [no_chain] is 0 if omitted.
   Throws ERROR(WrongType) if {Resolve} or [Reject] are not Funcrefs.
 
 Promise.Catch({Reject})                                      *Promise.Catch()*
