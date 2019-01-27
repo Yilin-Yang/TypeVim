@@ -1,0 +1,57 @@
+Execute (typevim#Promise: Set Up):
+  let g:Val = ''
+  function! SetVal(Val) abort
+    let g:Val = a:Val
+  endfunction
+
+  function! GetValAndReset() abort
+    let l:to_return = g:Val
+    let g:Val = ''
+    return l:to_return
+  endfunction
+
+  let g:Other = ''
+  function! SetOther(Val) abort
+    let g:Other = a:Val
+  endfunction
+
+  function! GetOtherAndReset() abort
+    let l:to_return = g:Other
+    let g:Other = ''
+    return l:to_return
+  endfunction
+
+Execute (typevim#Promise: Immediate Fulfillment):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('SetVal'))
+  call g:promise.Resolve('resolve')
+  AssertEqual 'resolve', GetValAndReset()
+Then (Test Error Handling, Post Resolution Resolve/Reject):
+  AssertThrows call g:promise.Resolve('another')
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(NotAuthorized): Tried to resolve an already resolved Promise: '),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertNotEqual 'another', GetValAndReset()
+
+  AssertThrows call g:promise.Reject('another')
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(NotAuthorized): Tried to reject an already resolved Promise: '),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#Promise: Immediate Rejection):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  call g:promise.Reject('reject')
+  AssertEqual 'reject', GetOtherAndReset()
+Then (Test Error Handling, Post Rejection Resolve/Reject):
+  AssertThrows call g:promise.Resolve('another')
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(NotAuthorized): Tried to resolve an already rejected Promise: '),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertNotEqual 'another', GetValAndReset()
+
+  AssertThrows call g:promise.Reject('another')
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(NotAuthorized): Tried to reject an already rejected Promise: '),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertNotEqual 'another', GetOtherAndReset()

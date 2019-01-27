@@ -1,6 +1,7 @@
 ""
 " @dict Doer
-" An abstract Doer, for use with @dict(Promise).
+" A Doer that doesn't do anything, for use with @dict(Promise). Acts as an
+" interface, or as a base class for "real" Doer implementations.
 "
 " In the future, TypeVim may provide Doer's that encapsulate the use of vim
 " channels and neovim job control.
@@ -18,13 +19,13 @@ let s:typename = 'Doer'
 function! typevim#Doer#New() abort
   let l:new = {
       \ 'SetCallbacks': typevim#make#Member('SetCallbacks'),
-      \ 'StartDoing': typevim#object#AbstractFunc(s:typename, 'StartDoing', []),
+      \ 'StartDoing': typevim#make#Member('StartDoing'),
       \ 'Resolve': typevim#object#AbstractFunc(
           \ s:typename, 'Resolve_not_yet_set', ['Val']),
       \ 'Reject': typevim#object#AbstractFunc(
           \ s:typename, 'Reject_not_yet_set', ['Val']),
       \ }
-  return typevim#make#Class(l:new)
+  return typevim#make#Class(s:typename, l:new)
 endfunction
 
 function! s:CheckType(Obj) abort
@@ -40,4 +41,11 @@ function! typevim#Doer#SetCallbacks(Resolve, Reject) dict abort
   let l:self['Resolve'] = a:Resolve
   let l:self['Reject'] = a:Reject
   call l:self.StartDoing()
+endfunction
+
+""
+" @dict Doer
+" Do nothing.
+function! typevim#Doer#StartDoing() dict abort
+  call s:CheckType(l:self)
 endfunction

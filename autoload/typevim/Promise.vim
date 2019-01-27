@@ -22,15 +22,15 @@ let s:default_handler = { -> 0}
 
 ""
 " @dict Promise
-" @function typevim#Promise#New({Doer})
-" Return a new Promise that will be fulfilled (or broken) by a given {Doer}
-" object.
+" @function typevim#Promise#New([Doer])
+" Return a new Promise that will be fulfilled (or broken) by a given [Doer]
+" object, if provided.
 "
-" The {Doer} will be initialized (through a call to its `SetCallbacks` method)
+" The [Doer] will be initialized (through a call to its `SetCallbacks` method)
 " with two Funcrefs: as with JavaScript Promises, these are `Resolve` and
 " `Reject`.
 "
-" The `Resolve` Funcref, when called by the {Doer}, will fulfill ("resolve")
+" The `Resolve` Funcref, when called by the [Doer], will fulfill ("resolve")
 " this Promise with the passed value (e.g. `Resolve("foo")` will pass `"foo"`
 " to all attached success handlers).
 "
@@ -43,7 +43,7 @@ let s:default_handler = { -> 0}
 " `Reject`). @dict(Promise) detects this automatically:
 " >
 "   " (pseudocode, not actual implementation)
-"   function! typevim#Promise#New(Doer) abort
+"   function! typevim#Promise#NewDoer) abort
 "     " ...
 "     try
 "       Doer.SetCallbacks(self.Resolve, self.Reject)
@@ -53,15 +53,19 @@ let s:default_handler = { -> 0}
 "     " ...
 " <
 "
-" Note that, unlike JavaScript, {Doer} is an actual object, rather than a
-" function. This is meant for convenience; {Doer} is likely to have other
+" Note that, unlike JavaScript, [Doer] is an actual object, rather than a
+" function. This is meant for convenience; [Doer] is likely to have other
 " member functions that it will pass (as callback functions) to, e.g. neovim's
 " |jobstart()| function.
 "
+" If no [Doer] is provided, then the Promise will only resolve or reject
+" through explicit calls to @function(Promise.Resolve) and
+" @function(Promise.Reject).
+"
 " @throws BadValue if {Doer}'s `SetCallbacks` function does not take either one argument or two arguments, or if {Doer} has no `SetCallbacks` function.
 " @throws WrongType if {Doer} is not an object, or if `Doer.SetCallbacks` is not a Funcref.
-function! typevim#Promise#New(Doer) abort
-  call typevim#ensure#IsValidObject(a:Doer)
+function! typevim#Promise#New(...) abort
+  let a:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
   if !has_key(a:Doer, 'SetCallbacks')
     throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
         \ typevim#object#ShallowPrint(a:Doer, 2))
@@ -87,8 +91,8 @@ function! typevim#Promise#New(Doer) abort
       \ 'State': typevim#make#Member('State'),
       \ }
   let l:new = typevim#make#Class(s:typename, l:new)
-  let l:new.Resolve = typevim#object#bind(l:new.Resolve, l:new)
-  let l:new.Reject = typevim#object#bind(l:new.Reject, l:new)
+  let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
+  let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
   try
     try
       call a:Doer.SetCallbacks(l:new.Resolve, l:new.Reject)
@@ -149,8 +153,15 @@ endfunction
 " rejection, then this function will infinitely recurse.
 "
 " Returns this Promise.
+"
+" @throws NotAuthorized if this Promise was already resolved or rejected.
 function! typevim#Promise#Resolve(Val) dict abort
   call s:TypeCheck(l:self)
+  if l:self.State() !=# s:PENDING
+    throw maktaba#error#NotAuthorized(
+        \ 'Tried to resolve an already %s Promise: %s',
+        \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
+  endif
   let l:self['__value'] = a:Val
 
   if typevim#value#IsType(a:Val, s:typename)
@@ -160,12 +171,17 @@ function! typevim#Promise#Resolve(Val) dict abort
   endif
 
   let l:self['__state'] = s:FULFILLED
-  for l:Callback in l:self['__success_handlers']
-    if !maktaba#value#IsFuncref(l:Callback)
-      throw maktaba#error#Failure('Attached success handler in Promise was '
-          \ . 'not a Funcref: %s', typevim#object#ShallowPrint(l:Callback))
+  for l:handlers in l:self['__handlers']
+    if !len(l:handlers)
+      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
+          \ typevim#object#ShallowPrint(l:Success))
     endif
-    call l:Callback(a:Val)
+    let l:Success = l:handlers[0]
+    if !maktaba#value#IsFuncref(l:Success)
+      throw maktaba#error#Failure('Attached success handler in Promise was '
+          \ . 'not a Funcref: %s', typevim#object#ShallowPrint(l:Success))
+    endif
+    call l:Success(a:Val)
   endfor
   call l:self.__Clear()
 endfunction
@@ -188,10 +204,16 @@ endfunction
 "
 " Returns this Promise.
 "
+" @throws NotAuthorized if this Promise was already resolved or rejected.
 " @throws NotFound if an attached success handler did not have a "matched"
 " error handler.
 function! typevim#Promise#Reject(Val) dict abort
   call s:TypeCheck(l:self)
+  if l:self.State() !=# s:PENDING
+    throw maktaba#error#NotAuthorized(
+        \ 'Tried to reject an already %s Promise: %s',
+        \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
+  endif
   let l:self['__value'] = a:Val
   let l:self['__state'] = s:BROKEN
   let l:rejection_unhandled = 0
@@ -206,7 +228,7 @@ function! typevim#Promise#Reject(Val) dict abort
     let l:Success = l:handler_pair[0]
     let l:Failure = l:handler_pair[1]
     if !(maktaba#value#IsFuncref(l:Success)
-        \ && maktaba#value#ISFuncref(l:Failure))
+        \ && maktaba#value#IsFuncref(l:Failure))
       throw maktaba#error#Failure('One or more of attached handlers in Promise '
           \ . 'were not Funcrefs: %s, %s',
           \ typevim#object#ShallowPrint(l:Success),

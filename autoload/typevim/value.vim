@@ -61,10 +61,12 @@ endfunction
 " Returns 1 when the given {Obj} is an instance of the type {typename}, and 0
 " otherwise.
 "
-" @throws BadValue if {typename} isn't a valid typename, or if {Obj} is not a TypeVim object.
-" @throws WrongType if {Obj} is not a dict, or if {typename} isn't a string.
+" @throws BadValue if {typename} isn't a valid typename.
+" @throws WrongType if {typename} isn't a string.
 function! typevim#value#IsType(Obj, typename) abort
-  call maktaba#ensure#IsDict(a:Obj)
+  if !maktaba#value#IsDict(a:Obj)
+    return 0
+  endif
   call maktaba#ensure#IsString(a:typename)
   call typevim#ensure#IsValidTypename(a:typename)
   if !has_key(a:Obj, s:TYPE_ATTR)

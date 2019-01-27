@@ -12,10 +12,10 @@ function! typevim#ChainDoer#New(parent_promise) abort
       \ 'ParentResolve': typevim#make#Member('ParentResolve'),
       \ 'ParentReject': typevim#make#Member('ParentReject'),
       \ }
+  let l:new = typevim#make#Derived(s:typename, typevim#Doer#New(), l:new)
   let l:new.ParentResolve = typevim#object#Bind(l:new.ParentResolve, l:new)
   let l:new.ParentReject = typevim#object#Bind(l:new.ParentReject, l:new)
-  let l:new = typevim#make#Derived(s:typename, typevim#Doer#New(), l:new)
-  call a:parent_promise.then(l:new.ParentResolve, l:new.ParentReject, 1)
+  call a:parent_promise.Then(l:new.ParentResolve, l:new.ParentReject, 1)
   return l:new
 endfunction
 
