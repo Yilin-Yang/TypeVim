@@ -5,8 +5,9 @@ Yilin Yang <yiliny@umich.edu>                              *TypeVim* *TypeVim*
 CONTENTS                                                    *TypeVim-contents*
   1. Introduction..............................................|TypeVim-intro|
   2. Configuration............................................|TypeVim-config|
-  3. Functions.............................................|TypeVim-functions|
-  4. Class Definitions..........................................|TypeVim-make|
+  3. Dictionaries..............................................|TypeVim-dicts|
+  4. Functions.............................................|TypeVim-functions|
+  5. Class Definitions..........................................|TypeVim-make|
       1. Declaring a Class................................|TypeVim-basic_decl|
       2. Declaring a Derived Class (Polymorphism)..........|TypeVim-poly_decl|
       3. Reserved Attributes................................|TypeVim-reserved|
@@ -39,6 +40,119 @@ them.
                                                        *TypeVim:plugin[flags]*
 Configures whether plugin/flags.vim should be loaded.
 Default: 1 `
+
+==============================================================================
+DICTIONARIES                                                   *TypeVim-dicts*
+
+                                                             *TypeVim.Promise*
+A JavaScript-style Promise datatype for handling asynchronous operations.
+|TypeVim.Promise| is meant to very roughly mimic JavaScript Promise objects in
+usage and interface.
+
+One notable departure from the JavaScript Promise interface is that
+|TypeVim.Promise| tries to adhere to the Google VimScript style guide, so its
+member functions are written in UpperCamelCase.
+
+Because VimScript itself is entirely singlethreaded, Promise is only useful
+when used with asynchronous operations, like asynchronous jobs and remote
+procedure calls from neovim remote plugins.
+
+typevim#Promise#New({Doer})                                    *Promise.New()*
+  Return a new Promise that will be fulfilled (or broken) by a given {Doer}
+  object.
+
+  The {Doer} will be initialized (through a call to its `SetCallbacks` method)
+  with two Funcrefs: as with JavaScript Promises, these are `Resolve` and
+  `Reject`.
+
+  The `Resolve` Funcref, when called by the {Doer}, will fulfill ("resolve")
+  this Promise with the passed value (e.g. `Resolve("foo")` will pass `"foo"`
+  to all attached success handlers).
+
+  The (optional) `Reject` Funcref, when called, will break ("reject") this
+  Promise with the passed value (e.g. `Reject("foo")` will pass `"foo"` to all
+  attached error handlers).
+
+  `Reject` is optional in that the `Doer.SetCallbacks` function may take
+  either one Funcref as an argument (`Resolve`), or two (`Resolve` and
+  `Reject`). |TypeVim.Promise| detects this automatically:
+>
+    " (pseudocode, not actual implementation)
+    function! typevim#Promise#New(Doer) abort
+      " ...
+      try
+        Doer.SetCallbacks(self.Resolve, self.Reject)
+      catch TooManyArguments
+        Doer.SetCallbacks(self.Resolve)
+      endtry
+      " ...
+<
+
+  Note that, unlike JavaScript, {Doer} is an actual object, rather than a
+  function. This is meant for convenience; {Doer} is likely to have other
+  member functions that it will pass (as callback functions) to, e.g. neovim's
+  |jobstart()| function.
+
+  Throws ERROR(BadValue) if {Doer}'s `SetCallbacks` function does not take
+  either one argument or two arguments, or if {Doer} has no `SetCallbacks`
+  function.
+  Throws ERROR(WrongType) if {Doer} is not an object, or if
+  `Doer.SetCallbacks` is not a Funcref.
+
+Promise.Resolve({Val})                                     *Promise.Resolve()*
+  Fulfill ("resolve") this Promise. Calls back all attached success handlers
+  with the given {Val}, and updates the |Promise.State()| of this Promise to
+  `"resolved"`.
+
+  If the given {Val} is, itself, a |TypeVim.Promise|, then this Promise will
+  "follow" that Promise, i.e. if {Val} resolves, then this Promise will
+  resolve with the same value; if {Val} rejects, then this Promise will reject
+  with the same value. Note that if {Val} returns ITSELF on resolution or
+  rejection, then this function will infinitely recurse.
+
+Promise.Reject({Val})                                       *Promise.Reject()*
+  Break ("reject") this Promise. Calls back all attached error handlers with
+  the given {Val}, and updates the |Promise.State()| of this Promise to
+  `"rejected"`.
+
+  If, in a previous call to |Promise.Then()|, this Promise was given a success
+  handler without a matching error handler, then this Promise will (after
+  calling back all attached error handlers) throw an ERROR(NotFound) exception
+  due to the unhandled rejection.
+
+  Note that, if a |TypeVim.Promise| is passed as {Val}, this function will not
+  behave like |Promise.Resolve()|: it will not "wait" for {Val} to resolve or
+  reject, but will start immediately calling back its error handlers with
+  {Val} as its "reason".
+
+  Throws ERROR(NotFound) if an attached success handler did not have a
+  "matched"
+  error handler.
+
+Promise.Then({Resolve}, [Reject])                             *Promise.Then()*
+  Attach a success handler {Resolve} and optionally an error handler [Reject]
+  to this Promise. If this Promise resolves, it will call back {Resolve} with
+  the resolved value. If it rejects, it will call back [Reject], or throw an
+  ERROR(NotFound) exception due to an unhandled rejection if no [Reject]
+  handler was attached.
+
+  If this Promise is already resolved, it will call {Resolve} immediately with
+  the resolved value. If it was already rejected, it will call [Reject]
+  immediately, or throw an ERROR(NotFound) exception.
+
+  It is strongly suggested that a [Reject] handler be provided in calls to
+  this function.
+
+  Throws ERROR(WrongType) if {Resolve} or [Reject] are not Funcrefs.
+
+Promise.Catch({Reject})                                      *Promise.Catch()*
+  Attach an error handler {Reject} to this Promise. If this Promise rejects,
+  it will call back {Reject} with the provided value. If it was already
+  rejected, it will call {Reject} immediately.
+
+Promise.State()                                              *Promise.State()*
+  Return the current state of this Promise: `"pending"`, `"resolved"`, or
+  `"rejected"`.
 
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*

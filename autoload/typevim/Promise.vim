@@ -22,6 +22,7 @@ let s:default_handler = { -> 0}
 
 ""
 " @dict Promise
+" @function typevim#Promise#New({Doer})
 " Return a new Promise that will be fulfilled (or broken) by a given {Doer}
 " object.
 "
@@ -235,8 +236,11 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   else
     let l:handler_pair = [a:Resolve, a:Reject]
   endif
-
   call add(l:self['__handlers'], l:handler_pair)
+
+  " enable Promise chaining
+  let l:doer =
+  let l:next_link = typevim#Promise#New()
 endfunction
 
 ""
