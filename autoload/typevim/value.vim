@@ -45,9 +45,9 @@ function! typevim#value#IsValidObject(Val) abort
     return 0
   endif
   let l:type_val = a:Val[s:TYPE_ATTR]
-  if maktaba#value#IsDict(l:type_val)
-    for l:key in keys(l:type_val)
-      if !typevim#value#IsValidTypename(l:key)
+  if maktaba#value#IsList(l:type_val)
+    for l:type in l:type_val
+      if !typevim#value#IsValidTypename(l:type)
         return 0
       endif
     endfor
@@ -108,22 +108,20 @@ function! typevim#value#IsPartial(Obj) abort
 endfunction
 
 ""
-" If the Funcref {Func} is a Partial, decomposes {Func} into a two-element
-" list containing: first, the bound arguments; and second, the bound
-" dictionary. Both elements can be empty if {Func} is not bound to arguments
-" or a dictionary, respectively.
+" If the Funcref {Func} is a Partial, decomposes {Func} into a four-element
+" list containing: first, the function name; second, the Funcref itself;
+" third, the bound arguments; and fourth, the bound dictionary. The latter two
+" elements can be empty if {Func} is not bound to arguments or a dictionary,
+" respectively.
 "
-" If {Func} is a Funcref, but not a Partial, returns an empty list. This is so
-" that the return value of this function can be easily checked with `empty()`.
-" @throws WrongType
+" @throws WrongType if {Func} is not a Funcref.
 function! typevim#value#DecomposePartial(Func) abort
   call maktaba#ensure#IsFuncref(a:Func)
+  let l:funcname   = get(a:Func, 'name')
+  let l:Funcref    = get(a:Func, 'func')
   let l:bound_args = get(a:Func, 'args')
   let l:bound_dict = get(a:Func, 'dict')
-  if empty(l:bound_args) && empty(l:bound_dict)
-    return []
-  endif
-  return [l:bound_args, l:bound_dict]
+  return [l:funcname, l:Funcref, l:bound_args, l:bound_dict]
 endfunction
 
 ""

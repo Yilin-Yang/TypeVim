@@ -34,9 +34,17 @@ function! typevim#object#Destroy() dict abort
 endfunction
 
 ""
-" Returns a Partial consisting of the member function with name
-" {member_funcname} (in {obj}) that is bound to this particular {obj}, i.e.
-" return: `function(a:obj[a:member_funcname], a:obj)`.
+" Returns a Partial consisting of the given {Funcref} that is bound to this
+" particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
+" a:arglist, a:obj)`.
+"
+" If the member function is already bound to an argslist, then [argslist] will
+" be appended to the function's current argslist.
+"
+" If the {Funcref} function is already bound to a dict, throws an
+" ERROR(NotAuthorized) exception unless the dict and {obj} are the same
+" object; however, if [force_rebind] is 1, the bound dict will be replaced
+" with the given {obj}.
 "
 " This function is comparable to the `bind()` method on class member
 " functions in JavaScript, and to the `std::bind()` function in the C++
@@ -52,23 +60,38 @@ endfunction
 " `l:self`; that invocation will then modify that new object as if it were the
 " original `l:self`, even if it's of a different class entirely.)
 "
-" @throws BadValue if a {obj} has a variable with the name {member_funcname}, but not a Funcref.
-" @throws NotFound if a function with the name {member_funcname} doesn't exist on {obj}.
-" @throws WrongType if {obj} is not a TypeVim object, or if {member_funcname} is not a string.
-function! typevim#object#Bind(obj, member_funcname) abort
+" Note that argument parameters affect the RETURNED Funcref, NOT the Funcref
+" that is given as an argument.
+" >
+"   " does NOT change obj.Method
+"   call typevim#object#Bind(obj.Method, diff_obj)
+"
+"   " DOES change obj.Method
+"   let obj.Method = typevim#object#Bind(obj.Method, diff_obj)
+" <
+"
+" @throws NotAuthorized if {Funcref} is already bound to a dict that is not {obj} and [force_rebind] is 0.
+" @throws WrongType if {obj} is not a TypeVim object, or if {Funcref} is not a Funcref, or if [arglist] is not a list.
+function! typevim#object#Bind(Funcref, obj, ...) abort
+  call maktaba#ensure#IsFuncref(a:Funcref)
   call typevim#ensure#IsValidObject(a:obj)
-  call maktaba#ensure#IsString(a:member_funcname)
-  if !has_key(a:obj, a:member_funcname)
-    throw maktaba#error#NotFound(
-        \ 'No member function with name "%s" found on object: %s',
-        \ typevim#object#ShallowPrint(a:obj))
-  elseif !maktaba#value#IsFuncref(a:obj[a:member_funcname])
-    throw maktaba#error#BadValue(
-        \ 'Property "%s" of object is not a function: %s',
-        \ a:member_funcname,
-        \ typevim#object#ShallowPrint(a:obj))
+  let a:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  let a:force_rebind = maktaba#ensure#IsBool(get(a:000, 1, 0))
+  let [l:_, l:Funcref, l:bound_args, l:bound_dict] =
+      \ typevim#value#DecomposePartial(a:Funcref)
+  if !empty(l:bound_dict)
+    if a:force_rebind || l:bound_dict is a:obj
+      return funcref(l:Funcref, l:bound_args + a:arglist, a:obj)
+    else
+      throw maktaba#error#NotAuthorized('Cannot rebind already bound Partial '
+            \ . '%s to new object %s (already bound to: %s); set '
+            \ . '[force_rebind] to override.',
+          \ typevim#object#ShallowPrint(a:Funcref),
+          \ typevim#object#ShallowPrint(a:obj),
+          \ typevim#object#ShallowPrint(l:bound_dict))
+    endif
   endif
-  return funcref(a:obj[a:member_funcname], a:obj)
+  return funcref(l:Funcref, l:bound_args + a:arglist, a:obj)
 endfunction
 
 ""
@@ -437,14 +460,13 @@ function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abor
         \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
   elseif maktaba#value#IsFuncref(a:Obj)
     let l:str = "function('".get(a:Obj, 'name')
-    let l:args_and_dict = typevim#value#DecomposePartial(a:Obj)
-    if empty(l:args_and_dict)  " not a Partial
+    if !typevim#value#IsPartial(a:Obj)
       return l:str."')"
     endif
+    let [l:_, l:F_, l:bound_args, l:bound_dict] =
+        \ typevim#value#DecomposePartial(a:Obj)
     let l:str .= "'"
 
-    let l:bound_args = l:args_and_dict[0]
-    let l:bound_dict = l:args_and_dict[1]
     if !empty(l:bound_args)
       call add(a:seen_objects, l:bound_args)
       let l:str .= ', ' . s:PrettyPrintList(
@@ -535,12 +557,11 @@ endfunction
 " @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintFuncref(Obj, cur_depth, max_depth) abort
   let l:str = "function('".get(a:Obj, 'name')."'"
-  let l:args_and_dict = typevim#value#DecomposePartial(a:Obj)
-  if empty(l:args_and_dict)  " not a Partial
+  if !typevim#value#IsPartial(a:Obj)
     return l:str.')'
   endif
-  let l:bound_args = l:args_and_dict[0]
-  let l:bound_dict = l:args_and_dict[1]
+  let [l:_, l:F_, l:bound_args, l:bound_dict] =
+      \ typevim#value#DecomposePartial(a:Obj)
   if !empty(l:bound_args)
     let l:str .= ', '
         \ . s:ShallowPrintImpl(l:bound_args, a:cur_depth + 1, a:max_depth)

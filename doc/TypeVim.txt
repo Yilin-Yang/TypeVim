@@ -165,10 +165,19 @@ typevim#make#Member({funcname})                        *typevim#make#Member()*
 
   Which is functionally equivalent.
 
-typevim#object#Bind({obj}, {member_funcname})          *typevim#object#Bind()*
-  Returns a Partial consisting of the member function with name
-  {member_funcname} (in {obj}) that is bound to this particular {obj}, i.e.
-  return: `function(a:obj[a:member_funcname], a:obj)`.
+typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
+                                                       *typevim#object#Bind()*
+  Returns a Partial consisting of the given {Funcref} that is bound to this
+  particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
+  a:arglist, a:obj)`.
+
+  If the member function is already bound to an argslist, then [argslist] will
+  be appended to the function's current argslist.
+
+  If the {Funcref} function is already bound to a dict, throws an
+  ERROR(NotAuthorized) exception unless the dict and {obj} are the same
+  object; however, if [force_rebind] is 1, the bound dict will be replaced
+  with the given {obj}.
 
   This function is comparable to the `bind()` method on class member functions
   in JavaScript, and to the `std::bind()` function in the C++ standard
@@ -184,12 +193,20 @@ typevim#object#Bind({obj}, {member_funcname})          *typevim#object#Bind()*
   `l:self`; that invocation will then modify that new object as if it were the
   original `l:self`, even if it's of a different class entirely.)
 
-  Throws ERROR(BadValue) if a {obj} has a variable with the name
-  {member_funcname}, but not a Funcref.
-  Throws ERROR(NotFound) if a function with the name {member_funcname} doesn't
-  exist on {obj}.
-  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if
-  {member_funcname} is not a string.
+  Note that argument parameters affect the RETURNED Funcref, NOT the Funcref
+  that is given as an argument.
+>
+    " does NOT change obj.Method
+    call typevim#object#Bind(obj.Method, diff_obj)
+
+    " DOES change obj.Method
+    let obj.Method = typevim#object#Bind(obj.Method, diff_obj)
+<
+
+  Throws ERROR(NotAuthorized) if {Funcref} is already bound to a dict that is
+  not {obj} and [force_rebind] is 0.
+  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if {Funcref} is
+  not a Funcref, or if [arglist] is not a list.
 
 typevim#object#AbstractFunc({typename}, {funcname}, {parameters})
                                                *typevim#object#AbstractFunc()*
@@ -285,14 +302,13 @@ typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
   otherwise.
 
 typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
-  If the Funcref {Func} is a Partial, decomposes {Func} into a two-element
-  list containing: first, the bound arguments; and second, the bound
-  dictionary. Both elements can be empty if {Func} is not bound to arguments
-  or a dictionary, respectively.
+  If the Funcref {Func} is a Partial, decomposes {Func} into a four-element
+  list containing: first, the function name; second, the Funcref itself;
+  third, the bound arguments; and fourth, the bound dictionary. The latter two
+  elements can be empty if {Func} is not bound to arguments or a dictionary,
+  respectively.
 
-  If {Func} is a Funcref, but not a Partial, returns an empty list. This is so
-  that the return value of this function can be easily checked with `empty()`.
-  Throws ERROR(WrongType)
+  Throws ERROR(WrongType) if {Func} is not a Funcref.
 
 typevim#value#GetStackFrame({num_levels_down}, [funcname])
                                                *typevim#value#GetStackFrame()*

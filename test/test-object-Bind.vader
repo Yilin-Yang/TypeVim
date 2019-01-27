@@ -1,0 +1,42 @@
+Execute (typevim#object#Bind: Basic Bind):
+  let g:from = TestBase#New('from')
+  let g:into = TestBase#New('into')
+
+  AssertEqual 'from', g:from.GetVal()
+  AssertEqual 'into', g:into.GetVal()
+
+Then (Check for Successful Binding):
+  let g:into['GetVal'] = typevim#object#Bind(g:from.GetVal, g:from)
+  AssertEqual 'from', g:into.GetVal()
+  AssertEqual 'from', g:from.GetVal()
+
+Execute (typevim#object#Bind: Bind Already Bound, No Rebind):
+  " g:into.GetVal is g:from.GetVal, bound already to g:from
+  AssertThrows let g:into.GetVal = typevim#object#Bind(g:into.GetVal, g:into)
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(NotAuthorized): Cannot rebind already bound Partial '
+      \ . '.*to new object', )
+
+Execute (typevim#object#Bind: Bind Already Bound, Force Rebind):
+  " g:into.GetVal is g:from.GetVal, bound already to g:from, use [force_rebind]
+  " to displace the g:from
+  AssertThrows call typevim#object#Bind(g:into.GetVal, g:into, [], 0)
+  let g:into.GetVal = typevim#object#Bind(g:into.GetVal, g:into, [], 1)
+  AssertEqual 'into', g:into.GetVal()
+  AssertEqual 'from', g:from.GetVal()
+
+Execute (typevim#object#Bind: Bind Already Bound, Same Object):
+  " g:into.GetVal is now g:into.GetVal, bound to g:into; same dict object means
+  " that [force_rebind] should be unnecessary
+  " to displace the g:from
+  let g:into.GetVal = typevim#object#Bind(g:into.GetVal, g:into, [], 0)
+  AssertEqual 'into', g:into.GetVal()
+  AssertEqual 'from', g:from.GetVal()
+
+Execute (typevim#object#Bind: Bind Argslist):
+  AssertEqual '[ 1, 2, 3 ]', g:into.StringifyVals(1, 2, 3)
+  let g:into['StringifyVals'] = typevim#object#Bind(g:into.StringifyVals, g:into, [1])
+  AssertEqual '[ 1 ]', g:into.StringifyVals()
+  AssertThrows call typevim#object#Bind(g:into, 'StringifyVals', [2], 0)
+  let g:into['StringifyVals'] = typevim#object#Bind(g:into.StringifyVals, g:into, [2], 1)
+  AssertEqual '[ 1, 2 ]', g:into.StringifyVals()

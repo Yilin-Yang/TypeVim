@@ -188,10 +188,11 @@ Execute (typevim#object#PrettyPrint: Primitive Object):
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
 Expect:
 
-  {
+  OBJECT: {
     "Destroy": function('<lambda>1'),
     "GetVal": function('TestBase#GetVal'),
     "SetVal": function('TestBase#SetVal'),
+    "StringifyVals": function('TestBase#StringifyVals'),
     "___TYPE___": [ 'TestBase' ],
     "__val": 3.14
   }
