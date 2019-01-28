@@ -75,14 +75,14 @@ function! typevim#Promise#New(...) abort
         \ typevim#object#ShallowPrint(a:Doer, 2))
   endif
 
-  " NOTE: __handlers is a list of pairs: a success handler, and an error
-  " handler. The latter being empty, on a rejection, means that this Promise
-  " will complain of an unhandled rejection (by throwing an exception).
+  " NOTE: __handler_attachments is a list of triples: a Doer, a success handler, and an
+  " error handler. The Doer is linked to the Promise constructed and returned by
+  " the Promise.Then() or Promise.Catch() function calls.
   let l:new = {
       \ '__doer': a:Doer,
       \ '__state': s:PENDING,
       \ '__value': 0,
-      \ '__handlers': [],
+      \ '__handler_attachments': [],
       \ '__Clear': typevim#make#Member('__Clear'),
       \ 'Resolve': typevim#make#Member('Resolve'),
       \ 'Reject': typevim#make#Member('Reject'),
@@ -136,8 +136,8 @@ endfunction
 " garbage-collected.
 function! typevim#Promise#__Clear() dict abort
   call s:TypeCheck(l:self)
-  unlet l:self['__handlers']
-  let l:self['__handlers'] = []
+  unlet l:self['__handler_attachments']
+  let l:self['__handler_attachments'] = []
 endfunction
 
 ""
@@ -149,8 +149,11 @@ endfunction
 " If the given {Val} is, itself, a @dict(Promise), then this Promise will
 " "follow" that Promise, i.e. if {Val} resolves, then this Promise will
 " resolve with the same value; if {Val} rejects, then this Promise will reject
-" with the same value. Note that if {Val} returns ITSELF on resolution or
-" rejection, then this function will infinitely recurse.
+" with the same value. In either case, this Promise will not resolve
+" immediately on this call.
+"
+" TODO Note that if {Val} returns ITSELF on resolution or rejection, then this
+" function will infinitely recurse.
 "
 " Returns this Promise.
 "
@@ -162,28 +165,24 @@ function! typevim#Promise#Resolve(Val) dict abort
         \ 'Tried to resolve an already %s Promise: %s',
         \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
   endif
-  let l:self['__value'] = a:Val
-
+  " reassign this Promise's Doer if the given Val is a Promise
   if typevim#value#IsType(a:Val, s:typename)
-    " is also a Promise
-    call a:Val.Then(l:self.Resolve, l:self.Reject)
-    return
+    let l:self['__doer'] = a:Val['__doer']
+  else
+    let l:self['__value'] = a:Val
+    let l:self['__state'] = s:FULFILLED
+    for l:handlers in l:self['__handler_attachments']
+      try
+        call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
+      catch /ERROR(WrongType)/
+        throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
+            \ typevim#object#ShallowPrint(l:handlers))
+      endtry
+      call l:handlers.ResolveNextLink(a:Val)
+    endfor
+    call l:self.__Clear()
   endif
-
-  let l:self['__state'] = s:FULFILLED
-  for l:handlers in l:self['__handlers']
-    if !len(l:handlers)
-      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
-          \ typevim#object#ShallowPrint(l:Success))
-    endif
-    let l:Success = l:handlers[0]
-    if !maktaba#value#IsFuncref(l:Success)
-      throw maktaba#error#Failure('Attached success handler in Promise was '
-          \ . 'not a Funcref: %s', typevim#object#ShallowPrint(l:Success))
-    endif
-    call l:Success(a:Val)
-  endfor
-  call l:self.__Clear()
+  return l:self
 endfunction
 
 ""
@@ -217,29 +216,24 @@ function! typevim#Promise#Reject(Val) dict abort
   let l:self['__value'] = a:Val
   let l:self['__state'] = s:BROKEN
   let l:rejection_unhandled = 0
-  for l:handler_pair in l:self['__handlers']
-    if len(l:handler_pair) ==# 1  " only a success handler
+  for l:handlers in l:self['__handler_attachments']
+    try
+      call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
+    catch /ERROR(WrongType)/
+      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
+          \ typevim#object#ShallowPrint(l:handlers))
+    endtry
+    try
+      call l:handlers.RejectNextLink(a:Val)
+    catch /ERROR(NotFound)/
       let l:rejection_unhandled = 1
-      continue
-    elseif len(l:handler_pair) !=# 2
-      throw maktaba#error#Failure('Invalid handler pair detected in Promise: %s',
-          \ typevim#object#ShallowPrint(l:handler_pair))
-    endif
-    let l:Success = l:handler_pair[0]
-    let l:Failure = l:handler_pair[1]
-    if !(maktaba#value#IsFuncref(l:Success)
-        \ && maktaba#value#IsFuncref(l:Failure))
-      throw maktaba#error#Failure('One or more of attached handlers in Promise '
-          \ . 'were not Funcrefs: %s, %s',
-          \ typevim#object#ShallowPrint(l:Success),
-          \ typevim#object#ShallowPrint(l:Failure))
-    endif
-    call l:Failure(a:Val)
+    endtry
   endfor
   if l:rejection_unhandled
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
   call l:self.__Clear()
+  return l:self
 endfunction
 
 ""
@@ -258,44 +252,41 @@ endfunction
 " this function.
 "
 " Returns a "child" Promise that will be fulfilled, or rejected, with the
-" value of this Promise, unless [no_chain] is 1.
+" value of the given {Resolve} success handler or [Reject] error handler
+" respectively.
 "
-" @default no_chain=0
+" @default Reject=a "null" error handler.
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
 function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Resolve)
   let a:Reject = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
-  let a:no_chain = maktaba#ensure#IsBool(get(a:000, 1, 0))
   let l:no_error_handler = a:Reject ==# s:default_handler
+
+  if l:no_error_handler
+    let l:handlers = typevim#HandlerAttachment#New(a:Resolve)
+  else
+    let l:handlers = typevim#HandlerAttachment#New(a:Resolve, a:Reject)
+  endif
+  let l:next_link = typevim#Promise#New(l:handlers)
 
   " resolve/reject immediately, if necessary
   let l:cur_state = l:self['__state']
+  let l:Val = l:self['__value']
   if l:cur_state ==# s:FULFILLED
-    call a:Resolve(l:self['__value'])
+    call l:next_link.Resolve(l:Val)
     return
   elseif l:cur_state ==# s:BROKEN
-    if !l:no_error_handler
-      call a:Reject(l:self['__value'])
-    else
+    try
+      call l:next_link.Reject(l:Val)
+    catch /ERROR(NotFound)/  " no error handler
       call s:ThrowUnhandledReject(l:self['__value'], l:self)
-    endif
+    endtry
     return
   endif
 
-  if l:no_error_handler
-    let l:handler_pair = [a:Resolve]
-  else
-    let l:handler_pair = [a:Resolve, a:Reject]
-  endif
-  call add(l:self['__handlers'], l:handler_pair)
-
-  if a:no_chain | return | endif
-
-  " enable Promise chaining
-  let l:doer = typevim#ChainDoer#New(l:self)
-  let l:next_link = typevim#Promise#New(l:doer)
-  return l:next_link
+  call add(l:self['__handler_attachments'], l:handlers)
+  return l:next_link  " enable Promise chaining
 endfunction
 
 ""
@@ -303,14 +294,20 @@ endfunction
 " Attach an error handler {Reject} to this Promise. If this Promise rejects,
 " it will call back {Reject} with the provided value. If it was already
 " rejected, it will call {Reject} immediately.
+"
+" Returns a "child" Promise that will be rejected with the return value of the
+" given [Reject] error handler if this Promise rejects.
 function! typevim#Promise#Catch(Reject) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Reject)
+  let l:handlers = typevim#HandlerAttachment#New(s:default_handler, a:Reject)
+  let l:next_link = typevim#Promise#New(l:handlers)
   if l:self['__state'] ==# s:BROKEN
-    call a:Reject(l:self['__value'])
+    call l:handlers.Reject(l:self['__value'])
     return
   endif
-  call add(l:self['__handlers'], [s:default_handler, a:Reject])
+  call add(l:self['__handler_attachments'], l:handlers)
+  return l:next_link  " enable Promise chaining
 endfunction
 
 ""
