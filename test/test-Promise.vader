@@ -40,6 +40,25 @@ Then (Test Error Handling, Post Resolution Resolve/Reject):
       \ 'ERROR(NotAuthorized): Tried to reject an already resolved Promise: '),
       \ 'Threw wrong exception: '.g:vader_exception
 
+Execute (typevim#Promise: State Progression):
+  let g:promise = typevim#Promise#New()
+  AssertEqual 'pending', g:promise.State()
+  AssertThrows call g:promise.Get()
+  call g:promise.Then(function('SetVal'))
+  AssertEqual 'pending', g:promise.State()
+  AssertThrows call g:promise.Get()
+  call g:promise.Resolve('resolved')
+  AssertEqual 'resolved', g:promise.State()
+
+  let g:promise = typevim#Promise#New()
+  AssertEqual 'pending', g:promise.State()
+  AssertThrows call g:promise.Get()
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  AssertEqual 'pending', g:promise.State()
+  AssertThrows call g:promise.Get()
+  call g:promise.Reject('rejected')
+  AssertEqual 'rejected', g:promise.State()
+
 Execute (typevim#Promise: Immediate Rejection):
   let g:promise = typevim#Promise#New()
   call g:promise.Then(function('SetVal'), function('SetOther'))
@@ -112,9 +131,19 @@ Execute (typevim#Promise: Set Up for Test Chaining):
     return l:to_return
   endfunction
 
-Execute (typevim#Promise: Test Chaining):
+Execute (typevim#Promise: Test Promise Chaining):
   let g:doer = MockDoer#New()
   let g:promise = typevim#Promise#New(g:doer)
-  let g:next_link = g:promise.Then({ val -> val + 1}, function('SetOther'))
+  let g:next_link = g:promise.Then({ val -> val + 1})
   call g:doer.Resolve(0)
   AssertEqual 1, g:next_link.Get()
+
+Execute (typevim#Promise: Test Deep Promise Chaining):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  let g:last_link =
+      \ g:promise.Then({ val -> val + 1})
+      \.Then({ val -> val + 1 }, function('SetOther'))
+  call g:doer.Resolve(0)
+  AssertEqual 2, g:last_link.Get()
+  AssertEqual 'resolved', g:last_link.State()
