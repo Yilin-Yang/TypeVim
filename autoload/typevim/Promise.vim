@@ -89,6 +89,7 @@ function! typevim#Promise#New(...) abort
       \ 'Then': typevim#make#Member('Then'),
       \ 'Catch': typevim#make#Member('Catch'),
       \ 'State': typevim#make#Member('State'),
+      \ 'Get': typevim#make#Member('Get'),
       \ }
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
@@ -317,4 +318,19 @@ endfunction
 function! typevim#Promise#State() dict abort
   call s:TypeCheck(l:self)
   return l:self['__state']
+endfunction
+
+""
+" @dict Promise
+" Return the stored value from this Promise's resolution/rejection.
+"
+" @throws NotFound if this Resolve has not been resolved or rejected.
+function! typevim#Promise#Get() dict abort
+  call s:TypeCheck(l:self)
+  if l:self['__state'] ==# s:PENDING
+    throw maktaba#error#NotFound(
+        \ 'Promise has not resolved/rejected and stores no value: %s',
+        \ typevim#object#ShallowPrint(l:self, 2))
+  endif
+  return l:self['__value']
 endfunction

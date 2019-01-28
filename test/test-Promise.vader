@@ -81,10 +81,30 @@ Execute (typevim#Promise: Rejection by Doer):
   AssertNotEqual 'reject', GetValAndReset()
   AssertEqual    'reject', GetOtherAndReset()
 
-" Execute (typevim#Promise: Test Chaining):
-"   let g:doer = MockDoer#New()
-"   let g:promise = typevim#Promise#New(g:doer)
-"   call g:promise.Then(function('SetVal'), function('SetOther'))
-"   call g:doer.Reject('reject')
-"   AssertNotEqual 'reject', GetValAndReset()
-"   AssertEqual    'reject', GetOtherAndReset()
+Execute (typevim#Promise: Set Up for Test Chaining):
+  function! SetVal2(Val) abort
+    let g:val2 = a:Val
+  endfunction
+
+  function! GetVal2AndReset() abort
+    let l:to_return = g:Val2
+    let g:Val2 = ''
+    return l:to_return
+  endfunction
+
+  function! SetOther2(Val) abort
+    let g:other2 = a:Val
+  endfunction
+
+  function! GetOther2AndReset() abort
+    let l:to_return = g:Other2
+    let g:other2 = ''
+    return l:to_return
+  endfunction
+
+Execute (typevim#Promise: Test Chaining):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  let g:next_link = g:promise.Then({ val -> val + 1}, function('SetOther'))
+  call g:doer.Resolve(0)
+  AssertEqual 1, g:next_link.Get()
