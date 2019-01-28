@@ -64,3 +64,27 @@ Execute (typevim#Promise: Unhandled Promise Rejection):
   AssertNotEqual -1, match(g:vader_exception,
       \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'reject'"),
       \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#Promise: Resolution by Doer):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  call g:doer.Resolve('resolve')
+  AssertEqual    'resolve', GetValAndReset()
+  AssertNotEqual 'resolve', GetOtherAndReset()
+
+Execute (typevim#Promise: Rejection by Doer):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  call g:doer.Reject('reject')
+  AssertNotEqual 'reject', GetValAndReset()
+  AssertEqual    'reject', GetOtherAndReset()
+
+" Execute (typevim#Promise: Test Chaining):
+"   let g:doer = MockDoer#New()
+"   let g:promise = typevim#Promise#New(g:doer)
+"   call g:promise.Then(function('SetVal'), function('SetOther'))
+"   call g:doer.Reject('reject')
+"   AssertNotEqual 'reject', GetValAndReset()
+"   AssertEqual    'reject', GetOtherAndReset()

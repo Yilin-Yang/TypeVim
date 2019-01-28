@@ -13,3 +13,6 @@ function! MockDoer#New() abort
       \ }
   return typevim#make#Derived(s:typename, typevim#Doer#New(), l:new)
 endfunction
+
+function! MockDoer#StartDoing() dict abort
+endfunction
