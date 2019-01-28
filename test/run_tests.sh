@@ -21,7 +21,7 @@ printUsage() {
 }
 
 runAndExitOnFail() {
-  COMMAND=$1
+  local COMMAND=$1
   echo "$COMMAND"
   eval "$COMMAND"
   if [[ $? -ne 0 ]]; then
@@ -30,12 +30,55 @@ runAndExitOnFail() {
   fi
 }
 
+# Runs the given ${COMMAND}, substituting the '*' character in ${COMMAND} with
+# the given ${GLOB}.
+runAllAtOnce() {
+  local COMMAND=$1
+  local GLOB=$2
+  local COMMAND="${COMMAND//\*/$GLOB}"
+  runAndExitOnFail "$COMMAND"
+}
+
+# Runs the given ${COMMAND}, substituting the '*' character in ${COMMAND} with
+# all of the files matched by the given ${GLOB}.
+runIndividually() {
+  local COMMAND=$1
+  local GLOB=$2
+  local FILES
+  FILES=$(ls $GLOB)
+  for FILE in $FILES; do
+    local SINGLE_CMD="${COMMAND//\*/$FILE}"
+    runAndExitOnFail "$SINGLE_CMD"
+  done
+}
+
+# Runs test cases using the given ${BASE_CMD} and ${VADER_CMD}, but inserts
+# the given ${BEFORE} command between ${BASE_CMD} and ${VADER_CMD}.
+#
+# Runs "all at once" tests using the given ${GLOB}. If ${STANDALONE_GLOB} is
+# specified, standalone tests are run as well.
+runTests() {
+  local BASE_CMD=$1
+  local VADER_CMD=$2
+  local BEFORE=$3
+  local GLOB=$4
+  local STANDALONE_GLOB=$5
+
+  local COMMAND="$BASE_CMD $BEFORE $VADER_CMD"
+  runAllAtOnce "$COMMAND" "$GLOB"
+  if [ "$STANDALONE_GLOB" ]; then
+    runIndividually "$COMMAND" "$STANDALONE_GLOB"
+  fi
+}
+
 BASE_CMD_NVIM="nvim --headless -Nnu .test_vimrc -i NONE"
 BASE_CMD_VIM="vim -Nnu .test_vimrc -i NONE"
 RUN_VIM=1
+RUN_GIVEN=0
 export VISIBLE=0
-VADER_CMD="-c 'Vader!"
-TEST_PAT=" test-*.vader'"
+VADER_CMD="-c 'Vader! *'"
+GLOB_ORDINARY='test-*.vader'
+GLOB_STANDALONE='standalone-test-*.vader'
 while [[ $# -gt 0 ]]; do
   ARG=$1
   case $ARG in
@@ -46,7 +89,7 @@ while [[ $# -gt 0 ]]; do
       export VISIBLE=1
       BASE_CMD_NVIM="nvim -Nnu .test_vimrc -i NONE"
       BASE_CMD_VIM="vim -Nnu .test_vimrc -i NONE"
-      VADER_CMD="-c 'Vader"
+      VADER_CMD="-c 'Vader *'"
       ;;
     '--vim')
       RUN_VIM=1
@@ -55,10 +98,12 @@ while [[ $# -gt 0 ]]; do
       RUN_VIM=0
       ;;
     "--file="*)
-      TEST_PAT="${ARG#*=}'"
+      GLOB_USER="${ARG#*=}"
+      RUN_GIVEN=1
       ;;
     "-f")
-      TEST_PAT="$2'"
+      GLOB_USER="$2"
+      RUN_GIVEN=1
       shift  # past pattern
       ;;
     "-h")
@@ -79,17 +124,26 @@ export VADER_OUTPUT_FILE=/dev/stderr
 if [ $RUN_VIM -ne 0 ]; then
   BASE_CMD=$BASE_CMD_VIM
   if [ $VISIBLE -eq 0 ]; then
-    TEST_PAT="$TEST_PAT > /dev/null"
+    VADER_CMD="$VADER_CMD > /dev/null"
   fi
 else
   BASE_CMD=$BASE_CMD_NVIM
 fi
-runAndExitOnFail "${BASE_CMD} ${VADER_CMD} ${TEST_PAT}"
 
-if [ $TEST_INTERNATIONAL ]; then
-  # test non-English locale
-  runAndExitOnFail "${BASE_CMD} -c 'language de_DE.utf8' ${VADER_CMD} ${TEST_PAT}"
-  runAndExitOnFail "${BASE_CMD} -c 'language es_ES.utf8' ${VADER_CMD} ${TEST_PAT}"
+if [ $RUN_GIVEN -eq 1 ]; then
+  runTests "${BASE_CMD}" "${VADER_CMD}" "" "${GLOB_USER}"
+  if [ $TEST_INTERNATIONAL ]; then
+    # test non-English locale
+    runTests "${BASE_CMD}" "${VADER_CMD}" "-c 'language de_DE.utf8'" "${GLOB_USER}"
+    runTests "${BASE_CMD}" "${VADER_CMD}" "-c 'language es_ES.utf8'" "${GLOB_USER}"
+  fi
+else
+  runTests "${BASE_CMD}" "${VADER_CMD}" "" "${GLOB_ORDINARY}" "${GLOB_STANDALONE}"
+  if [ $TEST_INTERNATIONAL ]; then
+    # test non-English locale
+    runTests "${BASE_CMD}" "${VADER_CMD}" "-c 'language de_DE.utf8'" "${GLOB_ORDINARY}" "${GLOB_STANDALONE}"
+    runTests "${BASE_CMD}" "${VADER_CMD}" "-c 'language es_ES.utf8'" "${GLOB_ORDINARY}" "${GLOB_STANDALONE}"
+  fi
 fi
 unset IS_TYPEVIM_DEBUG
 unset VISIBLE
