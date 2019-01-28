@@ -26,6 +26,8 @@ Execute (typevim#Promise: Immediate Fulfillment):
   call g:promise.Then(function('SetVal'))
   call g:promise.Resolve('resolve')
   AssertEqual 'resolve', GetValAndReset()
+  AssertEqual 'resolve', g:promise.Get()
+  AssertEqual 'resolved', g:promise.State()
 Then (Test Error Handling, Post Resolution Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
   AssertNotEqual -1, match(g:vader_exception,
@@ -43,6 +45,8 @@ Execute (typevim#Promise: Immediate Rejection):
   call g:promise.Then(function('SetVal'), function('SetOther'))
   call g:promise.Reject('reject')
   AssertEqual 'reject', GetOtherAndReset()
+  AssertEqual 'reject', g:promise.Get()
+  AssertEqual 'rejected', g:promise.State()
 Then (Test Error Handling, Post Rejection Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
   AssertNotEqual -1, match(g:vader_exception,
@@ -64,6 +68,8 @@ Execute (typevim#Promise: Unhandled Promise Rejection):
   AssertNotEqual -1, match(g:vader_exception,
       \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'reject'"),
       \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 'reject', g:promise.Get()
+  AssertEqual 'rejected', g:promise.State()
 
 Execute (typevim#Promise: Resolution by Doer):
   let g:doer = MockDoer#New()
@@ -72,6 +78,8 @@ Execute (typevim#Promise: Resolution by Doer):
   call g:doer.Resolve('resolve')
   AssertEqual    'resolve', GetValAndReset()
   AssertNotEqual 'resolve', GetOtherAndReset()
+  AssertEqual 'resolve', g:promise.Get()
+  AssertEqual 'resolved', g:promise.State()
 
 Execute (typevim#Promise: Rejection by Doer):
   let g:doer = MockDoer#New()
@@ -80,6 +88,8 @@ Execute (typevim#Promise: Rejection by Doer):
   call g:doer.Reject('reject')
   AssertNotEqual 'reject', GetValAndReset()
   AssertEqual    'reject', GetOtherAndReset()
+  AssertEqual 'reject', g:promise.Get()
+  AssertEqual 'rejected', g:promise.State()
 
 Execute (typevim#Promise: Set Up for Test Chaining):
   function! SetVal2(Val) abort
