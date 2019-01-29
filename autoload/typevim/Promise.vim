@@ -79,18 +79,19 @@ function! typevim#Promise#New(...) abort
   " error handler. The Doer is linked to the Promise constructed and returned by
   " the Promise.Then() or Promise.Catch() function calls.
   let l:new = {
+      \ '__had_handlers': 0,
       \ '__doer': a:Doer,
       \ '__state': s:PENDING,
-      \ '__value': 0,
+      \ '__value': '[no value set]',
       \ '__handler_attachments': [],
       \ '__Clear': typevim#make#Member('__Clear'),
+      \ '_HadHandlers': typevim#make#Member('_HadHandlers'),
       \ 'Resolve': typevim#make#Member('Resolve'),
       \ 'Reject': typevim#make#Member('Reject'),
       \ 'Then': typevim#make#Member('Then'),
       \ 'Catch': typevim#make#Member('Catch'),
       \ 'State': typevim#make#Member('State'),
       \ 'Get': typevim#make#Member('Get'),
-      \ 'HasHandlers': typevim#make#Member('HasHandlers'),
       \ }
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
@@ -140,6 +141,18 @@ function! typevim#Promise#__Clear() dict abort
   call s:TypeCheck(l:self)
   unlet l:self['__handler_attachments']
   let l:self['__handler_attachments'] = []
+endfunction
+
+""
+" @dict Promise
+" @private
+" Return whether or not success and/or error handlers had been attached to
+" this Promise at any point. Used internally to identify "dead" Promises that
+" were constructed in calls to @function(Promise.Then), but which presumably
+" aren't being used anywhere.
+function! typevim#Promise#_HadHandlers() dict abort
+  call s:TypeCheck(l:self)
+  return l:self['__had_handlers']
 endfunction
 
 ""
@@ -232,15 +245,18 @@ function! typevim#Promise#Reject(Val) dict abort
       let l:live_promise = l:handlers.RejectNextLink(a:Val)
       let l:was_handled = 1
     catch /ERROR(NotFound): Rejection without an error handler/
-      let l:live_promise = l:handlers.GetNextLink().HasHandlers()
+      let l:live_promise = l:handlers.GetNextLink()._HadHandlers()
       let l:was_handled = 0
     endtry
     if l:live_promise | let l:live_children_exist  = 1 | endif
     if l:was_handled  | let l:error_handler_exists = 1 | endif
   endfor
-  if !l:live_children_exist && !l:error_handler_exists && l:self.HasHandlers()
+
+  if !l:live_children_exist && !l:error_handler_exists && l:self._HadHandlers()
+    call l:self.__Clear()
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
+
   call l:self.__Clear()
   return l:self
 endfunction
@@ -273,7 +289,6 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
 
   let l:no_error_handler = a:Reject ==# s:default_handler
-
   if l:no_error_handler
     let l:handlers = typevim#HandlerAttachment#New(a:Resolve)
   else
@@ -281,9 +296,11 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   endif
   let l:next_link = typevim#Promise#New(l:handlers)
 
-  " resolve/reject immediately, if necessary
+  let l:self['__had_handlers'] = 1
   let l:cur_state = l:self['__state']
   let l:Val = l:self['__value']
+
+  " resolve/reject immediately, if necessary
   if l:cur_state ==# s:FULFILLED
     call l:next_link.Resolve(l:Val)
     return
@@ -340,30 +357,4 @@ function! typevim#Promise#Get() dict abort
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
   return l:self['__value']
-endfunction
-
-""
-" @dict Promise
-" Return whether or this Promise has handlers of the given [handler_type]:
-" either `"success"` or `"error"` If [handler_type] is empty, or not provided,
-" then this function will return true if the Promise has any handlers at all.
-"
-" @throws BadValue if [handler_type] is not an empty string, `"success"`, or `"error"`.
-" @throws WrongType if [handler_type] is not a string.
-function! typevim#Promise#HasHandlers(...) dict abort
-  let a:handler_type = maktaba#ensure#IsString(get(a:000, 0, ''))
-  let l:handlers = l:self['__handler_attachments']
-  if a:handler_type ==# 'success' || a:handler_type ==# ''
-    return !empty(l:handlers)
-  elseif a:handler_type ==# 'error'
-    for l:handler in l:handlers
-      if l:handler.HasErrorHandler()
-        return 1
-      endif
-    endfor
-    return 0
-  else
-    throw maktaba#error#BadValue('Bad [handler_type] (must be "success", '
-        \ . '"error", or ""): %s', a:handler_type)
-  endif
 endfunction

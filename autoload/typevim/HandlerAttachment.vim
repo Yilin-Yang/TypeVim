@@ -48,7 +48,7 @@ endfunction
 " Call the stored success handler with the given {Val}. Resolve the "next
 " link" in the Promise chain with the return value of the success handler.
 "
-" Returns whether or not the next link Promise is "live," i.e. whether it has
+" Returns whether or not the next link Promise is "live," i.e. whether it had
 " attached handlers.
 "
 " @throws NotFound if no "next link" Promise backreference is set.
@@ -57,7 +57,7 @@ function! typevim#HandlerAttachment#ResolveNextLink(Val) dict abort
   let l:Returned = l:self['__Success_handler'](a:Val)
   call l:self.Resolve(l:Returned)
   let l:backref = l:self.GetNextLink()
-  return l:backref.HasHandlers()
+  return l:backref._HadHandlers()
 endfunction
 
 ""
@@ -67,7 +67,7 @@ endfunction
 " error handler was attached, reject the next link with {Val} and throw an
 " ERROR(NotFound).
 "
-" Returns whether or not the next link Promise is "live," i.e. whether it has
+" Returns whether or not the next link Promise is "live," i.e. whether it had
 " attached handlers.
 "
 " @throws NotFound if no error handler was attached, or if no "next link" Promise backreference is set.
@@ -83,7 +83,7 @@ function! typevim#HandlerAttachment#RejectNextLink(Val) dict abort
     call l:self.Reject(l:Returned)
   endif
   let l:backref = l:self.GetNextLink()
-  return l:backref.HasHandlers()
+  return l:backref._HadHandlers()
 endfunction
 
 ""
