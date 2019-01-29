@@ -90,6 +90,7 @@ function! typevim#Promise#New(...) abort
       \ 'Catch': typevim#make#Member('Catch'),
       \ 'State': typevim#make#Member('State'),
       \ 'Get': typevim#make#Member('Get'),
+      \ 'HasHandlers': typevim#make#Member('HasHandlers'),
       \ }
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
@@ -192,10 +193,11 @@ endfunction
 " with the given {Val}, and updates the @function(Promise.State) of this
 " Promise to `"rejected"`.
 "
-" If, in a previous call to @function(Promise.Then), this Promise was given a
-" success handler without a matching error handler, then this Promise will
-" (after calling back all attached error handlers) throw an ERROR(NotFound)
-" exception due to the unhandled rejection.
+" If this Promise is a "live" Promise (i.e. has user-attached success and/or
+" error handlers) and has no "live" child Promises (i.e. no "next link" Promises
+" with user-attached handlers) to handle the exception, and this Promise does
+" not have any error handlers, throw an ERROR(NotFound) due to the unhandled
+" exception. TODO
 "
 " Note that, if a @dict(Promise) is passed as {Val}, this function will not
 " behave like @function(Promise.Resolve): it will not "wait" for {Val} to
@@ -205,8 +207,7 @@ endfunction
 " Returns this Promise.
 "
 " @throws NotAuthorized if this Promise was already resolved or rejected.
-" @throws NotFound if an attached success handler did not have a "matched"
-" error handler.
+" @throws NotFound if a valid error handler could not be found.
 function! typevim#Promise#Reject(Val) dict abort
   call s:TypeCheck(l:self)
   if l:self.State() !=# s:PENDING
@@ -216,8 +217,9 @@ function! typevim#Promise#Reject(Val) dict abort
   endif
   let l:self['__value'] = a:Val
   let l:self['__state'] = s:BROKEN
-  let l:rejection_unhandled = 0
-  for l:handlers in l:self['__handler_attachments']
+  let l:handler_list = l:self['__handler_attachments']
+  let l:unhandled_rejection = 0
+  for l:handlers in l:handler_list
     try
       call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
     catch /ERROR(WrongType)/
@@ -225,15 +227,20 @@ function! typevim#Promise#Reject(Val) dict abort
           \ typevim#object#ShallowPrint(l:handlers))
     endtry
     try
-      call l:handlers.RejectNextLink(a:Val)
-    catch /ERROR(NotFound)/
-      let l:rejection_unhandled = 1
+      let l:live_promise = l:handlers.RejectNextLink(a:Val)
+      let l:no_handler = 0
+    catch /ERROR(NotFound): Rejection without an error handler/
+      let l:live_promise = l:handlers.GetNextLink().HasHandlers()
+      let l:no_handler = 1
     endtry
+    if l:no_handler && l:live_promise
+      let l:unhandled_rejection = 1
+    endif
   endfor
-  if l:rejection_unhandled
+  call l:self.__Clear()
+  if l:unhandled_rejection
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
-  call l:self.__Clear()
   return l:self
 endfunction
 
@@ -254,7 +261,7 @@ endfunction
 "
 " Returns a "child" Promise that will be fulfilled, or rejected, with the
 " value of the given {Resolve} success handler or [Reject] error handler
-" respectively.
+" respectively, unless [chain] is 0, in which case it will return 0.
 "
 " @default Reject=a "null" error handler.
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
@@ -262,6 +269,8 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Resolve)
   let a:Reject = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
+  let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
+
   let l:no_error_handler = a:Reject ==# s:default_handler
 
   if l:no_error_handler
@@ -287,7 +296,7 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   endif
 
   call add(l:self['__handler_attachments'], l:handlers)
-  return l:next_link  " enable Promise chaining
+  return a:chain ? l:next_link : 0
 endfunction
 
 ""
@@ -296,19 +305,16 @@ endfunction
 " it will call back {Reject} with the provided value. If it was already
 " rejected, it will call {Reject} immediately.
 "
-" Returns a "child" Promise that will be rejected with the return value of the
-" given [Reject] error handler if this Promise rejects.
-function! typevim#Promise#Catch(Reject) dict abort
+" Returns a "child" Promise that will be fulfilled, or
+" rejected, with the value of the given {Resolve} success handler or [Reject]
+" error handler respectively, unless [chain] is 0, in which case it returns 0.
+"
+" @default chain=1
+function! typevim#Promise#Catch(Reject, ...) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Reject)
-  let l:handlers = typevim#HandlerAttachment#New(s:default_handler, a:Reject)
-  let l:next_link = typevim#Promise#New(l:handlers)
-  if l:self['__state'] ==# s:BROKEN
-    call l:handlers.Reject(l:self['__value'])
-    return
-  endif
-  call add(l:self['__handler_attachments'], l:handlers)
-  return l:next_link  " enable Promise chaining
+  let a:chain = maktaba#ensure#IsBool(get(a:000, 0, 1))
+  return l:self.Then(s:default_handler, a:Reject, a:chain)
 endfunction
 
 ""
@@ -333,4 +339,30 @@ function! typevim#Promise#Get() dict abort
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
   return l:self['__value']
+endfunction
+
+""
+" @dict Promise
+" Return whether or this Promise has handlers of the given [handler_type]:
+" either `"success"` or `"error"` If [handler_type] is empty, or not provided,
+" then this function will return true if the Promise has any handlers at all.
+"
+" @throws BadValue if [handler_type] is not an empty string, `"success"`, or `"error"`.
+" @throws WrongType if [handler_type] is not a string.
+function! typevim#Promise#HasHandlers(...) dict abort
+  let a:handler_type = maktaba#ensure#IsString(get(a:000, 0, ''))
+  let l:handlers = l:self['__handler_attachments']
+  if a:handler_type ==# 'success' || a:handler_type ==# ''
+    return !empty(l:handlers)
+  elseif a:handler_type ==# 'error'
+    for l:handler in l:handlers
+      if l:handler.HasErrorHandler()
+        return 1
+      endif
+    endfor
+    return 0
+  else
+    throw maktaba#error#BadValue('Bad [handler_type] (must be "success", '
+        \ . '"error", or ""): %s', a:handler_type)
+  endif
 endfunction

@@ -21,9 +21,13 @@ function! typevim#HandlerAttachment#New(Success_handler, ...) abort
   let l:new = {
       \ '__Success_handler': a:Success_handler,
       \ '__Error_handler': a:Error_handler,
+      \ '__next_link': {},
       \ 'StartDoing': typevim#make#Member('StartDoing'),
       \ 'ResolveNextLink': typevim#make#Member('ResolveNextLink'),
       \ 'RejectNextLink': typevim#make#Member('RejectNextLink'),
+      \ 'ClearReferences': typevim#make#Member('ClearReferences'),
+      \ 'GetNextLink': typevim#make#Member('GetNextLink'),
+      \ 'HasErrorHandler': typevim#make#Member('HasErrorHandler'),
       \ }
   let l:new = typevim#make#Derived(s:typename, typevim#Doer#New(), l:new)
   return l:new
@@ -35,31 +39,82 @@ endfunction
 
 function! typevim#HandlerAttachment#StartDoing() dict abort
   call s:CheckType(l:self)
+  let l:promise_backref = get(l:self.Resolve, 'dict')
+  let l:self['__next_link'] = l:promise_backref
 endfunction
 
 ""
 " @private
 " Call the stored success handler with the given {Val}. Resolve the "next
 " link" in the Promise chain with the return value of the success handler.
+"
+" Returns whether or not the next link Promise is "live," i.e. whether it has
+" attached handlers.
+"
+" @throws NotFound if no "next link" Promise backreference is set.
 function! typevim#HandlerAttachment#ResolveNextLink(Val) dict abort
   call s:CheckType(l:self)
   let l:Returned = l:self['__Success_handler'](a:Val)
   call l:self.Resolve(l:Returned)
+  let l:backref = l:self.GetNextLink()
+  return l:backref.HasHandlers()
 endfunction
 
 ""
 " @private
 " Call the stored error handler with the given {Val}. Reject the "next
-" link" in the Promise chain with the return value of the error handler, or
-" throw an exception if none was attached..
+" link" in the Promise chain with the return value of the error handler. If no
+" error handler was attached, throw an ERROR(NotFound).
 "
-" @throws NotFound if no error handler was attached.
+" Returns whether or not the next link Promise is "live," i.e. whether it has
+" attached handlers.
+"
+" @throws NotFound if no error handler was attached, or if no "next link" Promise backreference is set.
 function! typevim#HandlerAttachment#RejectNextLink(Val) dict abort
   call s:CheckType(l:self)
   let l:Handler = l:self['__Error_handler']
   if l:Handler ==# s:default_handler
-    throw maktaba#error#NotFound('No attached error handler')
+    throw maktaba#error#NotFound(
+        \ 'Rejection without an error handler: %s', a:Val)
+  else
+    let l:Returned = l:Handler(a:Val)
+    call l:self.Reject(l:Returned)
   endif
-  let l:Returned = l:Handler(a:Val)
-  call l:self.Reject(l:Returned)
+  let l:backref = l:self.GetNextLink()
+  return l:backref.HasHandlers()
+endfunction
+
+""
+" @private
+" Delete backreferences to the owner Promise (the "next link" in the chain).
+function! typevim#HandlerAttachment#ClearReferences() dict abort
+  call s:CheckType(l:self)
+  unlet l:self.Resolve
+  unlet l:self.Reject
+  unlet l:self['__next_link']
+  let l:self.Resolve = s:default_handler
+  let l:self.Reject = s:default_handler
+  let l:self['__next_link'] = {}
+endfunction
+
+""
+" @private
+" Returns a backreference to the "next link" Promise. Throws
+function! typevim#HandlerAttachment#GetNextLink() dict abort
+  call s:CheckType(l:self)
+  if empty(l:self['__next_link'])
+    throw maktaba#error#NotFound(
+        \ 'No backreference set on this HandlerAttachment: %s',
+        \ typevim#object#ShallowPrint(l:self))
+  endif
+  return l:self['__next_link']
+endfunction
+
+""
+" @private
+" Returns 1 if this HandlerAttachment was provided with an error handler on
+" construction.
+function! typevim#HandlerAttachment#HasErrorHandler() dict abort
+  call s:CheckType(l:self)
+  return l:self['__Error_handler'] !=# s:default_handler
 endfunction
