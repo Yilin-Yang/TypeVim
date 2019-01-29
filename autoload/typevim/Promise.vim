@@ -218,7 +218,9 @@ function! typevim#Promise#Reject(Val) dict abort
   let l:self['__value'] = a:Val
   let l:self['__state'] = s:BROKEN
   let l:handler_list = l:self['__handler_attachments']
-  let l:unhandled_rejection = 0
+
+  let l:live_children_exist = 0
+  let l:error_handler_exists = 0
   for l:handlers in l:handler_list
     try
       call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
@@ -228,19 +230,18 @@ function! typevim#Promise#Reject(Val) dict abort
     endtry
     try
       let l:live_promise = l:handlers.RejectNextLink(a:Val)
-      let l:no_handler = 0
+      let l:was_handled = 1
     catch /ERROR(NotFound): Rejection without an error handler/
       let l:live_promise = l:handlers.GetNextLink().HasHandlers()
-      let l:no_handler = 1
+      let l:was_handled = 0
     endtry
-    if l:no_handler && l:live_promise
-      let l:unhandled_rejection = 1
-    endif
+    if l:live_promise | let l:live_children_exist  = 1 | endif
+    if l:was_handled  | let l:error_handler_exists = 1 | endif
   endfor
-  call l:self.__Clear()
-  if l:unhandled_rejection
+  if !l:live_children_exist && !l:error_handler_exists && l:self.HasHandlers()
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
+  call l:self.__Clear()
   return l:self
 endfunction
 
