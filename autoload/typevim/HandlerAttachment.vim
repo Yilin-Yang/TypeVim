@@ -64,7 +64,8 @@ endfunction
 " @private
 " Call the stored error handler with the given {Val}. Reject the "next
 " link" in the Promise chain with the return value of the error handler. If no
-" error handler was attached, throw an ERROR(NotFound).
+" error handler was attached, reject the next link with {Val} and throw an
+" ERROR(NotFound).
 "
 " Returns whether or not the next link Promise is "live," i.e. whether it has
 " attached handlers.
@@ -74,6 +75,7 @@ function! typevim#HandlerAttachment#RejectNextLink(Val) dict abort
   call s:CheckType(l:self)
   let l:Handler = l:self['__Error_handler']
   if l:Handler ==# s:default_handler
+    call l:self.Reject(a:Val)
     throw maktaba#error#NotFound(
         \ 'Rejection without an error handler: %s', a:Val)
   else
