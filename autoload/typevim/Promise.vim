@@ -20,6 +20,8 @@ let s:BROKEN = 'rejected'
 
 let s:default_handler = {arg -> arg}
 
+let s:promise_id = 0
+
 ""
 " @dict Promise
 " @function typevim#Promise#New([Doer])
@@ -78,7 +80,9 @@ function! typevim#Promise#New(...) abort
   " NOTE: __handler_attachments is a list of triples: a Doer, a success handler, and an
   " error handler. The Doer is linked to the Promise constructed and returned by
   " the Promise.Then() or Promise.Catch() function calls.
+  let s:promise_id += 1
   let l:new = {
+      \ '__id': s:promise_id,
       \ '__had_handlers': 0,
       \ '__doer': a:Doer,
       \ '__state': s:PENDING,
@@ -93,6 +97,8 @@ function! typevim#Promise#New(...) abort
       \ 'State': typevim#make#Member('State'),
       \ 'Get': typevim#make#Member('Get'),
       \ }
+  " set this alias for Promise/A+ 2.2 compliance
+  let l:new.then = l:new.Then
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
   let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
@@ -181,35 +187,37 @@ endfunction
 " TODO Note that if {Val} returns ITSELF on resolution or rejection, then this
 " function will infinitely recurse.
 "
-" Returns this Promise.
+" Returns the given {Val}.
 "
 " @throws NotAuthorized if this Promise was already resolved or rejected.
 function! typevim#Promise#Resolve(Val) dict abort
+  " echomsg 'Resolve: '.typevim#object#ShallowPrint(a:Val, 2)
   call s:TypeCheck(l:self)
   if l:self.State() !=# s:PENDING
     throw maktaba#error#NotAuthorized(
         \ 'Tried to resolve an already %s Promise: %s',
         \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
   endif
+  " echomsg 'id: '.l:self['__id'].', '.expand('<sfile>')
   if typevim#value#IsType(a:Val, s:typename)
     " reassign this Promise's Doer if the given Val is a Promise,
     " and try to adopt its state
-    let l:self['__doer'] = a:Val['__doer']
-    let l:state = a:Val.State()
-    if l:state ==# s:PENDING
+    " let l:state = a:Val.State()
+    " if l:state ==# s:PENDING
       call a:Val.Then(l:self.Resolve, l:self.Reject)
       return
-    endif
-    let l:given_val = a:Val.Get()
-    if a:Val.State() ==# s:FULFILLED
-      call l:self.Resolve(l:given_val)
-    elseif a:Val.State() ==# s:BROKEN
-      call l:self.Reject(l:given_val)
-    endif
+    " endif
+    " let l:given_val = a:Val.Get()
+    " if a:Val.State() ==# s:FULFILLED
+    "   call l:self.Resolve(l:given_val)
+    " elseif a:Val.State() ==# s:BROKEN
+    "   call l:self.Reject(l:given_val)
+    " endif
     return
   else
     let l:self['__value'] = a:Val
     let l:self['__state'] = s:FULFILLED
+  " echomsg 'id: '.l:self['__id'].', handler len'.len(l:self['__handler_attachments'])
     for l:handlers in l:self['__handler_attachments']
       try
         call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
@@ -221,7 +229,7 @@ function! typevim#Promise#Resolve(Val) dict abort
     endfor
     call l:self.__Clear()
   endif
-  return l:self
+  return a:Val
 endfunction
 
 ""
@@ -241,7 +249,7 @@ endfunction
 " resolve or reject, but will start immediately calling back its error
 " handlers with {Val} as its "reason".
 "
-" Returns this Promise.
+" Returns the given {Val}.
 "
 " @throws NotAuthorized if this Promise was already resolved or rejected.
 " @throws NotFound if a valid error handler could not be found.
@@ -282,7 +290,7 @@ function! typevim#Promise#Reject(Val) dict abort
   endif
 
   call l:self.__Clear()
-  return l:self
+  return a:Val
 endfunction
 
 ""
@@ -325,6 +333,8 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
     let l:Reject = s:default_handler
   endif
   let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
+  " echomsg typevim#object#ShallowPrint(a:Resolve, 2)
+  " echomsg typevim#object#ShallowPrint(a:Reject, 2)
 
   let l:no_error_handler = l:Reject ==# s:default_handler
   if l:no_error_handler
@@ -340,18 +350,19 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
 
   " resolve/reject immediately, if necessary
   if l:cur_state ==# s:FULFILLED
-    call l:next_link.Resolve(l:Val)
+    call l:handlers.HandleResolve(l:Val)
     return
   elseif l:cur_state ==# s:BROKEN
     try
-      call l:next_link.Reject(l:Val)
+    call l:handlers.HandleReject(l:Val)
     catch /ERROR(NotFound)/  " no error handler
       call s:ThrowUnhandledReject(l:self['__value'], l:self)
     endtry
     return
+  else
+    call add(l:self['__handler_attachments'], l:handlers)
   endif
 
-  call add(l:self['__handler_attachments'], l:handlers)
   return a:chain ? l:next_link : 0
 endfunction
 

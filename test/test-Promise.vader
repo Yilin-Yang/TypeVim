@@ -113,6 +113,20 @@ Then (Test Error Handling, Post Rejection Resolve/Reject):
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetOtherAndReset()
 
+Execute (typevim#Promise: Attach Handlers to Already Resolved):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Resolve('resolve')
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  AssertEqual 'resolve', GetValAndReset()
+  AssertNotEqual 'resolve', GetOtherAndReset()
+
+Execute (typevim#Promise: Attach Handlers to Already Rejected):
+  let g:promise = typevim#Promise#New()
+  AssertThrows call g:promise.Reject('reject')
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  AssertNotEqual 'reject', GetValAndReset()
+  AssertEqual 'reject', GetOtherAndReset()
+
 Execute (typevim#Promise: Resolution w/out Success Handlers):
   let g:promise = typevim#Promise#New()
   call g:promise.Catch(function('SetOther'))
@@ -175,7 +189,9 @@ Execute (typevim#Promise: Reject with Pending Promise):
 Execute (typevim#Promise: Resolve with Resolved Promise):
   let g:doer = MockDoer#New()
   let g:x = typevim#Promise#New(g:doer)
-  let g:promise =  typevim#Promise#New()
+  let g:promise = typevim#Promise#New()
+  " echomsg g:x['__id']
+  " echomsg g:promise['__id']
   call g:doer.Resolve('yes')
   call g:promise.Resolve(g:x)
   AssertEqual 'fulfilled', g:promise.State()
