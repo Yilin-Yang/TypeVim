@@ -149,6 +149,54 @@ Execute (typevim#Promise: Resolve/Reject Next-in-Chain, Non Funcref Arguments):
   AssertEqual 'foo', g:resolved.Get()
   AssertEqual 'fulfilled', g:resolved.State()
 
+Execute (typevim#Promise: Resolve with Pending Promise):
+  let g:doer = MockDoer#New()
+  let g:x = typevim#Promise#New(g:doer)
+  let g:promise =  typevim#Promise#New()
+  call g:promise.Resolve(g:x)
+  AssertEqual 'pending', g:promise.State()
+  call g:doer.Resolve('yes')
+  AssertEqual 'fulfilled', g:promise.State()
+  AssertEqual 'yes', g:promise.Get()
+
+Execute (typevim#Promise: Reject with Pending Promise):
+  let g:doer = MockDoer#New()
+  let g:x = typevim#Promise#New(g:doer)
+  let g:promise =  typevim#Promise#New()
+  call g:promise.Resolve(g:x)
+  AssertEqual 'pending', g:promise.State()
+  AssertThrows call g:doer.Reject('no')
+  AssertNotEqual -1, match(g:vader_exception,
+      \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'no'"),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 'rejected', g:promise.State()
+  AssertEqual 'no', g:promise.Get()
+
+Execute (typevim#Promise: Resolve with Resolved Promise):
+  let g:doer = MockDoer#New()
+  let g:x = typevim#Promise#New(g:doer)
+  let g:promise =  typevim#Promise#New()
+  call g:doer.Resolve('yes')
+  call g:promise.Resolve(g:x)
+  AssertEqual 'fulfilled', g:promise.State()
+  AssertEqual 'yes', g:promise.Get()
+
+Execute (typevim#Promise: Resolve with Rejected Promise):
+  let g:doer = MockDoer#New()
+  let g:x = typevim#Promise#New(g:doer)
+
+  " silently 'pre-reject' this Promise
+  call g:x.Catch({ -> 0})
+  call g:doer.Reject('no')
+
+  let g:promise =  typevim#Promise#New()
+  AssertThrows call g:promise.Resolve(g:x)
+  AssertNotEqual -1, match(g:vader_exception,
+      \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'no'"),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 'rejected', g:promise.State()
+  AssertEqual 'no', g:promise.Get()
+
 Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()
   let g:result = g:promise.Catch(function('SetOther'))

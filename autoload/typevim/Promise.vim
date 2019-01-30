@@ -96,21 +96,7 @@ function! typevim#Promise#New(...) abort
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
   let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
-  try
-    try
-      call a:Doer.SetCallbacks(l:new.Resolve, l:new.Reject)
-    catch /E118/  " Too many arguments
-      call a:Doer.SetCallbacks(l:new.Resolve)
-    catch /E119/  " Not enough arguments
-      throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
-            \ . 'signature (too many parameters): %s',
-          \ typevim#object#ShallowPrint(a:Doer, 2))
-    endtry
-  catch /E118/  " Too many arguments
-    throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
-          \ . 'signature (takes no parameters): %s',
-        \ typevim#object#ShallowPrint(a:Doer, 2))
-  endtry
+  call typevim#Promise#__SetDoerCallbacks(l:new, a:Doer)
   return l:new
 endfunction
 
@@ -141,6 +127,31 @@ function! typevim#Promise#__Clear() dict abort
   call s:TypeCheck(l:self)
   unlet l:self['__handler_attachments']
   let l:self['__handler_attachments'] = []
+endfunction
+
+""
+" @dict Promise
+" @private
+" Set callbacks on the given Doer.
+" @throws BadValue.
+" @throws WrongType.
+function! typevim#Promise#__SetDoerCallbacks(self, Doer) abort
+  call s:TypeCheck(a:self)
+  try
+    try
+      call a:Doer.SetCallbacks(a:self.Resolve, a:self.Reject)
+    catch /E118/  " Too many arguments
+      call a:Doer.SetCallbacks(a:self.Resolve)
+    catch /E119/  " Not enough arguments
+      throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+            \ . 'signature (too many parameters): %s',
+          \ typevim#object#ShallowPrint(a:Doer, 2))
+    endtry
+  catch /E118/  " Too many arguments
+    throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+          \ . 'signature (takes no parameters): %s',
+        \ typevim#object#ShallowPrint(a:Doer, 2))
+  endtry
 endfunction
 
 ""
@@ -180,10 +191,22 @@ function! typevim#Promise#Resolve(Val) dict abort
         \ 'Tried to resolve an already %s Promise: %s',
         \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
   endif
-  " reassign this Promise's Doer if the given Val is a Promise
   if typevim#value#IsType(a:Val, s:typename)
-    call l:self['__doer'].ClearReferences()
+    " reassign this Promise's Doer if the given Val is a Promise,
+    " and try to adopt its state
     let l:self['__doer'] = a:Val['__doer']
+    let l:state = a:Val.State()
+    if l:state ==# s:PENDING
+      call a:Val.Then(l:self.Resolve, l:self.Reject)
+      return
+    endif
+    let l:given_val = a:Val.Get()
+    if a:Val.State() ==# s:FULFILLED
+      call l:self.Resolve(l:given_val)
+    elseif a:Val.State() ==# s:BROKEN
+      call l:self.Reject(l:given_val)
+    endif
+    return
   else
     let l:self['__value'] = a:Val
     let l:self['__state'] = s:FULFILLED
