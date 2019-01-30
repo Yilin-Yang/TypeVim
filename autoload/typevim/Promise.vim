@@ -64,8 +64,8 @@ let s:promise_id = 0
 " through explicit calls to @function(Promise.Resolve) and
 " @function(Promise.Reject).
 "
-" @throws BadValue if {Doer}'s `SetCallbacks` function does not take either one argument or two arguments, or if {Doer} has no `SetCallbacks` function.
-" @throws WrongType if {Doer} is not an object, or if `Doer.SetCallbacks` is not a Funcref.
+" @throws BadValue if [Doer]'s `SetCallbacks` function does not take either one argument or two arguments, or if [Doer] has no `SetCallbacks` function.
+" @throws WrongType if [Doer] is not an object, or if `Doer.SetCallbacks` is not a Funcref.
 function! typevim#Promise#New(...) abort
   let a:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
   if !has_key(a:Doer, 'SetCallbacks')
@@ -138,9 +138,9 @@ endfunction
 ""
 " @dict Promise
 " @private
-" Set callbacks on the given Doer.
-" @throws BadValue.
-" @throws WrongType.
+" Set callbacks {Resolve} and {Reject} on the given {Doer}.
+" @throws BadValue
+" @throws WrongType
 function! typevim#Promise#__SetDoerCallbacks(Resolve, Reject, Doer) abort
   try
     try
@@ -181,10 +181,8 @@ endfunction
 " "follow" that Promise, i.e. if {Val} resolves, then this Promise will
 " resolve with the same value; if {Val} rejects, then this Promise will reject
 " with the same value. In either case, this Promise will not resolve
-" immediately on this call.
-"
-" TODO Note that if {Val} returns ITSELF on resolution or rejection, then this
-" function will infinitely recurse.
+" immediately on this call. Note that this will "expunge" this Promise's
+" current @dict(Doer), if it has one.
 "
 " Returns the given {Val}.
 "
@@ -236,11 +234,9 @@ endfunction
 " with the given {Val}, and updates the @function(Promise.State) of this
 " Promise to `"rejected"`.
 "
-" If this Promise is a "live" Promise (i.e. has user-attached success and/or
-" error handlers) and has no "live" child Promises (i.e. no "next link" Promises
-" with user-attached handlers) to handle the exception, and this Promise does
-" not have any error handlers, throw an ERROR(NotFound) due to the unhandled
-" exception. TODO
+" If this Promise has no "live" child Promises (i.e. no "next link" Promises
+" with user-attached handlers), AND this Promise does not have any error
+" handlers, throws an ERROR(NotFound) due to the unhandled exception.
 "
 " Note that, if a @dict(Promise) is passed as {Val}, this function will not
 " behave like @function(Promise.Resolve): it will not "wait" for {Val} to
@@ -307,7 +303,7 @@ endfunction
 " this function.
 "
 " If {Resolve} is not a Funcref, it will be replaced with a "default" Funcref
-" that simply returns (unmodified) whatever value it's given. If {Reject} is
+" that simply returns (unmodified) whatever value it's given. If [Reject] is
 " not a Funcref, then the function will behave as if no error handler was
 " given at all.
 "
@@ -316,6 +312,7 @@ endfunction
 " respectively, unless [chain] is 0, in which case it will return 0.
 "
 " @default Reject=a "null" error handler.
+" @default chain=1
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
 function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
@@ -368,9 +365,9 @@ endfunction
 " it will call back {Reject} with the provided value. If it was already
 " rejected, it will call {Reject} immediately.
 "
-" Returns a "child" Promise that will be fulfilled, or
-" rejected, with the value of the given {Resolve} success handler or [Reject]
-" error handler respectively, unless [chain] is 0, in which case it returns 0.
+" Returns a "child" Promise that will be fulfilled, or rejected, with the
+" given resolved value the return value of the [Reject] error handler
+" respectively, unless [chain] is 0, in which case it returns 0.
 "
 " @default chain=1
 function! typevim#Promise#Catch(Reject, ...) dict abort
@@ -391,7 +388,7 @@ endfunction
 
 ""
 " @dict Promise
-" Return the stored value from this Promise's resolution/rejection.
+" Return the stored value/reason from this Promise's resolution/rejection.
 "
 " @throws NotFound if this Resolve has not been resolved or rejected.
 function! typevim#Promise#Get() dict abort
