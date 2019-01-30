@@ -119,6 +119,36 @@ Execute (typevim#Promise: Resolution w/out Success Handlers):
   call g:promise.Resolve('foo')
   AssertEqual '', GetValAndReset()
 
+Execute (typevim#Promise: Resolve Next-in-Chain w/out Success Handler):
+  let g:promise = typevim#Promise#New()
+  let g:last_link = g:promise.Catch(function('SetOther'))
+  call g:promise.Resolve('foo')
+  AssertEqual '', GetValAndReset()
+
+  " last_link should still resolve with an 'unmodified' value of 'foo'
+  AssertEqual 'foo', g:last_link.Get()
+  AssertEqual 'fulfilled', g:last_link.State()
+
+Execute (typevim#Promise: Resolve/Reject Next-in-Chain, Non Funcref Arguments):
+  let g:to_resolve = typevim#Promise#New()
+  let g:resolved = g:to_resolve.Then(0, 1)
+
+  let g:to_reject = typevim#Promise#New()
+  let g:rejected = g:to_reject.Then(0, 1)
+
+  call g:to_resolve.Resolve('foo')
+  AssertThrows call g:to_reject.Reject('foo')
+
+  AssertNotEqual -1, match(g:vader_exception,
+      \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'foo'"),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 'foo', g:rejected.Get()
+  AssertEqual 'rejected', g:rejected.State()
+
+  " last_link should still resolve with an 'unmodified' value of 'foo'
+  AssertEqual 'foo', g:resolved.Get()
+  AssertEqual 'fulfilled', g:resolved.State()
+
 Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()
   let g:result = g:promise.Catch(function('SetOther'))

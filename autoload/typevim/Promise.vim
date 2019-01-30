@@ -277,6 +277,11 @@ endfunction
 " It is strongly suggested that a [Reject] handler be provided in calls to
 " this function.
 "
+" If {Resolve} is not a Funcref, it will be replaced with a "default" Funcref
+" that simply returns (unmodified) whatever value it's given. If {Reject} is
+" not a Funcref, then the function will behave as if no error handler was
+" given at all.
+"
 " Returns a "child" Promise that will be fulfilled, or rejected, with the
 " value of the given {Resolve} success handler or [Reject] error handler
 " respectively, unless [chain] is 0, in which case it will return 0.
@@ -285,15 +290,24 @@ endfunction
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
 function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
-  call maktaba#ensure#IsFuncref(a:Resolve)
-  let a:Reject = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
+  if maktaba#value#IsFuncref(a:Resolve)
+    let l:Resolve = a:Resolve
+  else
+    let l:Resolve = s:default_handler
+  endif
+  let a:Reject = get(a:000, 0, s:default_handler)
+  if maktaba#value#IsFuncref(a:Reject)
+    let l:Reject = a:Reject
+  else
+    let l:Reject = s:default_handler
+  endif
   let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
 
-  let l:no_error_handler = a:Reject ==# s:default_handler
+  let l:no_error_handler = l:Reject ==# s:default_handler
   if l:no_error_handler
-    let l:handlers = typevim#HandlerAttachment#New(a:Resolve)
+    let l:handlers = typevim#HandlerAttachment#New(l:Resolve)
   else
-    let l:handlers = typevim#HandlerAttachment#New(a:Resolve, a:Reject)
+    let l:handlers = typevim#HandlerAttachment#New(l:Resolve, l:Reject)
   endif
   let l:next_link = typevim#Promise#New(l:handlers)
 
