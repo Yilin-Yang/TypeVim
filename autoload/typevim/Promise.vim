@@ -193,7 +193,7 @@ function! typevim#Promise#Resolve(Val) dict abort
         throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
             \ typevim#object#ShallowPrint(l:handlers))
       endtry
-      call l:handlers.ResolveNextLink(a:Val)
+      call l:handlers.HandleResolve(a:Val)
     endfor
     call l:self.__Clear()
   endif
@@ -242,7 +242,7 @@ function! typevim#Promise#Reject(Val) dict abort
           \ typevim#object#ShallowPrint(l:handlers))
     endtry
     try
-      let l:live_promise = l:handlers.RejectNextLink(a:Val)
+      let l:live_promise = l:handlers.HandleReject(a:Val)
       let l:was_handled = 1
     catch /ERROR(NotFound): Rejection without an error handler/
       let l:live_promise = l:handlers.GetNextLink()._HadHandlers()

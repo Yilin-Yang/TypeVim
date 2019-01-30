@@ -23,6 +23,30 @@ Execute (typevim#Promise: Set Up):
     return l:to_return
   endfunction
 
+  function! SetVal2(Val) abort
+    let g:val2 = a:Val
+  endfunction
+
+  function! GetVal2AndReset() abort
+    let l:to_return = g:Val2
+    let g:Val2 = ''
+    return l:to_return
+  endfunction
+
+  function! SetOther2(Val) abort
+    let g:other2 = a:Val
+  endfunction
+
+  function! GetOther2AndReset() abort
+    let l:to_return = g:Other2
+    let g:other2 = ''
+    return l:to_return
+  endfunction
+
+  function! ThrowAsException(Val) abort
+    throw 'except: '.string(a:Val)
+  endfunction
+
 Execute (typevim#Promise: Immediate Fulfillment):
   let g:promise = typevim#Promise#New()
   call g:promise.Then(function('SetVal'))
@@ -99,10 +123,27 @@ Execute (typevim#Promise: Resolution w/out Success Handlers):
 
 Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()
-  call g:promise.Catch(function('SetOther'))
+  let g:result = g:promise.Catch(function('SetOther'))
   call g:promise.Reject('reject')
   AssertEqual 'reject', GetOtherAndReset()
   AssertEqual 'reject', g:promise.Get()
+  AssertEqual 'rejected', g:promise.State()
+  AssertEqual 'resolved', g:result.State()
+
+Execute (typevim#Promise: Throw Exception from Success Handler):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('ThrowAsException'))
+  AssertThrows call g:promise.Resolve('foo')
+  AssertEqual 'except: foo', g:promise.Get()
+  AssertEqual 'except: foo', g:vader_exception
+  AssertEqual 'rejected', g:promise.State()
+
+Execute (typevim#Promise: Throw Exception from Error Handler):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Catch(function('ThrowAsException'))
+  AssertThrows call g:promise.Reject('foo')
+  AssertEqual 'except: foo', g:promise.Get()
+  AssertEqual 'except: foo', g:vader_exception
   AssertEqual 'rejected', g:promise.State()
 
 Execute (typevim#Promise: Unhandled Promise Rejection):
@@ -187,7 +228,7 @@ Execute (typevim#Promise: Rejection Handling w/ Chain of Then):
       \.Then(function('SetVal'), function('SetOther'))
 
   call g:doer.Reject('reject')
-  AssertEqual 'rejected', g:last_link.State()
+  AssertEqual 'resolved', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
   AssertNotEqual 'reject', GetValAndReset()
@@ -202,7 +243,23 @@ Execute (typevim#Promise: Rejection Handling w/ Then, Terminate with Catch):
       \.Catch(function('SetOther'))
 
   call g:doer.Reject('reject')
-  AssertEqual 'rejected', g:last_link.State()
+  AssertEqual 'resolved', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
   AssertNotEqual 'reject', GetValAndReset()
+
+" Execute (typevim#Promise: "Interception" of Unhandled Rejection):
+"   function
+"   let g:doer = MockDoer#New()
+"   let g:promise = typevim#Promise#New(g:doer)
+"   let g:last_link =
+"       \ g:promise.Then(function('SetVal'))
+"       \.Then(function('SetVal'))
+"       \.Then(function('SetVal'))
+"       \.Catch(function('SetOther'))
+
+"   call g:doer.Reject('reject')
+"   AssertEqual 'rejected', g:last_link.State()
+
+"   AssertEqual 'reject', GetOtherAndReset()
+"   AssertNotEqual 'reject', GetValAndReset()
