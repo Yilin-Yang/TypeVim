@@ -191,33 +191,20 @@ endfunction
 "
 " @throws NotAuthorized if this Promise was already resolved or rejected.
 function! typevim#Promise#Resolve(Val) dict abort
-  " echomsg 'Resolve: '.typevim#object#ShallowPrint(a:Val, 2)
   call s:TypeCheck(l:self)
   if l:self.State() !=# s:PENDING
     throw maktaba#error#NotAuthorized(
         \ 'Tried to resolve an already %s Promise: %s',
         \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
   endif
-  " echomsg 'id: '.l:self['__id'].', '.expand('<sfile>')
   if typevim#value#IsType(a:Val, s:typename)
-    " reassign this Promise's Doer if the given Val is a Promise,
-    " and try to adopt its state
-    " let l:state = a:Val.State()
-    " if l:state ==# s:PENDING
-      call a:Val.Then(l:self.Resolve, l:self.Reject)
-      return
-    " endif
-    " let l:given_val = a:Val.Get()
-    " if a:Val.State() ==# s:FULFILLED
-    "   call l:self.Resolve(l:given_val)
-    " elseif a:Val.State() ==# s:BROKEN
-    "   call l:self.Reject(l:given_val)
-    " endif
+    " resolve/reject immediately if Val is resolved/rejected, or just adopt
+    " its same value when it does resolve
+    call a:Val.Then(l:self.Resolve, l:self.Reject)
     return
   else
     let l:self['__value'] = a:Val
     let l:self['__state'] = s:FULFILLED
-  " echomsg 'id: '.l:self['__id'].', handler len'.len(l:self['__handler_attachments'])
     for l:handlers in l:self['__handler_attachments']
       try
         call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
@@ -333,8 +320,6 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
     let l:Reject = s:default_handler
   endif
   let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
-  " echomsg typevim#object#ShallowPrint(a:Resolve, 2)
-  " echomsg typevim#object#ShallowPrint(a:Reject, 2)
 
   let l:no_error_handler = l:Reject ==# s:default_handler
   if l:no_error_handler
