@@ -102,7 +102,7 @@ function! typevim#Promise#New(...) abort
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
   let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
-  call typevim#Promise#__SetDoerCallbacks(l:new, a:Doer)
+  call typevim#Promise#__SetDoerCallbacks(l:new.Resolve, l:new.Reject, a:Doer)
   return l:new
 endfunction
 
@@ -141,13 +141,12 @@ endfunction
 " Set callbacks on the given Doer.
 " @throws BadValue.
 " @throws WrongType.
-function! typevim#Promise#__SetDoerCallbacks(self, Doer) abort
-  call s:TypeCheck(a:self)
+function! typevim#Promise#__SetDoerCallbacks(Resolve, Reject, Doer) abort
   try
     try
-      call a:Doer.SetCallbacks(a:self.Resolve, a:self.Reject)
+      call a:Doer.SetCallbacks(a:Resolve, a:Reject)
     catch /E118/  " Too many arguments
-      call a:Doer.SetCallbacks(a:self.Resolve)
+      call a:Doer.SetCallbacks(a:Resolve)
     catch /E119/  " Not enough arguments
       throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
             \ . 'signature (too many parameters): %s',
@@ -198,6 +197,12 @@ function! typevim#Promise#Resolve(Val) dict abort
         \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
   endif
   if typevim#value#IsType(a:Val, s:typename)
+    " 'disable' the current Doer, if one exists
+    " when a Promise is resolved with another Promise, it *must* match that
+    " other Promise's state (without resolving 'early', etc.) (A+ Spec, 2.3.2)
+    call typevim#Promise#__SetDoerCallbacks(
+        \ s:default_handler, s:default_handler, l:self['__doer'])
+
     " resolve/reject immediately if Val is resolved/rejected, or just adopt
     " its same value when it does resolve
     call a:Val.Then(l:self.Resolve, l:self.Reject)
