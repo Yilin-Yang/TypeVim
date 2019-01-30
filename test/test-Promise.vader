@@ -53,17 +53,17 @@ Execute (typevim#Promise: Immediate Fulfillment):
   call g:promise.Resolve('resolve')
   AssertEqual 'resolve', GetValAndReset()
   AssertEqual 'resolve', g:promise.Get()
-  AssertEqual 'resolved', g:promise.State()
+  AssertEqual 'fulfilled', g:promise.State()
 Then (Test Error Handling, Post Resolution Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to resolve an already resolved Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to resolve an already fulfilled Promise: '),
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetValAndReset()
 
   AssertThrows call g:promise.Reject('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to reject an already resolved Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise: '),
       \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#Promise: State Progression):
@@ -77,8 +77,8 @@ Execute (typevim#Promise: State Progression):
   AssertEqual 1, g:promise._HadHandlers()
   AssertThrows call g:promise.Get()
 
-  call g:promise.Resolve('resolved')
-  AssertEqual 'resolved', g:promise.State()
+  call g:promise.Resolve('fulfilled')
+  AssertEqual 'fulfilled', g:promise.State()
   AssertEqual 1, g:promise._HadHandlers()
 
   let g:promise = typevim#Promise#New()
@@ -128,14 +128,18 @@ Execute (typevim#Promise: Rejection w/ Catch Handler):
   AssertEqual 'reject', GetOtherAndReset()
   AssertEqual 'reject', g:promise.Get()
   AssertEqual 'rejected', g:promise.State()
-  AssertEqual 'resolved', g:result.State()
+  AssertEqual 'fulfilled', g:result.State()
 
 Execute (typevim#Promise: Throw Exception from Success Handler):
   let g:promise = typevim#Promise#New()
-  call g:promise.Then(function('ThrowAsException'))
+  let g:last_link = g:promise.Then(function('ThrowAsException'))
+  " call g:promise.Then(function('ThrowAsException'))
   AssertThrows call g:promise.Resolve('foo')
-  AssertEqual 'except: foo', g:promise.Get()
-  AssertEqual 'except: foo', g:vader_exception
+  " call g:promise.Resolve('foo')
+  " AssertEqual 'rejected', g:last_link.State()
+  " AssertEqual "except: 'foo'", g:last_link.Get()
+  AssertEqual "except: 'foo'", g:promise.Get()
+  AssertEqual "except: 'foo'", g:vader_exception
   AssertEqual 'rejected', g:promise.State()
 
 Execute (typevim#Promise: Throw Exception from Error Handler):
@@ -164,7 +168,7 @@ Execute (typevim#Promise: Resolution by Doer):
   AssertEqual    'resolve', GetValAndReset()
   AssertNotEqual 'resolve', GetOtherAndReset()
   AssertEqual 'resolve', g:promise.Get()
-  AssertEqual 'resolved', g:promise.State()
+  AssertEqual 'fulfilled', g:promise.State()
 
 Execute (typevim#Promise: Rejection by Doer):
   let g:doer = MockDoer#New()
@@ -191,7 +195,7 @@ Execute (typevim#Promise: Test Deep Promise Chaining):
       \.Then({ val -> val + 1 }, function('SetOther'))
   call g:doer.Resolve(0)
   AssertEqual 2, g:last_link.Get()
-  AssertEqual 'resolved', g:last_link.State()
+  AssertEqual 'fulfilled', g:last_link.State()
 
 Execute (typevim#Promise: Unhandled Rejection at End of Chain):
   let g:doer = MockDoer#New()
@@ -218,6 +222,7 @@ Execute (typevim#Promise: Storage of Final Rejected Value in Chain):
 
   call g:doer.Reject('reject')
   AssertEqual 'reject', g:last_link.Get()
+  AssertEqual 'fulfilled', g:last_link.State()
 
 Execute (typevim#Promise: Rejection Handling w/ Chain of Then):
   let g:doer = MockDoer#New()
@@ -228,7 +233,7 @@ Execute (typevim#Promise: Rejection Handling w/ Chain of Then):
       \.Then(function('SetVal'), function('SetOther'))
 
   call g:doer.Reject('reject')
-  AssertEqual 'resolved', g:last_link.State()
+  AssertEqual 'fulfilled', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
   AssertNotEqual 'reject', GetValAndReset()
@@ -243,7 +248,7 @@ Execute (typevim#Promise: Rejection Handling w/ Then, Terminate with Catch):
       \.Catch(function('SetOther'))
 
   call g:doer.Reject('reject')
-  AssertEqual 'resolved', g:last_link.State()
+  AssertEqual 'fulfilled', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
   AssertNotEqual 'reject', GetValAndReset()
