@@ -10,7 +10,7 @@
 " value of the error handler to the "next link" Promise.
 
 let s:typename = 'HandlerAttachment'
-let s:default_handler = { -> 0}
+let s:default_handler = {arg -> arg}
 
 ""
 " @private
