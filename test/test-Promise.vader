@@ -207,8 +207,6 @@ Execute (typevim#Promise: Resolve with Resolved Promise):
   let g:doer = MockDoer#New()
   let g:x = typevim#Promise#New(g:doer)
   let g:promise = typevim#Promise#New()
-  " echomsg g:x['__id']
-  " echomsg g:promise['__id']
   call g:doer.Resolve('yes')
   call g:promise.Resolve(g:x)
   AssertEqual 'fulfilled', g:promise.State()
@@ -229,6 +227,13 @@ Execute (typevim#Promise: Resolve with Rejected Promise):
       \ 'Threw wrong exception: '.g:vader_exception
   AssertEqual 'rejected', g:promise.State()
   AssertEqual 'no', g:promise.Get()
+
+Execute (typevim#Promise: Resolve Promise with Itself):
+  let g:promise = typevim#Promise#New()
+  AssertThrows call g:promise.Resolve(g:promise)
+  AssertNotEqual -1, match(g:vader_exception,
+      \ 'ERROR(BadValue): Tried to resolve a Promise with itself: '),
+      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()

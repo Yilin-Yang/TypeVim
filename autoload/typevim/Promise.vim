@@ -188,9 +188,15 @@ endfunction
 "
 " Returns the given {Val}.
 "
+" @throws BadValue if the given {Val} is the same as this Promise.
 " @throws NotAuthorized if this Promise was already resolved or rejected.
 function! typevim#Promise#Resolve(Val) dict abort
   call s:TypeCheck(l:self)
+  if a:Val is l:self
+    throw maktaba#error#BadValue(
+        \ 'Tried to resolve a Promise with itself: %s',
+        \ typevim#object#ShallowPrint(a:Val))
+  endif
   if l:self.State() !=# s:PENDING
     throw maktaba#error#NotAuthorized(
         \ 'Tried to resolve an already %s Promise: %s',
