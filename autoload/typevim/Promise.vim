@@ -15,10 +15,10 @@
 let s:typename = 'Promise'
 
 let s:PENDING = 'pending'
-let s:FULFILLED = 'resolved'
+let s:FULFILLED = 'fulfilled'
 let s:BROKEN = 'rejected'
 
-let s:default_handler = { -> 0}
+let s:default_handler = {arg -> arg}
 
 ""
 " @dict Promise
@@ -159,7 +159,7 @@ endfunction
 " @dict Promise
 " Fulfill ("resolve") this Promise. Calls back all attached success handlers
 " with the given {Val}, and updates the @function(Promise.State) of this
-" Promise to `"resolved"`.
+" Promise to `"fulfilled"`.
 "
 " If the given {Val} is, itself, a @dict(Promise), then this Promise will
 " "follow" that Promise, i.e. if {Val} resolves, then this Promise will
@@ -182,6 +182,7 @@ function! typevim#Promise#Resolve(Val) dict abort
   endif
   " reassign this Promise's Doer if the given Val is a Promise
   if typevim#value#IsType(a:Val, s:typename)
+    call l:self['__doer'].ClearReferences()
     let l:self['__doer'] = a:Val['__doer']
   else
     let l:self['__value'] = a:Val
@@ -252,7 +253,7 @@ function! typevim#Promise#Reject(Val) dict abort
     if l:was_handled  | let l:error_handler_exists = 1 | endif
   endfor
 
-  if !l:live_children_exist && !l:error_handler_exists && l:self._HadHandlers()
+  if !l:live_children_exist && !l:error_handler_exists
     call l:self.__Clear()
     call s:ThrowUnhandledReject(a:Val, l:self)
   endif
@@ -337,7 +338,7 @@ endfunction
 
 ""
 " @dict Promise
-" Return the current state of this Promise: `"pending"`, `"resolved"`, or
+" Return the current state of this Promise: `"pending"`, `"fulfilled"`, or
 " `"rejected"`.
 function! typevim#Promise#State() dict abort
   call s:TypeCheck(l:self)
