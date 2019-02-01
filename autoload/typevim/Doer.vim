@@ -20,9 +20,9 @@ function! typevim#Doer#New() abort
   let l:new = {
       \ 'SetCallbacks': typevim#make#Member('SetCallbacks'),
       \ 'StartDoing': typevim#make#Member('StartDoing'),
-      \ 'Resolve': typevim#object#AbstractFunc(
+      \ 'Resolve': typevim#make#AbstractFunc(
           \ s:typename, 'Resolve_not_yet_set', ['Val']),
-      \ 'Reject': typevim#object#AbstractFunc(
+      \ 'Reject': typevim#make#AbstractFunc(
           \ s:typename, 'Reject_not_yet_set', ['Val']),
       \ }
   return typevim#make#Class(s:typename, l:new)
@@ -44,6 +44,7 @@ function! typevim#Doer#SetCallbacks(Resolve, Reject) dict abort
 endfunction
 
 ""
+" @private
 " @dict Doer
 " Do nothing.
 function! typevim#Doer#StartDoing() dict abort

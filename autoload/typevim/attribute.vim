@@ -1,7 +1,6 @@
 ""
 " @section Reserved Attributes, reserved
 " @parentsection make
-"
 " Reserved attributes are properties of TypeVim objects that are "reserved" by
 " TypeVim for "bookkeeping." These include the attributes used for tracking an
 " object's dynamic type, its class hierarchy, its order of destructor calls,

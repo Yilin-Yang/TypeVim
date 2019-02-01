@@ -7,11 +7,11 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
 
   let l:new = {
       \ 'GetVal': typevim#make#Member('GetVal'),
-      \ 'SmallVirtual': typevim#object#AbstractFunc(
+      \ 'SmallVirtual': typevim#make#AbstractFunc(
           \ s:typename, 'BasicVirtual', ['foo']),
-      \ 'MediumVirtual': typevim#object#AbstractFunc(
+      \ 'MediumVirtual': typevim#make#AbstractFunc(
           \ s:typename, 'MediumVirtual', ['foo', 'boo', '[roo]']),
-      \ 'BigVirtual': typevim#object#AbstractFunc(
+      \ 'BigVirtual': typevim#make#AbstractFunc(
           \ s:typename, 'BigVirtual', ['foo', 'boo', '[roo]', '...']),
       \ }
 

@@ -2,19 +2,19 @@
 " @section Introduction, intro
 " @stylized TypeVim
 " @library
-" @order intro functions make
-" A library providing a crude, JavaScript-esque class system in vimscript.
+" @order intro summary functions dicts make
+" A library providing a prototype-based class system in VimL.
 "
-" vimscript allows users to assign Funcrefs into a dictionary; these functions,
-" if declared with the |[dict]| attribute, will be able to access and modify
+" VimL allows users to assign Funcrefs into a dictionary; these |function|s,
+" if declared with the |dict| attribute, will be able to access and modify
 " their "owner" dictionary through a variable (`l:self`) accessible from
 " within their function body. This allows for object-oriented programming
 " (OOP).
 "
-" Unfortunately, vimscript does not provide for safe and convenient OOP. It
-" lacks inbuilt type checking (like what the TypeScript compiler might
-" provide), for instance. It also lacks explicit support for OOP features like
-" polymorphism.
+" Unfortunately, VimL provides few of the "quality-of-life" features that make
+" OOP powerful. It lacks type safety, for instance, and lacks explicit support
+" for OOP features like polymorphism. Implementing these features in VimL is
+" possible, but involves a great deal of boilerplate.
 "
 " TypeVim is meant to provide a sensible, standardized framework for "native"
-" object-oriented programming in vimscript.
+" object-oriented programming in VimL.

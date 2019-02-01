@@ -139,20 +139,20 @@ endfunction
 " Example inputs and outputs:
 " >
 "   function! Foo() abort
-  "   " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
-  "
-  "   " echoes 'Foo', the name of the calling function
-  "   echo typevim#value#GetStackFrame(0)
-  "
-  "   " echoes '<SNR>215_ScriptFunc'
-  "   echo typevim#value#GetStackFrame(1)
-  "
-  "   " echoes 'MainFunc'
-  "   echo typevim#value#GetStackFrame(2)
-  "
-  "   " ERROR(NotFound)
-  "   echo typevim#value#GetStackFrame(3)
-  " endfunction
+"     " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
+"
+"     " echoes 'Foo', the name of the calling function
+"     echo typevim#value#GetStackFrame(0)
+"
+"     " echoes '<SNR>215_ScriptFunc'
+"     echo typevim#value#GetStackFrame(1)
+"
+"     " echoes 'MainFunc'
+"     echo typevim#value#GetStackFrame(2)
+"
+"     " ERROR(NotFound)
+"     echo typevim#value#GetStackFrame(3)
+"   endfunction
 " <
 "
 " @default funcname=""

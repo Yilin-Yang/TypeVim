@@ -4,6 +4,12 @@
 " meant to be invoked from within an object's constructor.
 
 ""
+" Returns the script number of this file. Taken from vim's docs.
+function! s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
+endfun
+
+""
 " @section Declaring a Class, basic_decl
 " @parentsection make
 " In general, to declare a new class, one should:
@@ -18,7 +24,7 @@
 " Unless you have a good reason not to, all of `ExampleClass`'s relevant
 " functions should be declared in `ExampleClass.vim`. This has the benefit of
 " placing all of `ExampleClass`'s function definitions in an appropriate
-" "namespace": based on vim's naming rules for autoload scripts (see `:help
+" "namespace". Based on vim's naming rules for autoload scripts (see `:help
 " autoload`), a function in `ExampleClass.vim` named `Foo()` will be invocable
 " through `:call myplugin#ExampleClass#Foo()`."
 "
@@ -91,7 +97,79 @@
 " @section Declaring a Derived Class (Polymorphism), poly_decl
 " @parentsection make
 "
-" TODO
+" Declaring a derived class is extremely similar to declaring a class
+" normally: the main difference is that, in a derived class's constructor, one
+" only has to specify (in addition to the derived class's member variables and
+" functions) the base class functions that it overrides.
+"
+" Say that we're declaring a `DerivedClass` that inherits from the
+" `ExampleClass` declared in @section(basic_decl). We could write:
+" >
+"   " in myplugin/autoload/myplugin/DerivedClass.vim
+"   function! myplugin#DerivedClass#New(mem_var) abort
+"     call maktaba#ensure#IsString(a:mem_var)
+"
+"     let l:derived_prototype = {
+"         \ '__mem_var': a:mem_var,
+"         \ 'PublicFunction':
+"             \ typevim#PrefixFunc('OverridesPublicFunction'),
+"         \ 'DerivedClassFunc':
+"             \ typevim#PrefixFunc('DerivedClassFunc'),
+"         \ }
+"
+"     return typevim#make#Derived(
+"         \ 'DerivedClass', myplugin#ExampleClass#New(), l:example_prototype)
+"   endfunction
+" <
+"
+" This will return an object having `__mem_var`, a member function called
+" `DerivedClassFunc()`, and all of `ExampleObject`'s functions and member
+" variables; `ExampleObject`'s `PublicFunction`, however, would be overridden
+" with `function! myplugin#DerivedClass#OverridesPublicFunction()`.
+"
+" TypeVim class hierarchies can have arbitrary depth, but TypeVim does not
+" support multiple inheritance: every type must have at most one immediate
+" parent type.
+"
+" @subsection Pure Virtual Functions
+" It is possible to define pure virtual functions in TypeVim classes. These
+" functions are "skeletons" that let you define the virtual function's
+" interface, but which must be overridden to actually be used.
+"
+" Say that we wanted `ExampleClass#PublicFunction` to be pure virtual. We
+" could write:
+" >
+"   " in myplugin/autoload/myplugin/ExampleClass.vim
+"   function! myplugin#ExampleClass#New(num1, str2, ...) abort
+"     " ...
+"     let l:example_prototype = {
+"         " ...
+"         \ 'PublicFunction':
+"             \ typevim#make#AbstractFunc(
+"                 \ 'ExampleClass', 'PublicFunction', []),
+"         \ }
+"
+"     return typevim#make#Class(l:example_prototype)
+"   endfunction
+" <
+"
+" Like @function(typevim#make#Member), @function(typevim#make#AbstractFunc)
+" returns a |Funcref|. However, it returns a Funcref to a special,
+" script-local "skeletal function": on invocation, this function will either
+" throw ERROR(InvalidArguments) (or the VimL equivalents) when called with the
+" wrong number of arguments, or throw `ERROR(NotImplemented)` if called with
+" appropriate arguments.
+"
+" The final `[]` in the call to `AbstractFunc` is an arguments list, which can
+" contain named arguments, optional arguments and a variable-length argslist.
+" See @function(typevim#make#AbstractFunc) for more details.
+"
+" @subsection Clobbering Base Class Member Variables
+" Note that you cannot override a base class's member variables in
+" `DerivedClass` unless you set {clobber_base_vars} when calling
+" @function(typevim#make#Derived). This to prevent bugs from accidentally
+" declaring a member variable in the derived class that was already declared
+" and used in the base class.
 
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
@@ -269,16 +347,17 @@ endfunction
 " TypeVim objects. Instead of long, explicit assignments like,
 " >
 "   " ~/.vim/bundle/myplugin/autoload
-"   function! myplugin#subdirectory#LongClassName##New() abort
+"   function! myplugin#subdirectory#LongClassName#New() abort
 "     " ...
 "     let l:new = {
 "       " ...
-"       \ 'DoAThing': function('myplugin#subdirectory#LongClassName##DoAThing'),
+"       \ 'DoAThing':
+"           \ function('myplugin#subdirectory#LongClassName#DoAThing'),
 "     " ...
 "     return typevim#make#Class(l:new)
 "   endfunction
 "
-"   function! myplugin#subdirectory#LongClassName##DoAThing() dict abort
+"   function! myplugin#subdirectory#LongClassName#DoAThing() dict abort
 "     " ...
 " <
 "
@@ -307,4 +386,118 @@ function! typevim#make#Member(funcname) abort
   endif
 
   return function(l:prefix.'#'.a:funcname)
+endfunction
+
+""
+" Returns a Partial, assignable into an object with type {typename}, standing
+" in for a function named {funcname}, that takes in arguments with the names
+" given in {parameters}.
+"
+" To specify optional parameters, enclose the parameter name in square
+" brackets. To specify that a variable number of arguments are acceptable,
+" write "...".
+"
+" Example invocation:
+" >
+"   let l:new['PureVirtualFunc'] = typevim#make#AbstractFunc(
+"         \ 'ExampleObject`, 'exampleMethod', '['arg1', '[optional1]', '...'])
+" <
+"
+" An argument list, if specified, must come after all other parameters named.
+" Optional parameters, if specified, must come after all non-optional
+" parameters, if any.
+"
+" Parameters names must be strings and cannot be empty strings, and must be
+" valid identifiers (see @function(typevim#value#IsValidIdentifier)). They
+" must also be unique.
+"
+" The returned function, when invoked, will throw: ERROR(InvalidArguments) if
+" given the wrong number of arguments (and if Vim itself doesn't throw an
+" "|E116|: Invalid arguments for function" exception or an "|E119|: Not enough
+" arguments for function" exception); or an ERROR(NotImplemented), if the
+" given arguments are valid.
+"
+" If the number of arguments is correct, the returned function will throw an
+" exception saying that it is an unimplemented virtual function
+" @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
+" @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
+function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
+  call typevim#ensure#IsValidTypename(a:typename)
+  call typevim#ensure#IsValidIdentifier(a:funcname)
+  call maktaba#ensure#IsList(a:parameters)
+  let l:named = []
+  let l:opt_named = []
+  let l:opt_arglist = []
+
+  for l:param in a:parameters
+    if !maktaba#value#IsString(l:param)
+      throw maktaba#error#WrongType(
+          \ 'Specified a non-string parameter "%s" in parameter list: %s',
+          \ typevim#object#ShallowPrint(l:param),
+          \ typevim#object#ShallowPrint(a:parameters))
+    elseif empty(l:param) || l:param ==# '[]'
+      throw maktaba#error#BadValue(
+          \ 'Gave an empty string when naming a param in parameter list: %s',
+          \ typevim#object#ShallowPrint(a:parameters))
+    endif
+    if !empty(l:opt_arglist)
+        throw maktaba#error#BadValue(
+            \ 'Specified a parameter "%s" after the optional argslist in '
+            \ .'parameter list: %s',
+            \ l:param, typevim#object#ShallowPrint(a:parameters))
+    endif
+    if l:param ==# '...'
+      call add(l:opt_arglist, l:param)
+      continue
+    endif
+
+    if l:param[0] ==# '[' && l:param[len(l:param) - 1] ==# ']'
+      let l:param_id = l:param[1:-2]
+      call typevim#ensure#IsValidIdentifier(l:param_id)
+      call add(l:opt_named, l:param_id)
+    else
+      if !empty(l:opt_named)
+        throw maktaba#error#BadValue(
+            \ 'Specified a parameter "%s" after the optional parameter "%s" in '
+              \ .'parameter list: %s',
+            \ l:param, l:opt_named[-1],
+            \ typevim#object#ShallowPrint(a:parameters))
+      endif
+      call typevim#ensure#IsValidIdentifier(l:param)
+      call add(l:named, l:param)
+    endif
+  endfor
+
+  let l:uniq_names = {}
+  let l:all_named = l:named + l:opt_named
+  for l:name in l:all_named
+    if has_key(l:uniq_names, l:name)
+      throw maktaba#error#BadValue(
+          \ 'Specified a parameter name "%s" twice in parameter list: %s',
+          \ l:name, typevim#object#ShallowPrint(a:parameters))
+    endif
+    let l:uniq_names[l:name] = 1
+  endfor
+
+  if empty(l:opt_named) && empty(l:opt_arglist)
+    let l:ellipsis = []
+  else
+    let l:ellipsis = ['...']
+  endif
+  let l:param_list = join(l:named + l:ellipsis, ', ')
+  let l:script_funcname = a:typename.'_'.a:funcname.'_NotImplemented'
+  let l:argnum_cond =
+      \ empty(l:opt_arglist) ? 'a:0 ># '.len(l:opt_named) : '1 ==# 0'
+  let l:decl = 'function! s:'.l:script_funcname.'('.l:param_list.") abort\n"
+      \ . '  if '.l:argnum_cond."\n"
+      \ . '    throw maktaba#error#InvalidArguments("Too many optional '
+      \ .              'arguments (Expected %d or fewer, got %d)", '
+      \ .              len(l:opt_named).', a:0)'."\n"
+      \ . '  endif'."\n"
+      \ . '  throw maktaba#error#NotImplemented("Invoked pure virtual '
+      \ .           'function: %s", "'.a:funcname.'")'."\n"
+      \ . 'endfunction'
+  " echoerr l:decl
+  execute l:decl
+  return function('<SNR>'.s:SID().'_'.l:script_funcname)
 endfunction

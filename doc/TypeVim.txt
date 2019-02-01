@@ -4,9 +4,12 @@ Yilin Yang <yiliny@umich.edu>                              *TypeVim* *TypeVim*
 ==============================================================================
 CONTENTS                                                    *TypeVim-contents*
   1. Introduction..............................................|TypeVim-intro|
-  2. Configuration............................................|TypeVim-config|
-  3. Dictionaries..............................................|TypeVim-dicts|
-  4. Functions.............................................|TypeVim-functions|
+  2. Summary.................................................|TypeVim-summary|
+      1. Differences from Traditional OOP................|TypeVim-differences|
+      2. Sugar.................................................|TypeVim-sugar|
+      3. Type Information.......................................|TypeVim-type|
+  3. Functions.............................................|TypeVim-functions|
+  4. Dictionaries..............................................|TypeVim-dicts|
   5. Class Definitions..........................................|TypeVim-make|
       1. Declaring a Class................................|TypeVim-basic_decl|
       2. Declaring a Derived Class (Polymorphism)..........|TypeVim-poly_decl|
@@ -15,31 +18,408 @@ CONTENTS                                                    *TypeVim-contents*
 ==============================================================================
 INTRODUCTION                                                   *TypeVim-intro*
 
-A library providing a crude, JavaScript-esque class system in vimscript.
+A library providing a prototype-based class system in VimL.
 
-vimscript allows users to assign Funcrefs into a dictionary; these functions,
-if declared with the |[dict]| attribute, will be able to access and modify
-their "owner" dictionary through a variable (`l:self`) accessible from within
-their function body. This allows for object-oriented programming (OOP).
+VimL allows users to assign Funcrefs into a dictionary; these |function|s, if
+declared with the |dict| attribute, will be able to access and modify their
+"owner" dictionary through a variable (`l:self`) accessible from within their
+function body. This allows for object-oriented programming (OOP).
 
-Unfortunately, vimscript does not provide for safe and convenient OOP. It
-lacks inbuilt type checking (like what the TypeScript compiler might provide),
-for instance. It also lacks explicit support for OOP features like
-polymorphism.
+Unfortunately, VimL provides few of the "quality-of-life" features that make
+OOP powerful. It lacks type safety, for instance, and lacks explicit support
+for OOP features like polymorphism. Implementing these features in VimL is
+possible, but involves a great deal of boilerplate.
 
 TypeVim is meant to provide a sensible, standardized framework for "native"
-object-oriented programming in vimscript.
+object-oriented programming in VimL.
 
 ==============================================================================
-CONFIGURATION                                                 *TypeVim-config*
+SUMMARY                                                      *TypeVim-summary*
 
-This plugin uses maktaba flags for configuration. Install Glaive
-(https://github.com/google/glaive) and use the |:Glaive| command to configure
-them.
+TypeVim is not a classical (no pun intended) "class-based" OOP system. TypeVim
+is built using VimL's |Dictionary-function|s, which allows for "piecemeal"
+construction of objects by assigning |Funcref|s, |Partial|s, and other
+variables into |Dictionaries|.
 
-                                                       *TypeVim:plugin[flags]*
-Configures whether plugin/flags.vim should be loaded.
-Default: 1 `
+==============================================================================
+DIFFERENCES FROM TRADITIONAL OOP                         *TypeVim-differences*
+
+TypeVim is not a classical (no pun intended) "class-based" OOP system. TypeVim
+is built using VimL's |Dictionary-function|s, which allows for "piecemeal"
+construction of objects by assigning |Funcref|s, |Partial|s, and other
+variables into |Dictionaries|.
+
+"NATIVE" VIMSCRIPT CLASSES
+VimL does not provide for explicit class declarations, like C++ or Java; it is
+much more akin to the type system used in languages like JavaScript. To
+declare a "class," one must declare a function ("constructor") that creates a
+dict and assigns into it the class's member functions and variables: these
+dicts are called *prototypes*. The constructor returns copies of these
+prototypes as initialized "class instances."
+
+"Native" (i.e. non-TypeVim) VimL Class instances will lack type information
+(like the name of its class) unless assigned such information explicitly, and
+nothing prevents the programmer from altering its interface at runtime: by
+deleting member functions, altering them, redeclaring them, or adding new ones
+entirely.  This allows for JavaScript-esque monkey-patching at runtime, but
+can make it difficult to enforce type safety or preserve class invariants.
+
+INHERITANCE
+Inheritance, however, is concatenative; "derived classes" are just base class
+prototypes with new (or overwritten) member functions and variables. VimL (as
+far as I know) does not support behavior delegation, nor does it actually
+support JavaScript-esque `[[Prototype]]` chains. An object has, at
+construction, all of the class members that it will ever have, unless the user
+decides to explicitly alter that object's members at runtime.
+
+CLEAN-UPPERS
+Prototype-based type systems, like JavaScript's, generally lack formal
+C++-style destructors; the same is true of VimL, and TypeVim by extension. Vim
+has its own |garbagecollect()|or that it uses for managing object lifetimes.
+This eliminates the need for explicit C++-style memory management on the
+programmer's end, but also prevents automatic, customizable RAII-style
+destruction when a variable "leaves scope."
+
+For this reason, TypeVim does not support user-declared destructors: instead,
+it offers "clean-uppers." Like destructors, clean-uppers perform "end-of-life"
+cleanup for an object (e.g. clearing |augroup|s and mappings), but unlike
+destructors: (1) they must be called explicitly; and (2) they do not actually
+destroy the object. Different clean-uppers can be declared at different points
+in a class hierarchy: when calling a class instance's `CleanUp()` function,
+those clean-uppers will be called in reverse order, going from the most
+derived class up to the base class.
+
+==============================================================================
+SUGAR                                                          *TypeVim-sugar*
+
+TypeVim also provides additional "sugar" meant to make OOP easier. As of the
+time of writing, this includes: pretty printers (like
+|typevim#object#PrettyPrint()| and |typevim#object#ShallowPrint()|) for
+printing objects in human-readable fashion; and the |TypeVim.Promise|
+datatype.
+
+==============================================================================
+TYPE INFORMATION                                                *TypeVim-type*
+
+TypeVim objects are |dictionaries| annotated with a TYPE attribute. As of the
+time of writing, this is a |list| containing all of the object's typenames,
+ordered from the base class (at index zero) to the most derived class (at the
+end of the list). This list should not be modified directly.
+
+Declaring a class in TypeVim is done using helper functions:
+|typevim#make#Class()| for base classes, and |typevim#make#Derived()| for
+derived classes. The class's typename is a |string| that gets passed to these
+functions in the class's constructor. See |TypeVim-make| for more details.
+
+Users can check whether a TypeVim object is an instance of a particular type
+using |typevim#value#IsType()|, or assert the same using
+|typevim#ensure#IsType()|. Checking whether a given value is a TypeVim object
+at all is done using |typevim#value#IsValidObject()|, or the analogous
+function from the `ensure` namespace.
+
+==============================================================================
+FUNCTIONS                                                  *TypeVim-functions*
+
+typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
+  Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
+  along with the reason it's not a valid typename; otherwise, does nothing.
+
+  Returns the given {typename} for convenience.
+
+  Throws ERROR(WrongType) if the given {typename} is not a string.
+
+typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
+  Throws an ERROR(BadValue) if the given {id} is not a valid identifier, along
+  with the reason it's not a valid identifier; otherwise, does nothing.
+
+  Returns the given {id} for convenience.
+
+  Throws ERROR(WrongType) if the given {id} is not a string.
+
+typevim#ensure#IsValidObject({Val})           *typevim#ensure#IsValidObject()*
+  Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
+
+  Returns {Val} for convenience.
+
+typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
+  Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
+  {typename}.
+
+  Returns {Obj} for convenience.
+
+  Throws ERROR(WrongType) if {Obj} is not a dict or {typename} is not a
+  string.
+
+typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
+  Return a "typevim-configured" instance of a class. Meant to be called from
+  inside a type's constructor, where it will take a {prototype} dictionary
+  (containing member functions and member variables), annotate it with type
+  information, and perform additional configuration (e.g. adding
+  clean-uppers).
+
+  {typename} is the name of the type being declared.
+
+  {prototype} is a dictionary object containing member variables (with default
+  values) and member functions, which might not be implemented.
+
+  [CleanUp] is an optional dictionary function that performs cleanup for the
+  object.
+
+  [CleanUp] is 0 if omitted.
+  Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
+  |typevim#value#IsValidTypename()|.
+  Throws ERROR(NotAuthorized) if {prototype} defines attributes that should've
+  been initialized by this function.
+  Throws ERROR(WrongType) if arguments don't have the types named above.
+
+typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
+  [clobber_base_vars])                                *typevim#make#Derived()*
+  Return a "prototypical" instance of a type that inherits from another. Meant
+  to be called from inside a type's constructor.
+
+  {typename} is the name of the derived type being declared.
+
+  {Parent} is either a Funcref to the base class constructor, or a base class
+  prototype. If arguments must be passed to said constructor, in the former
+  case, this should be a Partial.
+
+  {prototype} is a dictionary object containing member variables (with default
+  values) and member functions, which might be virtual. If the parent class
+  defines functions with the same name (i.e. same dictionary key), they will
+  be overridden with those of the {prototype}.
+
+  [CleanUp] is an optional dictionary function that performs cleanup for the
+  object. When invoked, defined clean-uppers will be called in reverse order,
+  i.e.  the "most derived" clean-upper will be called first, with the
+  "original" base class clean-upper being called last.
+
+  [clobber_base_vars] is a boolean flag that, if true, will allow member
+  variables of the base class to be overwritten by member variables of the
+  derived class being declared. This is discouraged, since direct access and
+  modification of base class member variables is generally considered bad
+  style.
+
+  [clobber_base_vars] is 0 if omitted.
+
+  Throws ERROR(BadValue) if {typename} is not a valid typename.
+  Throws ERROR(NotAuthorized) when the given {prototype} would redeclare a
+  non-Funcref member variable of the base class, and [clobber_base_vars] is
+  not 1.
+  Throws ERROR(WrongType) if arguments don't have the types named above.
+
+typevim#make#Member({funcname})                        *typevim#make#Member()*
+  Return a Funcref to the function with the name constructed by concatenating
+  the following: (1) the "autoload prefix" from which this function was called
+  (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim` the
+  prefix would be "myplugin#foo#"); (2) the given {funcname}.
+
+  This is meant as a convenience function to reduce boilerplate when declaring
+  TypeVim objects. Instead of long, explicit assignments like,
+>
+    " ~/.vim/bundle/myplugin/autoload
+    function! myplugin#subdirectory#LongClassName#New() abort
+      " ...
+      let l:new = {
+        " ...
+        \ 'DoAThing':
+            \ function('myplugin#subdirectory#LongClassName#DoAThing'),
+      " ...
+      return typevim#make#Class(l:new)
+    endfunction
+
+    function! myplugin#subdirectory#LongClassName#DoAThing() dict abort
+      " ...
+<
+
+  One can instead write,
+>
+      " ...
+      let l:new = {
+        " ...
+        \ 'DoAThing': typevim#make#Member('DoAThing'),
+      " ...
+<
+
+  Which is functionally equivalent.
+
+typevim#make#AbstractFunc({typename}, {funcname}, {parameters})
+                                                 *typevim#make#AbstractFunc()*
+  Returns a Partial, assignable into an object with type {typename}, standing
+  in for a function named {funcname}, that takes in arguments with the names
+  given in {parameters}.
+
+  To specify optional parameters, enclose the parameter name in square
+  brackets. To specify that a variable number of arguments are acceptable,
+  write "...".
+
+  Example invocation:
+>
+    let l:new['PureVirtualFunc'] = typevim#make#AbstractFunc(
+          \ 'ExampleObject`, 'exampleMethod', '['arg1', '[optional1]', '...'])
+<
+
+  An argument list, if specified, must come after all other parameters named.
+  Optional parameters, if specified, must come after all non-optional
+  parameters, if any.
+
+  Parameters names must be strings and cannot be empty strings, and must be
+  valid identifiers (see |typevim#value#IsValidIdentifier()|). They must also
+  be unique.
+
+  The returned function, when invoked, will throw: ERROR(InvalidArguments) if
+  given the wrong number of arguments (and if Vim itself doesn't throw an
+  "|E116|: Invalid arguments for function" exception or an "|E119|: Not enough
+  arguments for function" exception); or an ERROR(NotImplemented), if the
+  given arguments are valid.
+
+  If the number of arguments is correct, the returned function will throw an
+  exception saying that it is an unimplemented virtual function
+  Throws ERROR(BadValue) if {parameters} does not adhere to the requirements
+  above; or if {typename} s not a valid typename; or if {funcname} is not a
+  valid identifier.
+  Throws ERROR(WrongType) if {typename} isn't a string or {parameters} isn't a
+  list of strings.
+
+typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
+                                                       *typevim#object#Bind()*
+  Returns a Partial consisting of the given {Funcref} that is bound to this
+  particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
+  a:arglist, a:obj)`.
+
+  If the member function is already bound to an argslist, then [argslist] will
+  be appended to the function's current argslist.
+
+  If the {Funcref} function is already bound to a dict, throws an
+  ERROR(NotAuthorized) exception unless the dict and {obj} are the same
+  object; however, if [force_rebind] is 1, the bound dict will be replaced
+  with the given {obj}.
+
+  This function is comparable to the `bind()` method on class member functions
+  in JavaScript, and to the `std::bind()` function in the C++ standard
+  library. Its primary purpose is to extract a "self-contained" class member
+  Funcref that "remembers" its original `l:self`, even when it is assigned
+  into another object. (This is done frequently in asynchronous event-based
+  programming when passing callback functions.)
+
+  See `:help Partial` for an explanation of why it would be bad not to do
+  this. (In short, when a "non-bound" Funcref is assigned into another object,
+  then when that object calls it, every `l:self` variable in the Funcref's
+  definition will point to the NEW object, and NOT to the Funcref's original
+  `l:self`; that invocation will then modify that new object as if it were the
+  original `l:self`, even if it's of a different class entirely.)
+
+  Note that argument parameters affect the RETURNED Funcref, NOT the Funcref
+  that is given as an argument.
+>
+    " does NOT change obj.Method
+    call typevim#object#Bind(obj.Method, diff_obj)
+
+    " DOES change obj.Method
+    let obj.Method = typevim#object#Bind(obj.Method, diff_obj)
+<
+
+  Throws ERROR(NotAuthorized) if {Funcref} is already bound to a dict that is
+  not {obj} and [force_rebind] is 0.
+  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if {Funcref} is
+  not a Funcref, or if [arglist] is not a list.
+
+typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
+  Converts the given {object} into a string, suitable for error messages and
+  debug logging.
+
+  If it's already a string, encloses the string in quotes (useful when a
+  string is purely whitespace). If it's a TypeVim object or a dictionary, adds
+  newlines and tabs to make the resulting string human-readable.
+
+typevim#object#ShallowPrint({Obj}, [max_depth])
+                                               *typevim#object#ShallowPrint()*
+  Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
+  levels down into {Obj} if it's a collection or a Partial.
+
+  [max_depth] is 1 if omitted.
+  Throws ERROR(BadValue) if [max_depth] is negative.
+  Throws ERROR(WrongType) if [max_depth] is not a number.
+
+typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
+  Returns 1 when the given {typename} is valid, 0 otherwise.
+
+  A valid typename is a string of uppercase Latin letters, lowercase Latin
+  letters, numbers, and underscores. It must start with a capital letter, and
+  cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
+  etc.
+
+  {typename} cannot be an empty string, nor can it be a "reserved attribute".
+  See |TypeVim-reserved| for more details.
+
+typevim#value#IsValidIdentifier({id})      *typevim#value#IsValidIdentifier()*
+  Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
+
+  A valid identifier must meet the same requirements as a valid typename (see
+  |typevim#value#IsValidTypename()|), but can start with either a lowercase or
+  uppercase letter.
+
+typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
+  Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
+
+  A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
+  dictionary, whose keys are typenames (see |IsValidTypename()|) and whose
+  values can be anything, though it is suggested that they be an arbitrary
+  number (typically `1`).
+
+typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
+  Returns 1 when the given {Obj} is an instance of the type {typename}, and 0
+  otherwise.
+
+  Throws ERROR(BadValue) if {typename} isn't a valid typename.
+  Throws ERROR(WrongType) if {typename} isn't a string.
+
+typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
+  Returns 1 when the given object is a Partial (see `:help Partial`) and 0
+  otherwise.
+
+typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
+  If the Funcref {Func} is a Partial, decomposes {Func} into a four-element
+  list containing: first, the function name; second, the Funcref itself;
+  third, the bound arguments; and fourth, the bound dictionary. The latter two
+  elements can be empty if {Func} is not bound to arguments or a dictionary,
+  respectively.
+
+  Throws ERROR(WrongType) if {Func} is not a Funcref.
+
+typevim#value#GetStackFrame({num_levels_down}, [funcname])
+                                               *typevim#value#GetStackFrame()*
+  When invoked from a namespaced autoload function, return the name of the
+  function {num_levels_down} the callstack, e.g. if called with
+  {num_levels_down} = 2, get the callstack (as as string), strip this function
+  from its top, then strip the function that called this function from its
+  top, and then return the topmost function remaining
+
+  If [funcname] is provided, it will be prefixed with `"#"` and appended to
+  the returned string.
+
+  Example inputs and outputs:
+>
+    function! Foo() abort
+      " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
+
+      " echoes 'Foo', the name of the calling function
+      echo typevim#value#GetStackFrame(0)
+
+      " echoes '<SNR>215_ScriptFunc'
+      echo typevim#value#GetStackFrame(1)
+
+      " echoes 'MainFunc'
+      echo typevim#value#GetStackFrame(2)
+
+      " ERROR(NotFound)
+      echo typevim#value#GetStackFrame(3)
+    endfunction
+<
+
+  [funcname] is "" if omitted.
+  Throws ERROR(NotFound) if there is no stack frame {num_levels_down}.
+  Throws ERROR(WrongType) if {num_levels_down} is not a number or [funcname]
+  is not a string.
 
 ==============================================================================
 DICTIONARIES                                                   *TypeVim-dicts*
@@ -62,9 +442,6 @@ Doer.New()                                                        *Doer.New()*
 Doer.SetCallbacks({Resolve}, {Reject})                   *Doer.SetCallbacks()*
   Set {Resolve} and {Reject} callbacks on this Doer, to be called when this
   Doer resolves or rejects after doing its assigned task.
-
-Doer.StartDoing()                                          *Doer.StartDoing()*
-  Do nothing.
 
                                                              *TypeVim.Promise*
 A JavaScript-style Promise datatype for handling asynchronous operations.
@@ -210,315 +587,6 @@ Promise.Get()                                                  *Promise.Get()*
   Throws ERROR(NotFound) if this Resolve has not been resolved or rejected.
 
 ==============================================================================
-FUNCTIONS                                                  *TypeVim-functions*
-
-typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
-  Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
-  along with the reason it's not a valid typename; otherwise, does nothing.
-
-  Returns the given {typename} for convenience.
-
-  Throws ERROR(WrongType) if the given {typename} is not a string.
-
-typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
-  Throws an ERROR(BadValue) if the given {id} is not a valid identifier, along
-  with the reason it's not a valid identifier; otherwise, does nothing.
-
-  Returns the given {id} for convenience.
-
-  Throws ERROR(WrongType) if the given {id} is not a string.
-
-typevim#ensure#IsValidObject({Val})           *typevim#ensure#IsValidObject()*
-  Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
-
-  Returns {Val} for convenience.
-
-typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
-  Throws an ERROR(WrongType) if the given {Obj} is not an instance of the type
-  {typename}.
-
-  Returns {Obj} for convenience.
-
-  Throws ERROR(WrongType) if {Obj} is not a dict or {typename} is not a
-  string.
-
-typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
-  Return a "typevim-configured" instance of a class. Meant to be called from
-  inside a type's constructor, where it will take a {prototype} dictionary
-  (containing member functions and member variables), annotate it with type
-  information, and perform additional configuration (e.g. adding
-  clean-uppers).
-
-  {typename} is the name of the type being declared.
-
-  {prototype} is a dictionary object containing member variables (with default
-  values) and member functions, which might not be implemented.
-
-  [CleanUp] is an optional dictionary function that performs cleanup for the
-  object.
-
-  [CleanUp] is 0 if omitted.
-  Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
-  |typevim#value#IsValidTypename()|.
-  Throws ERROR(NotAuthorized) if {prototype} defines attributes that should've
-  been initialized by this function.
-  Throws ERROR(WrongType) if arguments don't have the types named above.
-
-typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
-  [clobber_base_vars])                                *typevim#make#Derived()*
-  Return a "prototypical" instance of a type that inherits from another. Meant
-  to be called from inside a type's constructor.
-
-  {typename} is the name of the derived type being declared.
-
-  {Parent} is either a Funcref to the base class constructor, or a base class
-  prototype. If arguments must be passed to said constructor, in the former
-  case, this should be a Partial.
-
-  {prototype} is a dictionary object containing member variables (with default
-  values) and member functions, which might be virtual. If the parent class
-  defines functions with the same name (i.e. same dictionary key), they will
-  be overridden with those of the {prototype}.
-
-  [CleanUp] is an optional dictionary function that performs cleanup for the
-  object. When invoked, defined clean-uppers will be called in reverse order,
-  i.e.  the "most derived" clean-upper will be called first, with the
-  "original" base class clean-upper being called last.
-
-  [clobber_base_vars] is a boolean flag that, if true, will allow member
-  variables of the base class to be overwritten by member variables of the
-  derived class being declared. This is discouraged, since direct access and
-  modification of base class member variables is generally considered bad
-  style.
-
-  [clobber_base_vars] is 0 if omitted.
-
-  Throws ERROR(BadValue) if {typename} is not a valid typename.
-  Throws ERROR(NotAuthorized) when the given {prototype} would redeclare a
-  non-Funcref member variable of the base class, and [clobber_base_vars] is
-  not 1.
-  Throws ERROR(WrongType) if arguments don't have the types named above.
-
-typevim#make#Member({funcname})                        *typevim#make#Member()*
-  Return a Funcref to the function with the name constructed by concatenating
-  the following: (1) the "autoload prefix" from which this function was called
-  (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim` the
-  prefix would be "myplugin#foo#"); (2) the given {funcname}.
-
-  This is meant as a convenience function to reduce boilerplate when declaring
-  TypeVim objects. Instead of long, explicit assignments like,
->
-    " ~/.vim/bundle/myplugin/autoload
-    function! myplugin#subdirectory#LongClassName##New() abort
-      " ...
-      let l:new = {
-        " ...
-        \ 'DoAThing':
-      function('myplugin#subdirectory#LongClassName##DoAThing'),
-      " ...
-      return typevim#make#Class(l:new)
-    endfunction
-
-    function! myplugin#subdirectory#LongClassName##DoAThing() dict abort
-      " ...
-<
-
-  One can instead write,
->
-      " ...
-      let l:new = {
-        " ...
-        \ 'DoAThing': typevim#make#Member('DoAThing'),
-      " ...
-<
-
-  Which is functionally equivalent.
-
-typevim#object#CleanUp()                            *typevim#object#CleanUp()*
-  "Default" "virtual" clean-upper, used when performing "clean-up" for a
-  derived class with multiple declared constructors. Calls clean-uppers in
-  reverse order, i.e.  from the most- to least-derived classes in the object's
-  class hierarchy.  @private
-
-typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
-                                                       *typevim#object#Bind()*
-  Returns a Partial consisting of the given {Funcref} that is bound to this
-  particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
-  a:arglist, a:obj)`.
-
-  If the member function is already bound to an argslist, then [argslist] will
-  be appended to the function's current argslist.
-
-  If the {Funcref} function is already bound to a dict, throws an
-  ERROR(NotAuthorized) exception unless the dict and {obj} are the same
-  object; however, if [force_rebind] is 1, the bound dict will be replaced
-  with the given {obj}.
-
-  This function is comparable to the `bind()` method on class member functions
-  in JavaScript, and to the `std::bind()` function in the C++ standard
-  library. Its primary purpose is to extract a "self-contained" class member
-  Funcref that "remembers" its original `l:self`, even when it is assigned
-  into another object. (This is done frequently in asynchronous event-based
-  programming when passing callback functions.)
-
-  See `:help Partial` for an explanation of why it would be bad not to do
-  this. (In short, when a "non-bound" Funcref is assigned into another object,
-  then when that object calls it, every `l:self` variable in the Funcref's
-  definition will point to the NEW object, and NOT to the Funcref's original
-  `l:self`; that invocation will then modify that new object as if it were the
-  original `l:self`, even if it's of a different class entirely.)
-
-  Note that argument parameters affect the RETURNED Funcref, NOT the Funcref
-  that is given as an argument.
->
-    " does NOT change obj.Method
-    call typevim#object#Bind(obj.Method, diff_obj)
-
-    " DOES change obj.Method
-    let obj.Method = typevim#object#Bind(obj.Method, diff_obj)
-<
-
-  Throws ERROR(NotAuthorized) if {Funcref} is already bound to a dict that is
-  not {obj} and [force_rebind] is 0.
-  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if {Funcref} is
-  not a Funcref, or if [arglist] is not a list.
-
-typevim#object#AbstractFunc({typename}, {funcname}, {parameters})
-                                               *typevim#object#AbstractFunc()*
-  Returns a Partial, assignable into an object with type {typename}, standing
-  in for a function named {funcname}, that takes in arguments with the names
-  given in {parameters}.
-
-  To specify optional parameters, enclose the parameter name in square
-  brackets. To specify that a variable number of arguments are acceptable,
-  write "...".
-
-  Example invocation:
->
-    let l:new['PureVirtualFunc'] = typevim#object#Virtual(
-          \ 'ExampleObject`, 'exampleMethod', '['arg1', '[optional1]', '...'])
-<
-
-  An argument list, if specified, must come after all other parameters named.
-  Optional parameters, if specified, must come after all non-optional
-  parameters, if any.
-
-  Parameters names must be strings and cannot be empty strings, and must be
-  valid identifiers (see |typevim#value#IsValidIdentifier()|). They must also
-  be unique.
-
-  The returned function, when invoked, will throw ERROR(InvalidArguments) if
-  given the wrong number of arguments (and if Vim itself doesn't throw an
-  "|E116|: Invalid arguments for function" exception or an "|E119|: Not enough
-  arguments for function" exception).
-
-  If the number of arguments is correct, the returned function will throw an
-  exception saying that it is an unimplemented virtual function
-  Throws ERROR(BadValue) if {parameters} does not adhere to the requirements
-  above; or if {typename} s not a valid typename; or if {funcname} is not a
-  valid identifier.
-  Throws ERROR(WrongType) if {typename} isn't a string or {parameters} isn't a
-  list of strings.
-
-typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
-  Converts the given {object} into a string, suitable for error messages and
-  debug logging.
-
-  If it's already a string, encloses the string in quotes (useful when a
-  string is purely whitespace). If it's a TypeVim object or a dictionary, adds
-  newlines and tabs to make the resulting string human-readable.
-
-typevim#object#ShallowPrint({Obj}, [max_depth])
-                                               *typevim#object#ShallowPrint()*
-  Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
-  levels down into {Obj} if it's a collection or a Partial.
-
-  [max_depth] is 1 if omitted.
-  Throws ERROR(BadValue) if [max_depth] is negative.
-  Throws ERROR(WrongType) if [max_depth] is not a number.
-
-typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
-  Returns 1 when the given {typename} is valid, 0 otherwise.
-
-  A valid typename is a string of uppercase Latin letters, lowercase Latin
-  letters, numbers, and underscores. It must start with a capital letter, and
-  cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
-  etc.
-
-  {typename} cannot be an empty string, nor can it be a "reserved attribute".
-  See |TypeVim-reserved| for more details.
-
-typevim#value#IsValidIdentifier({id})      *typevim#value#IsValidIdentifier()*
-  Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
-
-  A valid identifier must meet the same requirements as a valid typename (see
-  |typevim#value#IsValidTypename()|), but can start with either a lowercase or
-  uppercase letter.
-
-typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
-  Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
-
-  A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
-  dictionary, whose keys are typenames (see |IsValidTypename()|) and whose
-  values can be anything, though it is suggested that they be an arbitrary
-  number (typically `1`).
-
-typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
-  Returns 1 when the given {Obj} is an instance of the type {typename}, and 0
-  otherwise.
-
-  Throws ERROR(BadValue) if {typename} isn't a valid typename.
-  Throws ERROR(WrongType) if {typename} isn't a string.
-
-typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
-  Returns 1 when the given object is a Partial (see `:help Partial`) and 0
-  otherwise.
-
-typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
-  If the Funcref {Func} is a Partial, decomposes {Func} into a four-element
-  list containing: first, the function name; second, the Funcref itself;
-  third, the bound arguments; and fourth, the bound dictionary. The latter two
-  elements can be empty if {Func} is not bound to arguments or a dictionary,
-  respectively.
-
-  Throws ERROR(WrongType) if {Func} is not a Funcref.
-
-typevim#value#GetStackFrame({num_levels_down}, [funcname])
-                                               *typevim#value#GetStackFrame()*
-  When invoked from a namespaced autoload function, return the name of the
-  function {num_levels_down} the callstack, e.g. if called with
-  {num_levels_down} = 2, get the callstack (as as string), strip this function
-  from its top, then strip the function that called this function from its
-  top, and then return the topmost function remaining
-
-  If [funcname] is provided, it will be prefixed with `"#"` and appended to
-  the returned string.
-
-  Example inputs and outputs:
->
-    function! Foo() abort
-    " current callstack: function MainFunc[2]..<SNR>215_ScriptFunc[1]..Foo
-
-    " echoes 'Foo', the name of the calling function
-    echo typevim#value#GetStackFrame(0)
-
-    " echoes '<SNR>215_ScriptFunc'
-    echo typevim#value#GetStackFrame(1)
-
-    " echoes 'MainFunc'
-    echo typevim#value#GetStackFrame(2)
-
-    " ERROR(NotFound)
-    echo typevim#value#GetStackFrame(3)
-<
-  endfunction <
-
-  [funcname] is "" if omitted.
-  Throws ERROR(NotFound) if there is no stack frame {num_levels_down}.
-  Throws ERROR(WrongType) if {num_levels_down} is not a number or [funcname]
-  is not a string.
-
-==============================================================================
 CLASS DEFINITIONS                                               *TypeVim-make*
 
 TypeVim offers helper functions for defining new object types. These are meant
@@ -539,7 +607,7 @@ First, create a "namespaced" *.vim file for this class, i.e. a file in:
 Unless you have a good reason not to, all of `ExampleClass`'s relevant
 functions should be declared in `ExampleClass.vim`. This has the benefit of
 placing all of `ExampleClass`'s function definitions in an appropriate
-"namespace": based on vim's naming rules for autoload scripts (see `:help
+"namespace". Based on vim's naming rules for autoload scripts (see `:help
 autoload`), a function in `ExampleClass.vim` named `Foo()` will be invocable
 through `:call myplugin#ExampleClass#Foo()`."
 
@@ -610,11 +678,82 @@ Finally, test your class, or just start using it!
 DECLARING A DERIVED CLASS (POLYMORPHISM)                   *TypeVim-poly_decl*
 
 
-TODO
+Declaring a derived class is extremely similar to declaring a class normally:
+the main difference is that, in a derived class's constructor, one only has to
+specify (in addition to the derived class's member variables and functions)
+the base class functions that it overrides.
+
+Say that we're declaring a `DerivedClass` that inherits from the
+`ExampleClass` declared in |TypeVim-basic_decl|. We could write:
+>
+  " in myplugin/autoload/myplugin/DerivedClass.vim
+  function! myplugin#DerivedClass#New(mem_var) abort
+    call maktaba#ensure#IsString(a:mem_var)
+
+    let l:derived_prototype = {
+        \ '__mem_var': a:mem_var,
+        \ 'PublicFunction':
+            \ typevim#PrefixFunc('OverridesPublicFunction'),
+        \ 'DerivedClassFunc':
+            \ typevim#PrefixFunc('DerivedClassFunc'),
+        \ }
+
+    return typevim#make#Derived(
+        \ 'DerivedClass', myplugin#ExampleClass#New(), l:example_prototype)
+  endfunction
+<
+
+This will return an object having `__mem_var`, a member function called
+`DerivedClassFunc()`, and all of `ExampleObject`'s functions and member
+variables; `ExampleObject`'s `PublicFunction`, however, would be overridden
+with `function! myplugin#DerivedClass#OverridesPublicFunction()`.
+
+TypeVim class hierarchies can have arbitrary depth, but TypeVim does not
+support multiple inheritance: every type must have at most one immediate
+parent type.
+
+PURE VIRTUAL FUNCTIONS
+It is possible to define pure virtual functions in TypeVim classes. These
+functions are "skeletons" that let you define the virtual function's
+interface, but which must be overridden to actually be used.
+
+Say that we wanted `ExampleClass#PublicFunction` to be pure virtual. We could
+write:
+>
+  " in myplugin/autoload/myplugin/ExampleClass.vim
+  function! myplugin#ExampleClass#New(num1, str2, ...) abort
+    " ...
+    let l:example_prototype = {
+        " ...
+        \ 'PublicFunction':
+            \ typevim#make#AbstractFunc(
+                \ 'ExampleClass', 'PublicFunction', []),
+        \ }
+
+    return typevim#make#Class(l:example_prototype)
+  endfunction
+<
+
+Like |typevim#make#Member()|, |typevim#make#AbstractFunc()| returns a
+|Funcref|. However, it returns a Funcref to a special, script-local "skeletal
+function": on invocation, this function will either throw
+ERROR(InvalidArguments) (or the VimL equivalents) when called with the wrong
+number of arguments, or throw `ERROR(NotImplemented)` if called with
+appropriate arguments.
+
+The final `[]` in the call to `AbstractFunc` is an arguments list, which can
+contain named arguments, optional arguments and a variable-length argslist.
+See |typevim#make#AbstractFunc()| for more details.
+
+CLOBBERING BASE CLASS MEMBER VARIABLES
+Note that you cannot override a base class's member variables in
+`DerivedClass` unless you set {clobber_base_vars} when calling
+|typevim#make#Derived()|. This to prevent bugs from accidentally declaring a
+member variable in the derived class that was already declared and used in the
+base class.
 
 ==============================================================================
 RESERVED ATTRIBUTES                                         *TypeVim-reserved*
-
 
 Reserved attributes are properties of TypeVim objects that are "reserved" by
 TypeVim for "bookkeeping." These include the attributes used for tracking an
