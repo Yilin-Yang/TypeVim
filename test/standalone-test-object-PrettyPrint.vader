@@ -189,7 +189,7 @@ Execute (typevim#object#PrettyPrint: Primitive Object):
 Expect:
 
   OBJECT: {
-    "Destroy": function('<lambda>1'),
+    "CleanUp": function('<lambda>1'),
     "GetVal": function('TestBase#GetVal'),
     "SetVal": function('TestBase#SetVal'),
     "StringifyVals": function('TestBase#StringifyVals'),

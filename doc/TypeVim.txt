@@ -242,29 +242,29 @@ typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
   Throws ERROR(WrongType) if {Obj} is not a dict or {typename} is not a
   string.
 
-typevim#make#Class({typename}, {prototype}, [Destructor])
-                                                        *typevim#make#Class()*
+typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
   Return a "typevim-configured" instance of a class. Meant to be called from
   inside a type's constructor, where it will take a {prototype} dictionary
   (containing member functions and member variables), annotate it with type
-  information, and perform additional configuration (e.g. adding destructors).
+  information, and perform additional configuration (e.g. adding
+  clean-uppers).
 
   {typename} is the name of the type being declared.
 
   {prototype} is a dictionary object containing member variables (with default
   values) and member functions, which might not be implemented.
 
-  [Destructor] is an optional dictionary function that performs cleanup for
-  the object.
+  [CleanUp] is an optional dictionary function that performs cleanup for the
+  object.
 
-  [Destructor] is 0 if omitted.
+  [CleanUp] is 0 if omitted.
   Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
   |typevim#value#IsValidTypename()|.
   Throws ERROR(NotAuthorized) if {prototype} defines attributes that should've
   been initialized by this function.
   Throws ERROR(WrongType) if arguments don't have the types named above.
 
-typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor],
+typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   [clobber_base_vars])                                *typevim#make#Derived()*
   Return a "prototypical" instance of a type that inherits from another. Meant
   to be called from inside a type's constructor.
@@ -280,10 +280,10 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [Destructor],
   defines functions with the same name (i.e. same dictionary key), they will
   be overridden with those of the {prototype}.
 
-  [Destructor] is an optional dictionary function that performs cleanup for
-  the object. On destruction, defined destructors will be called in reverse
-  order, i.e.  the "most derived" destructor will be called first, with the
-  "original" base class destructor being called last.
+  [CleanUp] is an optional dictionary function that performs cleanup for the
+  object. When invoked, defined clean-uppers will be called in reverse order,
+  i.e.  the "most derived" clean-upper will be called first, with the
+  "original" base class clean-upper being called last.
 
   [clobber_base_vars] is a boolean flag that, if true, will allow member
   variables of the base class to be overwritten by member variables of the
@@ -333,6 +333,12 @@ typevim#make#Member({funcname})                        *typevim#make#Member()*
 <
 
   Which is functionally equivalent.
+
+typevim#object#CleanUp()                            *typevim#object#CleanUp()*
+  "Default" "virtual" clean-upper, used when performing "clean-up" for a
+  derived class with multiple declared constructors. Calls clean-uppers in
+  reverse order, i.e.  from the most- to least-derived classes in the object's
+  class hierarchy.  @private
 
 typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
                                                        *typevim#object#Bind()*

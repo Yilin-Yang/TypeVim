@@ -22,9 +22,9 @@
 " autoload`), a function in `ExampleClass.vim` named `Foo()` will be invocable
 " through `:call myplugin#ExampleClass#Foo()`."
 "
-" Second, declare a class constructor. By convention, a class constructor should be
-" named `New`, e.g. `myplugin#ExampleClass#New()`. It may have any number of
-" arguments.
+" Second, declare a class constructor. By convention, a class constructor
+" should be named `New`, e.g. `myplugin#ExampleClass#New()`. It may have any
+" number of arguments.
 "
 " Third, inside the constructor, construct a class "prototype." This is a
 " dictionary object initialized with your class's member variables and
@@ -54,8 +54,9 @@
 "   endfunction
 " <
 "
-" Fourth, implement the rest of the class. In the example given, we referred to a
-" `PublicFunction()` and a `__PrivateFunction()`, so we implement both here:
+" Fourth, implement the rest of the class. In the example given, we referred
+" to a `PublicFunction()` and a `__PrivateFunction()`, so we implement both
+" here:
 " >
 "   " still myplugin/autoload/myplugin/ExampleClass.vim
 "   function! myplugin#ExampleClass#PublicFunction() dict abort
@@ -94,7 +95,7 @@
 
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
-let s:DTOR_LIST_ATTR = typevim#attribute#DESTRUCTOR_LIST()
+let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
 
 let s:Default_dtor = { -> 0}
 
@@ -143,35 +144,35 @@ endfunction
 " Return a "typevim-configured" instance of a class. Meant to be called from
 " inside a type's constructor, where it will take a {prototype} dictionary
 " (containing member functions and member variables), annotate it with type
-" information, and perform additional configuration (e.g. adding destructors).
+" information, and perform additional configuration (e.g. adding clean-uppers).
 "
 " {typename} is the name of the type being declared.
 "
 " {prototype} is a dictionary object containing member variables (with default
 " values) and member functions, which might not be implemented.
 "
-" [Destructor] is an optional dictionary function that performs cleanup for
+" [CleanUp] is an optional dictionary function that performs cleanup for
 " the object.
 "
-" @default Destructor = 0
+" @default CleanUp = 0
 " @throws BadValue if the given {typename} is not a valid typename, see @function(typevim#value#IsValidTypename).
 " @throws NotAuthorized if {prototype} defines attributes that should've been initialized by this function.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
-  let a:Destructor = get(a:000, 0, s:Default_dtor)
+  let a:CleanUp = get(a:000, 0, s:Default_dtor)
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
   let l:new = a:prototype  " technically l:new is just an alias
   call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
 
-  if maktaba#value#IsFuncref(a:Destructor)
-      \ || maktaba#value#IsNumber(a:Destructor)
-    call s:AssignReserved(l:new, 'Destroy', a:Destructor)
+  if maktaba#value#IsFuncref(a:CleanUp)
+      \ || maktaba#value#IsNumber(a:CleanUp)
+    call s:AssignReserved(l:new, 'CleanUp', a:CleanUp)
   else
     throw maktaba#error#WrongType(
-        \ 'Destructor should be a Funcref, or a number '
-        \ . '(if not defining a destructor)')
+        \ 'CleanUp should be a Funcref, or a number '
+        \ . '(if not defining a clean-upper)')
   endif
 
   return l:new
@@ -192,10 +193,10 @@ endfunction
 " class defines functions with the same name (i.e. same dictionary key), they
 " will be overridden with those of the {prototype}.
 "
-" [Destructor] is an optional dictionary function that performs cleanup for the
-" object. On destruction, defined destructors will be called in reverse order,
-" i.e.  the "most derived" destructor will be called first, with the
-" "original" base class destructor being called last.
+" [CleanUp] is an optional dictionary function that performs cleanup for the
+" object. When invoked, defined clean-uppers will be called in reverse order,
+" i.e.  the "most derived" clean-upper will be called first, with the
+" "original" base class clean-upper being called last.
 "
 " [clobber_base_vars] is a boolean flag that, if true, will allow member
 " variables of the base class to be overwritten by member variables of the
@@ -209,7 +210,7 @@ endfunction
 " @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
-  let a:Destructor = get(a:000, 0, s:Default_dtor)
+  let a:CleanUp = get(a:000, 0, s:Default_dtor)
   let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
   call typevim#ensure#IsValidTypename(a:typename)
 
@@ -224,14 +225,14 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
         \ typevim#object#ShallowPrint(a:Parent))
   endif
 
-  if maktaba#value#IsFuncref(a:Destructor)
-    " only create destructor list if actually necessary
-    if !has_key(l:base, s:DTOR_LIST_ATTR)
-      let l:Old_dtor = l:base['Destroy']
-      if l:Old_dtor !=# s:Default_dtor
-        let l:base[s:DTOR_LIST_ATTR] = [l:Old_dtor, a:Destructor]
+  if maktaba#value#IsFuncref(a:CleanUp)
+    " only create clean-upper list if actually necessary
+    if !has_key(l:base, s:CLN_UP_LIST_ATTR)
+      let l:OldCleanUp = l:base['CleanUp']
+      if l:OldCleanUp !=# s:Default_dtor
+        let l:base[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, a:CleanUp]
       else
-        let l:base['Destroy'] = a:Destructor
+        let l:base['CleanUp'] = a:CleanUp
       endif
     endif
   endif

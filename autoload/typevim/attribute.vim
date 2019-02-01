@@ -22,7 +22,7 @@
 
 let s:Attributes = {
     \ 'TYPE': '___TYPE___',
-    \ 'DESTRUCTOR_LIST': '___DESTRUCTORS___',
+    \ 'CLEAN_UPPER_LIST': '___CLEAN_UPPERS___',
     \ }
 
 let s:AttributesList = values(s:Attributes)
@@ -58,6 +58,6 @@ endfunction
 ""
 " Return the key used for storing an object's list of destructor Funcrefs.
 " @private
-function typevim#attribute#DESTRUCTOR_LIST() abort
-  return s:Attributes['DESTRUCTOR_LIST']
+function! typevim#attribute#CLEAN_UPPER_LIST() abort
+  return s:Attributes['CLEAN_UPPER_LIST']
 endfunction
