@@ -201,6 +201,13 @@ Execute (typevim#object#ShallowPrint: Derived Object (No Throw Exception)):
   let g:val = TestDerived#New(0, 0, 0)
   call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
 
+Execute (typevim#object#ShallowPrint: Empty List):
+  let g:val = []
+  call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
+Expect:
+
+  [  ]
+
 " Execute (typevim#object#PrettyPrint: Compound Object):
 
 " Execute (typevim#object#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):

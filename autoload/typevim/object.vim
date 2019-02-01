@@ -541,6 +541,9 @@ function! s:ShallowPrintList(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsList(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
+  if empty(a:Obj)
+    return '[  ]'
+  endif
   let l:str = '[ '
   for l:Elt in a:Obj
     let l:str .= s:ShallowPrintImpl(l:Elt, a:cur_depth + 1, a:max_depth).', '
