@@ -14,6 +14,7 @@ CONTENTS                                                    *TypeVim-contents*
       1. Declaring a Class................................|TypeVim-basic_decl|
       2. Declaring a Derived Class (Polymorphism)..........|TypeVim-poly_decl|
       3. Reserved Attributes................................|TypeVim-reserved|
+  6. About.....................................................|TypeVim-about|
 
 ==============================================================================
 INTRODUCTION                                                   *TypeVim-intro*
@@ -445,16 +446,36 @@ Doer.SetCallbacks({Resolve}, {Reject})                   *Doer.SetCallbacks()*
 
                                                              *TypeVim.Promise*
 A JavaScript-style Promise datatype for handling asynchronous operations.
-|TypeVim.Promise| is meant to very roughly mimic JavaScript Promise objects in
-usage and interface.
-
-One notable departure from the JavaScript Promise interface is that
-|TypeVim.Promise| tries to adhere to the Google VimScript style guide, so its
-member functions are written in UpperCamelCase.
+|TypeVim.Promise| is meant to roughly mimic JavaScript Promise objects in
+usage and interface, and is mostly compliant with the Promise/A+ spec.
+Deviations from the spec are noted further below.
 
 Because VimScript itself is entirely singlethreaded, Promise is only useful
 when used with asynchronous operations, like asynchronous jobs and remote
 procedure calls from neovim remote plugins.
+
+PROMISE/A+ DIFFERENCES AND THINGS TO NOTE
+These are listed by section, subsection, and clause, using the specification
+on https://promisesaplus.com as reference.
+
+2.2) |TypeVim.Promise| tries to adhere to the Google VimScript style guide,
+  and names its member functions in UpperCamelCase, including
+  |Promise.Then()|. `Promise.then` is an alias of this function, since
+  Promise/A+ requires that the `then` function be all lowercase.
+
+2.2.4) |TypeVim.Promise| does not delay `then` callbacks until the callstack
+  contains only "platform code." This is mostly for practical reasons, to
+  avoid having to write a Promise callback "scheduler."
+
+2.3.1) When resolving a |TypeVim.Promise| with itself, Promise throws an
+  ERROR(BadValue) instead of an ERROR(WrongType) (`"TypeError"`). This is for
+  better consistency with vim-maktaba, since ERROR(BadValue) makes more sense
+  for this case.
+
+2.3.3) |TypeVim.Promise| offers no special handling when resolved with objects
+  that have a `then` property, but which are not |TypeVim.Promise|s
+  specifically. It will simply pass this object unmodified to its attached
+  success handlers.
 
 typevim#Promise#New([Doer])                                    *Promise.New()*
   Return a new Promise that will be fulfilled (or broken) by a given [Doer]
@@ -566,13 +587,13 @@ Promise.Then({Resolve}, [Reject], [chain])                    *Promise.Then()*
   [chain] is 1 if omitted.
   Throws ERROR(WrongType) if {Resolve} or [Reject] are not Funcrefs.
 
-Promise.Catch({Reject}, [Reject], [chain])                   *Promise.Catch()*
+Promise.Catch({Reject}, [chain])                             *Promise.Catch()*
   Attach an error handler {Reject} to this Promise. If this Promise rejects,
   it will call back {Reject} with the provided value. If it was already
   rejected, it will call {Reject} immediately.
 
   Returns a "child" Promise that will be fulfilled, or rejected, with the
-  given resolved value the return value of the [Reject] error handler
+  given resolved value the return value of the {Reject} error handler
   respectively, unless [chain] is 0, in which case it returns 0.
 
   [chain] is 1 if omitted.
@@ -772,6 +793,11 @@ members with names that use this format (e.g. declaring an object with a
 `"___SIZE___"` property) is strongly discouraged, though not disallowed.
 
 Typenames and identifiers shall not share the name of a reserved attribute.
+
+==============================================================================
+ABOUT                                                          *TypeVim-about*
+
+TypeVim is provided under the terms of the MIT license.
 
 
 vim:tw=78:ts=8:ft=help:norl:

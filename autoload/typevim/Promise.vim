@@ -1,16 +1,36 @@
 ""
 " @dict Promise
 " A JavaScript-style Promise datatype for handling asynchronous operations.
-" @dict(Promise) is meant to very roughly mimic JavaScript Promise objects in
-" usage and interface.
-"
-" One notable departure from the JavaScript Promise interface is that
-" @dict(Promise) tries to adhere to the Google VimScript style guide, so its
-" member functions are written in UpperCamelCase.
+" @dict(Promise) is meant to roughly mimic JavaScript Promise objects in
+" usage and interface, and is mostly compliant with the Promise/A+ spec.
+" Deviations from the spec are noted further below.
 "
 " Because VimScript itself is entirely singlethreaded, Promise is only useful
 " when used with asynchronous operations, like asynchronous jobs and remote
 " procedure calls from neovim remote plugins.
+"
+" @subsection Promise/A+ Differences and Things to Note
+" These are listed by section, subsection, and clause, using the specification
+" on https://promisesaplus.com as reference.
+"
+" - 2.2) @dict(Promise) tries to adhere to the Google VimScript style guide, and
+"   names its member functions in UpperCamelCase, including
+"   @function(Promise.Then). `Promise.then` is an alias of this function,
+"   since Promise/A+ requires that the `then` function be all lowercase.
+"
+" - 2.2.4) @dict(Promise) does not delay `then` callbacks until the callstack
+"   contains only "platform code." This is mostly for practical reasons, to
+"   avoid having to write a Promise callback "scheduler."
+"
+" - 2.3.1) When resolving a @dict(Promise) with itself, Promise throws an
+"   ERROR(BadValue) instead of an ERROR(WrongType) (`"TypeError"`). This is
+"   for better consistency with vim-maktaba, since ERROR(BadValue) makes more
+"   sense for this case.
+"
+" - 2.3.3) @dict(Promise) offers no special handling when resolved with
+"   objects that have a `then` property, but which are not @dict(Promise)s
+"   specifically. It will simply pass this object unmodified to its attached
+"   success handlers.
 
 let s:typename = 'Promise'
 
@@ -366,7 +386,7 @@ endfunction
 " rejected, it will call {Reject} immediately.
 "
 " Returns a "child" Promise that will be fulfilled, or rejected, with the
-" given resolved value the return value of the [Reject] error handler
+" given resolved value the return value of the {Reject} error handler
 " respectively, unless [chain] is 0, in which case it returns 0.
 "
 " @default chain=1
