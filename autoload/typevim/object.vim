@@ -517,6 +517,9 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsDict(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
+  if empty(a:Obj)
+    return '{  }'
+  endif
   let l:str = '{ '
   let l:items = sort(items(a:Obj), 's:CompareKeys')
   for [l:key, l:Val] in l:items

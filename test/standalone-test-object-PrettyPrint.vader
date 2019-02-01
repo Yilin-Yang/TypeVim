@@ -208,6 +208,13 @@ Expect:
 
   [  ]
 
+Execute (typevim#object#ShallowPrint: Empty Dict):
+  let g:val = {}
+  call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
+Expect:
+
+  {  }
+
 " Execute (typevim#object#PrettyPrint: Compound Object):
 
 " Execute (typevim#object#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
