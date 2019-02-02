@@ -121,6 +121,10 @@ function from the `ensure` namespace.
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#ensure#IsBool({Val})                         *typevim#ensure#IsBool()*
+  Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
+  |v:false|. Returns the given {Val} for convenience.
+
 typevim#ensure#IsValidTypename({typename})  *typevim#ensure#IsValidTypename()*
   Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
   along with the reason it's not a valid typename; otherwise, does nothing.
@@ -340,6 +344,16 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   [max_depth] is 1 if omitted.
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
+
+typevim#value#IsBool({Val})                           *typevim#value#IsBool()*
+  Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
+  compare against |v:true| or |v:false| if those constants are not defined in
+  the running version of vim.
+
+  This function is provided for use in plugins that use the |v:true| and
+  |v:false| constants, because |maktaba#value#IsBool()| will actually fail
+  when given |v:true| or |v:false| as inputs: it only accepts a |v:t_number|
+  equal to 0 or 1.
 
 typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
   Returns 1 when the given {typename} is valid, 0 otherwise.
