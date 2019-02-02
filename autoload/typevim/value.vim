@@ -2,6 +2,23 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 
 ""
+" Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
+" compare against |v:true| or |v:false| if those constants are not defined in
+" the running version of vim.
+"
+" This function is provided for use in plugins that use the |v:true| and
+" |v:false| constants, because @function(maktaba#value#IsBool) will actually
+" fail when given |v:true| or |v:false| as inputs: it only accepts a
+" |v:t_number| equal to 0 or 1.
+function! typevim#value#IsBool(Val) abort
+  if exists('v:true')
+    return maktaba#value#IsIn(a:Val, [0, 1, v:true, v:false])
+  else
+    return maktaba#value#IsBool(a:Val)
+  endif
+endfunction
+
+""
 " Returns 1 when the given {typename} is valid, 0 otherwise.
 "
 " A valid typename is a string of uppercase Latin letters, lowercase Latin

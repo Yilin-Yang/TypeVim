@@ -1,4 +1,16 @@
 ""
+" Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
+" |v:false|. Returns the given {Val} for convenience.
+function! typevim#ensure#IsBool(Val) abort
+  if !typevim#value#IsBool(a:Val)
+    throw maktaba#error#WrongType(
+        \ 'Expected a boolean. Got a %s.',
+        \ maktaba#value#TypeName(a:Val))
+  endif
+  return a:Val
+endfunction
+
+""
 " Throws an ERROR(BadValue) if the given {typename} is not a valid typename,
 " along with the reason it's not a valid typename; otherwise, does nothing.
 "
