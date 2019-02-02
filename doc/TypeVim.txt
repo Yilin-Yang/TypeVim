@@ -121,6 +121,15 @@ function from the `ensure` namespace.
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#Buffer#DeleteLines({after}, {through}, [strict_indexing])
+                                                *typevim#Buffer#DeleteLines()*
+  Remove lines from this buffer over a range, starting after line number
+  {after} and continuing until line number {through}. If [strict_indexing] is
+  1, an exception will be thrown if the given lines are "out of range".
+
+  Throws ERROR(WrongType) if {after} or {through} are not numbers, or if
+  [strict_indexing] is not a boolean.
+
 typevim#ensure#IsBool({Val})                         *typevim#ensure#IsBool()*
   Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
   |v:false|. Returns the given {Val} for convenience.
@@ -438,6 +447,137 @@ typevim#value#GetStackFrame({num_levels_down}, [funcname])
 
 ==============================================================================
 DICTIONARIES                                                   *TypeVim-dicts*
+
+                                                              *TypeVim.Buffer*
+An encapsulation of a vim buffer; allows for manipulation of vim buffers as if
+they were objects.
+
+typevim#Buffer#New([properties])                                *Buffer.New()*
+  Construct and return a new Buffer object. |TypeVim.Buffer| objects can
+  either create their own |buffers| on construction, or be "given" a buffer by
+  specifying the `fname` of an existing buffer through the `fname` property of
+  [properties].
+
+  [properties] is a dictionary whose keys and values are used to configure the
+  new buffer. These include:
+
+  `bufhidden`: A string. The buffer's |bufhidden| setting. Defaults to `hide`.
+  `buflisted`: A boolean. The buffer's |buflisted| setting. Defaults to 0.
+  `bufname`: A string. The name to be given to the buffer. If empty, the
+    buffer will be given a name that is arbitrary, but unique. If the given
+    name matches that of an existing (different) buffer, this function will
+    throw an ERROR(BadValue).
+  `bufnr`: A number. If empty or zero, then this |TypeVim.Buffer| will be
+    initialized with a new vim buffer. This can be set to a nonzero value to
+    give this |TypeVim.Buffer| ownership of an existing vim buffer with that
+    |bufnr|. Defaults to 0.
+  `buftype`: A string. The buffer's |buftype| setting. Defaults to `nofile`.
+  `swapfile`: A boolean. The buffer's |swapfile| setting. Defaults to 0.
+
+  All of these are optional and will have default values if not specified.
+  Properties which are also vim settings can have any value that could be
+  assigned to those settings explicitly, e.g. with `let &bufhidden = [...]`.
+
+  If constructing a new buffer (i.e. `bufnr` is 0), then the given properties
+  will be set on that buffer. If given an existing buffer (i.e. this
+  |TypeVim.Buffer| is being given the buffer with |bufnr| 3, so `bufnr` is 3),
+  then this function will try to set those properties on that buffer (e.g.
+  change the buffer's |bufname|, change the buffer's |swapfile|). The latter
+  may fail and throw an exception.
+
+  [properties] is {} if omitted.
+  Throws ERROR(WrongType) if the type of a value in [properties] doesn't match
+  the list above.
+
+Buffer.CleanUp()                                            *Buffer.CleanUp()*
+  Perform cleanup for this Buffer object.
+
+Buffer.getbufvar({varname}, [default])                    *Buffer.getbufvar()*
+  Invoke `getbufvar` on this Buffer's stored buffer with the given arguments.
+  See `:h getbufvar` for argument details.
+  Throws ERROR(WrongType) if {varname} is not a string.
+
+Buffer.setbufvar({varname}, {Val})                        *Buffer.setbufvar()*
+  Invoke `setbufvar` on this Buffer's stored buffer with the given arguments.
+  See `:h setbufvar` for argument details.
+  Throws ERROR(WrongType) if {varname} is not a string.
+
+Buffer.bufnr()                                                *Buffer.bufnr()*
+  Returns the |bufnr| of the buffer owned by this |TypeVim.Buffer|.
+
+Buffer.Open([cmd], [keepalt])                                  *Buffer.Open()*
+  Open this buffer in the currently focused window.
+
+  For details on [cmd], see `:h buffer`. [cmd] should include a leading `+`.
+  If [keepalt] is 1, then the current alternate buffer will be preserved. See
+  |keepalt|.
+
+Buffer.Switch([open_in_any], [tabnr])                        *Buffer.Switch()*
+  Move the cursor to (one of) this buffer's window(s) in the given tab.
+
+  If [open_in_any] is 1, then it is "acceptable" for this function to switch
+  to a window in a different tabpage if that window has this buffer open.
+
+  Prefers to switch to a buffer in the current tabpage, or the tabpage with
+  the given [tabnr] if possible. Does nothing if the current tabpage is
+  "acceptable" and the current window has this buffer open.
+
+  [open_in_any] is 0 if omitted.
+  [tabnr] is the current tabpage if omitted.
+  Throws ERROR(NotFound) if this buffer isn't open in the tab(s) specified.
+  Throws ERROR(WrongType) if [open_in_any] is not a boolean, or if [tabnr] is
+  not a number.
+
+Buffer.SetBuffer({bufnr}, [action], [force])              *Buffer.SetBuffer()*
+  Replace the buffer owned by this Buffer object with {bufnr}.
+
+  [action] controls what happens to the buffer being replaced. It can be an
+  empty string, `"bunload"`, `"bdelete"`, or `"bwipeout"`: these will do
+  nothing, |bunload|, |bdelete|, or |bwipeout| the replaced buffer,
+  respectively.
+
+  If [force] is 1, unsaved changes in the replaced buffer will be ignored when
+  unloading, deleting, or wiping the buffer out.
+
+  Returns the |bufnr| of the replaced buffer.
+
+  [action] is "" if omitted.
+  [force] is 0 if omitted.
+  Throws ERROR(BadValue) if [action] is not one of the values listed above.
+  Throws ERROR(NotFound) if the given {bufnr} doesn't correspond to a real
+  buffer.
+  Throws ERROR(WrongType) if {bufnr} is not a number, if [action] is not a
+  string, or if [force] is not a boolean.
+
+Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
+  Open this buffer in a split.
+
+  If {open_vertical} is 1, opens in a vertical split; if {open_vertical} is 0,
+  opens in a horizontal split.
+
+  For [cmd], see `:h +cmd`. It may be empty string, and should include a
+  leading `"+"` character.
+
+  [pos] is the part of the screen in which the split should be created. See
+  `:h topleft` and `:h botright`. It may be the empty string.
+
+  [size] is the height/width of the horizontal/vertical split to be created.
+  If 0, this parameter will be ignored.
+
+  [cmd] is "" if omitted.
+  [pos] is "" if omitted.
+  [size] is 0 if omitted.
+
+  Throws ERROR(BadValue) if [pos] is not "leftabove", "aboveleft",
+  "rightbelow", "belowright", "topleft", or "botright".
+  Throws ERROR(WrongType) if {open_vertical} is not a boolean, if [cmd] is not
+  a string, if [pos] is not a string, or if [size] is not a number.
+
+Buffer.IsOpenInTab([tabnr])                             *Buffer.IsOpenInTab()*
+  Whether this Buffer is open in the tabpage with the given [tabnr].
+  [tabnr] is the current tabpage if omitted.
+  Throws ERROR(BadValue) if [tabnr] is less than 1.
+  Throws ERROR(WrongType) if [tabnr] is not a number.
 
                                                                 *TypeVim.Doer*
 A Doer that doesn't do anything, for use with |TypeVim.Promise|. Acts as an
