@@ -30,9 +30,7 @@ let s:default_props = {
 " - `bufhidden`: A string. The buffer's |bufhidden| setting. Defaults to `hide`.
 " - `buflisted`: A boolean. The buffer's |buflisted| setting. Defaults to 0.
 " - `bufname`: A string. The name to be given to the buffer. If empty, the
-"   buffer will be given a name that is arbitrary, but unique. If the given
-"   name matches that of an existing (different) buffer, this function will
-"   throw an ERROR(BadValue).
+"   buffer will be given a name that is arbitrary, but unique.
 " - `bufnr`: A number. If empty or zero, then this @dict(Buffer) will be
 "   initialized with a new vim buffer. This can be set to a nonzero value to
 "   give this @dict(Buffer) ownership of an existing vim buffer with that
@@ -52,6 +50,7 @@ let s:default_props = {
 " may fail and throw an exception.
 "
 " @default properties={}
+" @throws BadValue if the given `bufname` matches an existing buffer that isn't `bufnr` (when nonzero), this function will throw an ERROR(BadValue).
 " @throws WrongType if the type of a value in [properties] doesn't match the list above.
 function! typevim#Buffer#New(...) abort
   let a:properties = maktaba#ensure#IsDict(get(a:000, 0, {}))
@@ -111,27 +110,92 @@ function! typevim#Buffer#New(...) abort
 
   let l:new = {
     \ '__bufnr': l:bufnr,
-    \ 'destroy': function('typevim#Buffer#destroy'),
-    \ 'getbufvar': function('typevim#Buffer#getbufvar'),
-    \ 'setbufvar': function('typevim#Buffer#setbufvar'),
-    \ 'bufnr': function('typevim#Buffer#bufnr'),
-    \ 'Open': function('typevim#Buffer#Open'),
-    \ 'Switch': function('typevim#Buffer#Switch'),
-    \ 'SetBuffer': function('typevim#Buffer#SetBuffer'),
-    \ 'split': function('typevim#Buffer#OpenSplit', [v:false]),
-    \ 'vsplit': function('typevim#Buffer#OpenSplit', [v:true]),
-    \ 'GetLines': function('typevim#Buffer#GetLines'),
-    \ 'ReplaceLines': function('typevim#Buffer#ReplaceLines'),
-    \ 'InsertLines': function('typevim#Buffer#InsertLines'),
-    \ 'DeleteLines': function('typevim#Buffer#DeleteLines'),
-    \ 'IsOpenInTab': function('typevim#Buffer#IsOpenInTab'),
+    \ '_NormalizeLineNos': typevim#make#Member('_NormalizeLineNos'),
+    \ 'getbufvar': typevim#make#Member('getbufvar'),
+    \ 'setbufvar': typevim#make#Member('setbufvar'),
+    \ 'bufnr': typevim#make#Member('bufnr'),
+    \ 'Open': typevim#make#Member('Open'),
+    \ 'Switch': typevim#make#Member('Switch'),
+    \ 'SetBuffer': typevim#make#Member('SetBuffer'),
+    \ 'split': typevim#make#Member('OpenSplit', [0]),
+    \ 'vsplit': typevim#make#Member('OpenSplit', [1]),
+    \ 'NumLines': typevim#make#Member('NumLines'),
+    \ 'GetLines': typevim#make#Member('GetLines'),
+    \ 'ReplaceLines': typevim#make#Member('ReplaceLines'),
+    \ 'InsertLines': typevim#make#Member('InsertLines'),
+    \ 'DeleteLines': typevim#make#Member('DeleteLines'),
+    \ 'IsOpenInTab': typevim#make#Member('IsOpenInTab'),
   \ }
+
+  call typevim#make#Class(s:typename, l:new, typevim#make#Member('CleanUp'))
+
+  " set properties on the buffer
+  let s:props_to_set =
+      \ exists('s:props_to_set') ?
+          \ s:props_to_set : ['bufhidden', 'buflisted', 'buftype', 'swapfile']
+  for l:prop in s:props_to_set
+    let l:val = a:properties[l:prop]
+    call l:new.setbufvar('&'.l:prop, l:val)
+  endfor
 
   return l:new
 endfunction
 
 function! s:CheckType(Obj) abort
   call typevim#ensure#IsType(a:Obj, s:typename)
+endfunction
+
+""
+" @private
+" @dict Buffer
+" "Normalize" the given {startline} and {endline} into positive integers or
+" `"$"`; leave positive line numbers untouched, but "wrap around" negative
+" line numbers to the appropriate "true" line number. See
+" @function(Buffer.ReplaceLines) for more details.
+"
+" Returns a list of the normalized values: `[startline_norm, endline_norm]`.
+"
+" @throws BadValue if the final normalized {startline} is greater than the normalized {endline}.
+" @throws WrongType if {startline} or {endline} aren't a number or "$".
+function! typevim#Buffer#_NormalizeLineNos(startline, endline) dict abort
+  call s:CheckType(l:self)
+  let l:num_lines = l:self.NumLines()
+  return s:NormalizeLineNos(
+      \ maktaba#ensure#TypeMatchesOneOf(a:startline, [0, '']),
+      \ maktaba#ensure#TypeMatchesOneOf(a:endline,   [0, '']),
+      \ l:num_lines)
+endfunction
+
+function! s:NormalizeLineNos(startline, endline, num_lines) abort
+  let l:startline = s:NormalizeLineNo(a:startline, a:num_lines)
+  let l:endline   = s:NormalizeLineNo(a:endline,   a:num_lines)
+  if l:startline ># l:endline
+    throw maktaba#error#BadValue(
+        \ 'Given starting line no. %d is greater than ending line no. %d.',
+        \ l:startline, l:endline)
+  endif
+  return [
+      \ maktaba#ensure#IsNumber(l:startline),
+      \ maktaba#ensure#IsNumber(l:endline)]
+endfunction
+
+function! s:NormalizeLineNo(line, num_lines) abort
+  if maktaba#value#IsString(a:line)
+    if a:line ==# '$'
+      return a:num_lines + 1
+    else
+      call maktaba#ensure#IsNumber(a:num_lines)  " throw 'expected number'
+    endif
+  endif
+  if a:line >=# 0
+    let l:to_return = a:line
+  else  " negative indexing
+    let l:to_return = a:num_lines + a:line + 1
+  endif
+  if l:to_return <# 0 || l:to_return ># a:num_lines + 1
+    throw maktaba#error#BadValue('Line number out of range: %d', a:line)
+  endif
+  return l:to_return
 endfunction
 
 ""
@@ -150,7 +214,7 @@ endfunction
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#getbufvar(varname, ...) dict abort
   call s:CheckType(l:self)
-  let a:default = get(a:000, 0, v:false)
+  let a:default = get(a:000, 0, 0)
   let l:to_return = 0
   execute 'let l:to_return = getbufvar(l:self["__bufnr"], a:varname'
       \ . (type(a:default) !=# v:t_bool ? ', a:default)' : ')')
@@ -170,9 +234,16 @@ endfunction
 ""
 " @dict Buffer
 " Returns the |bufnr| of the buffer owned by this @dict(Buffer).
+"
+" @throws NotFound if this @dict(Buffer)'s buffer no longer exists.
 function! typevim#Buffer#bufnr() dict abort
   call s:CheckType(l:self)
-  return l:self['__bufnr']
+  let l:bufnr = l:self['__bufnr']
+  if !bufexists(l:bufnr)
+    throw maktaba#error#NotFound(
+        \ "Buffer object's buffer %d no longer exists.", l:bufnr)
+  endif
+  return l:bufnr
 endfunction
 
 ""
@@ -188,7 +259,7 @@ function! typevim#Buffer#Open(...) dict abort
   let a:keepalt = get(a:000, 1, 0)
   let l:open_cmd = (a:keepalt ? 'keepalt ' : '') . 'buffer '
   if !empty(a:cmd) | let l:open_cmd .= a:cmd.' ' | endif
-  execute l:open_cmd.lself['__bufnr']
+  execute l:open_cmd.l:self['__bufnr']
 endfunction
 
 ""
@@ -209,7 +280,7 @@ endfunction
 function! typevim#Buffer#Switch(...) dict abort
   call s:CheckType(l:self)
   let a:open_in_any = typevim#ensure#IsBool(get(a:000, 0, 1))
-  let a:tabnr = typevim#ensure#IsNumber(get(a:000, 1, tabpagenr()))
+  let a:tabnr = maktaba#ensure#IsNumber(get(a:000, 1, tabpagenr()))
   let l:bufnr = l:self.bufnr()
   if a:tabnr ==# tabpagenr() || a:open_in_any
     " check if already open and active
@@ -259,7 +330,7 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
     throw maktaba#error#NotFound('Cannot find buffer #'.a:bufnr)
   endif
   let a:action = maktaba#ensure#IsString(get(a:000, 0, ''))
-  let a:force  = typevim#ensure#IsBool(get(a:000, 1, v:true))
+  let a:force  = typevim#ensure#IsBool(get(a:000, 1, 1))
   call maktaba#ensure#IsIn(a:action, ['', 'bunload', 'bdelete', 'bwipeout'])
   let l:to_return = l:self['__bufnr']
   if a:action !=# ''
@@ -304,50 +375,118 @@ function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
   execute 'buffer! '.l:self['__bufnr']
 endfunction
 
-" RETURN: (v:t_list)  A list containing the requested lines from this buffer.
-" PARAM:  after (v:t_number)  Include lines starting *after* this line number.
-" PARAM:  rnum  (v:t_number?) The last line to include in the range. If not
-"                             specified, will be equal to lnum+1 (i.e. not
-"                             specifying rnum will return a one-item list with
-"                             the given line).
-" PARAM:  strict_indexing   (v:t_bool?)   Throw error on 'line out-of-range.'
-function! typevim#Buffer#GetLines(lnum, ...) dict abort
+""
+" @dict Buffer
+" Return the total number of lines in this buffer.
+function! typevim#Buffer#NumLines() dict abort
   call s:CheckType(l:self)
-  let a:strict_indexing = get(a:000, 1, v:false)
-  let a:rnum = get(a:000, 0, a:lnum)
-  return nvim_buf_get_lines(l:self['__bufnr'], a:lnum, a:rnum, a:strict_indexing)
+  return len(getbufline(l:self.bufnr(), 1, '$'))
 endfunction
 
-" BRIEF:  Set, add to, or remove lines. Wraps `nvim_buf_set_lines`.
-" PARAM:  after     (v:t_number)  Replace lines starting after this line number.
-" PARAM:  through   (v:t_number)  Replace until this line number, inclusive.
-" PARAM:  strict_indexing   (v:t_bool?)   Throw error on 'line out-of-range.'
-" DETAILS:  See `:h nvim_buf_set_lines` for details on function parameters.
-"           `{strict_indexing}` is always `v:false`.
-function! typevim#Buffer#ReplaceLines(after, through, replacement, ...) dict abort
+""
+" Return lines {startline} to [endline], end-inclusive, from this buffer as a
+" list of strings. If [strict_indexing] is 1, throw exceptions when requesting
+" a line from "out of range."
+function! typevim#Buffer#GetLines(startline, ...) dict abort
   call s:CheckType(l:self)
-  let a:strict_indexing = get(a:000, 0, v:false)
-  call nvim_buf_set_lines(
-    \ l:self['__bufnr'],
-    \ a:after,
-    \ a:through,
-    \ a:strict_indexing,
-    \ a:replacement)
+  call maktaba#ensure#IsNumber(a:startline)
+  let a:endline = maktaba#ensure#IsNumber(get(a:000, 0, a:startline))
+  let a:strict_indexing = typevim#ensure#IsBool(get(a:000, 1, 0))
+  return nvim_buf_get_lines(l:self['__bufnr'], a:startline, a:endline, a:strict_indexing)
 endfunction
 
-" BRIEF:  Insert lines at a position.
-" PARAM:  after   (v:t_number)  Insert text right after this line number.
-" PARAM:  lines   (v:t_list)    List of `v:t_string`s: the text to insert.
-" PARAM:  strict_indexing   (v:t_bool?)   Throw error on 'line out-of-range.'
-function! typevim#Buffer#InsertLines(after, lines, ...) dict abort
+""
+" Change, add, or remove lines from this buffer, replacing lines {startline}
+" through {endline}, end-inclusive, with the given {replacement}, a list of
+" strings (one string per line).
+"
+" {startline} and {endline} can assume special values, like 0, `"$"`, and
+" negative numbers. 0 is the "line before-the-start" of the buffer; `"$"` is
+" the "line after-the-end"; and negative numbers are used for "negative"
+" indexing, where -1 is the last line of the buffer, -2 is the second-to-last
+" line, and so on.
+"
+" If {startline} and {endline} are both 0, {replacement} will be prepended to
+" the start of the buffer, above line 1. A {startline} value of `"$"` means
+" that {replacement} should be appended to the end of the buffer, below the
+" last line; if {endline} is not also `"$"`, in this case, ERROR(BadValue)
+" will be thrown.
+"
+" A nonzero {startline} value and an {endline} value of `"$"` will replace
+" all lines till the end of the buffer. If {startline} is nonzero and
+" {endline} is 0, an ERROR(BadValue) will be thrown.
+"
+" If {startline} and {endline} are equal, then the function will insert
+" {replacement} below line {startline}.
+"
+" @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} is 0 or `"$"` and is unequal to {endline}.
+" @throws WrongType if {startline} or {endline} are not numbers or "$", or if {replacement} is not a list of strings.
+function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
   call s:CheckType(l:self)
-  let a:strict_indexing = get(a:000, 0, v:false)
-  call nvim_buf_set_lines(
-    \ l:self['__bufnr'],
-    \ a:after,
-    \ a:after,
-    \ a:strict_indexing,
-    \ a:lines)
+  call maktaba#ensure#IsList(a:replacement)
+  let [l:lnum, l:end] = l:self._NormalizeLineNos(a:startline, a:endline)
+  let l:num_lines = l:self.NumLines()
+  if has('nvim')
+    if l:lnum ==# l:num_lines  " append after the end
+      let l:replace_after = -1
+      if l:end !=# l:num_lines
+        throw maktaba#error#BadValue(
+            \ 'startline is past the end: %s; but endline is unequal: %s',
+            \ l:lnum, l:end)
+      endif
+    elseif !l:lnum  " replace after before-the-start
+      " echoerr l:end !=# '0'
+      " echoerr string(l:lnum.', '.l:end)
+      let l:replace_after = 0
+    elseif l:lnum ># 0
+      let l:replace_after = l:lnum - 1
+      if !l:end
+        throw maktaba#error#BadValue(
+            \ 'endline was 0, but startline was not also 0',
+            \ l:lnum, l:end)
+      endif
+    else
+      throw maktaba#error#Failure('Expected normalized lnum, got: %d', l:lnum)
+    endif
+
+    if l:end ># 0
+      " nvim_buf_set_lines is zero-based, end-exclusive,
+      let l:replace_through = l:end  " so don't subtract
+    elseif l:end ==# l:lnum
+      let l:replace_through = l:replace_after
+    else
+      throw maktaba#error#Failure('Expected normalized end, got: %d', l:end)
+    endif
+    call nvim_buf_set_lines(
+      \ l:self['__bufnr'],
+      \ l:replace_after,
+      \ l:replace_through,
+      \ 0,
+      \ a:replacement)
+  elseif has('patch-8.1.0037')  " has appendbuflines (8.1.0037)
+    " TODO
+  elseif has('patch-8.0.1039')  " has setbuflines (0.1039);
+    " TODO
+  else
+  endif
+endfunction
+
+""
+" Insert the given {lines} just below line {after}.
+" If {after} is `"$"`, append lines to the end of the buffer. If {after} is 0,
+" prepend lines to the start of the buffer.
+"
+" @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not
+" a dict.
+function! typevim#Buffer#InsertLines(after, lines) dict abort
+  call s:CheckType(l:self)
+  call l:self.ReplaceLines(a:after, a:after, a:lines)
+  " call nvim_buf_set_lines(
+  "   \ l:self['__bufnr'],
+  "   \ a:after,
+  "   \ a:after,
+  "   \ a:strict_indexing,
+  "   \ a:lines)
 endfunction
 
 ""
@@ -359,7 +498,7 @@ endfunction
 " @throws WrongType if {after} or {through} are not numbers, or if [strict_indexing] is not a boolean.
 function! typevim#Buffer#DeleteLines(after, through, ...) dict abort
   call s:CheckType(l:self)
-  let a:strict_indexing = typevim#ensure#IsBool(get(a:000, 0, v:false))
+  let a:strict_indexing = typevim#ensure#IsBool(get(a:000, 0, 0))
   call nvim_buf_set_lines(
     \ l:self['__bufnr'],
     \ a:after,
@@ -370,7 +509,10 @@ endfunction
 
 ""
 " @dict Buffer
-" Whether this Buffer is open in the tabpage with the given [tabnr].
+" Returns 1 if this @dict(Buffer) is open in the tabpage with the given
+" [tabnr], and 0 otherwise. If the buffer owned by this @dict(Buffer) no
+" longer exists, return 0.
+"
 " @default tabnr=the current tabpage
 " @throws BadValue if [tabnr] is less than 1.
 " @throws WrongType if [tabnr] is not a number.
@@ -380,10 +522,14 @@ function! typevim#Buffer#IsOpenInTab(...) dict abort
     throw maktaba#error#BadValue(
         \ 'Given tabnr should be 1 or greater: %d', a:tabnr)
   endif
-  let l:this_buf = l:self.bufnr()
+  try
+    let l:this_buf = l:self.bufnr()
+  catch /ERROR(NotFound)/  " buffer no longer exists
+    return 0
+  endtry
   let l:bufs_in_tab = tabpagebuflist(a:tabnr)
   for l:buf in l:bufs_in_tab
-    if l:buf ==# l:this_buf | return v:true | endif
+    if l:buf ==# l:this_buf | return 1 | endif
   endfor
-  return v:false
+  return 0
 endfunction

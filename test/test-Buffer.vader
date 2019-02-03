@@ -1,0 +1,403 @@
+Execute (Buffer: Construct Default):
+  let g:buffer = typevim#Buffer#New()
+  call g:buffer.Open()
+Then:
+  AssertEqual 'hide',   &bufhidden
+  AssertEqual 0,        &buflisted
+  AssertEqual 'nofile', &buftype
+  AssertEqual 0,        &swapfile
+
+Execute (Buffer: Set Buffer Variable):
+  let g:buffer = typevim#Buffer#New()
+  call g:buffer.setbufvar('test_var', 1)
+  call g:buffer.Open()
+Then:
+  AssertEqual 1, b:test_var
+
+Execute (Buffer: Get Buffer Variable):
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+  AssertEqual 1, g:buffer.getbufvar('test_var')
+
+" Since split moves the cursor to the new split, check relative position by
+" moving *back* to the original window and checking that it *isn't* the owned
+" buffer.
+Execute (Buffer: Open Horizontal Split):
+  buffer 1
+  call g:buffer.split('', 'botright')
+Then:
+  wincmd k
+  Assert !exists('b:test_var')
+
+Execute (Buffer: Open Vertical Split):
+  buffer 1
+  call g:buffer.vsplit('', 'botright')
+Then:
+  wincmd h
+  Assert !exists('b:test_var')
+
+Execute (Buffer: Wipeout Buffer):
+  let g:bufnr = g:buffer.bufnr()
+  AssertEqual g:bufnr, g:buffer.SetBuffer(bufnr('%'), 'bwipeout')
+
+
+Given (Ten Lines of Text):
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
+Execute (Buffer: Delete Buffer Contents):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.DeleteLines(0, 5)
+Expect:
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
+Execute (Buffer: Delete Everything):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.DeleteLines(0, -1)
+Expect:
+  
+
+Execute (Buffer: Replace Buffer Contents):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(1, 5, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
+Execute (Buffer: Replace Last Lines, Purely Numerically):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(6, 11, g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Replace Last Lines, Using Dollar $):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(6, '$', g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Replace Everything, 0 and $):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(0, '$', g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Replace Everything, 1 and $):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(1, '$', g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Replace Everything, Explicit Numeral):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(1, 11, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Insert Lines):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(0, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
+Execute (Buffer: Insert Lines Midway):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(2, g:lines)
+Expect:
+  first line
+  second line
+  foo1
+  foo2
+  foo3
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
+Execute (Buffer: Insert Lines At End):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines('$', g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Gave $ Start, Non-Dollar End):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines('$', 3, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrows call g:buffer.ReplaceLines('$', 0, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Is Open in this Tab, Yes):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+Then:
+  AssertEqual 1, g:buffer.IsOpenInTab()
+  AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
+
+Execute (Buffer: Nonzero startline, 0 endline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines(4, 0, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline before startline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines(4, 2, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline before startline (both negative)):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines(-4, -5, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline before (negative) startline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines(-8, 2, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline (negative) before startline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  AssertThrows call g:buffer.ReplaceLines(4, -8, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Is Open in Previous Tab):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:old_tab = tabpagenr()
+  tabnew
+Then:
+  AssertEqual 1, g:buffer.IsOpenInTab(g:old_tab)
+  AssertEqual 0, g:buffer.IsOpenInTab()
+  AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
+
+Execute (Buffer: Is Open in Previous Tab, and In Current):
+  call g:buffer.Open()
+Then:
+  AssertEqual 1, g:buffer.IsOpenInTab(g:old_tab)
+  AssertEqual 1, g:buffer.IsOpenInTab()
+  AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
+
+Execute (Buffer: Is Not Open At All):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  tabnew
+  call g:buffer.CleanUp()
+Then:
+  AssertEqual 0, g:buffer.IsOpenInTab(g:old_tab)
+  AssertEqual 0, g:buffer.IsOpenInTab()
+  AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
+
+Execute (Buffer: Switch, Not Open):
+  AssertThrows call g:buffer.Switch()
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Switch, Is Open, Same Tab):
+  call g:buffer.SetBuffer(bufnr('%'))
+  tabnew
+  let g:tabnr = tabpagenr()
+  call g:buffer.Open()
+  call g:buffer.Switch()
+Then:
+  AssertEqual g:tabnr, tabpagenr()
+  AssertEqual g:buffer.bufnr(), bufnr('%')
+
+Execute (Buffer: Switch, Is Open, Different Tab (but not allowed)):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:tabnr = tabpagenr()
+  tabnew
+Then:
+  AssertThrows call g:buffer.Switch(0)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Switch, Is Open, Different Tab (which is allowed)):
+  call g:buffer.Switch()
+Then:
+  AssertEqual g:tabnr, tabpagenr()
+  AssertEqual g:buffer.bufnr(), bufnr('%')
+
+Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which isn't allowed)):
+  tabnew
+Then:
+  AssertThrows call g:buffer.Switch(0)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which is given)):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:tabnr = tabpagenr()
+  tabnew
+  call g:buffer.Switch(0, g:tabnr)
+Then:
+  AssertEqual g:tabnr, tabpagenr()
+  AssertEqual g:buffer.bufnr(), bufnr('%')
+
+Execute (Buffer: Switch, Is Open in Different (Specific) Tab (which is given), and Current (not given)):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:tabnr = tabpagenr()
+  tabnew
+  call g:buffer.Open()
+  call g:buffer.Switch(0, g:tabnr)
+Then:
+  AssertEqual g:tabnr, tabpagenr()
+  AssertEqual g:buffer.bufnr(), bufnr('%')
+
+Execute (Buffer: Cleanup):
+  let g:tabnr = tabpagenr('$')
+  while g:tabnr ># 2
+    execute 'tabnext ' . g:tabnr
+    if bufname('%') ==# ''
+      tabclose
+    endif
+    let g:tabnr -= 1
+  endwhile
+  call g:buffer.CleanUp()
