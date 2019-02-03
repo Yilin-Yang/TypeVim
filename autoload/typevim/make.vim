@@ -175,7 +175,10 @@ let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
 
-let s:Default_dtor = { -> 0}
+function s:DefaultCleanUpper() abort
+  return 0
+endfunction
+let s:Default_dtor = function('<SNR>'.s:SID().'_DefaultCleanUpper')
 
 ""
 " Returns a string containing an error message complaining that the user tried
@@ -237,6 +240,7 @@ endfunction
 " @throws NotAuthorized if {prototype} defines attributes that should've been initialized by this function.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
+  call typevim#ensure#VimIsCompatible()
   let a:CleanUp = get(a:000, 0, s:Default_dtor)
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
@@ -288,6 +292,7 @@ endfunction
 " @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
+  call typevim#ensure#VimIsCompatible()
   let a:CleanUp = get(a:000, 0, s:Default_dtor)
   let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
   call typevim#ensure#IsValidTypename(a:typename)
@@ -338,10 +343,13 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
 endfunction
 
 ""
-" Return a Funcref to the function with the name constructed by concatenating
+" Return a |Funcref| to the function with the name constructed by concatenating
 " the following: (1) the "autoload prefix" from which this function was
 " called (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim`
 " the prefix would be "myplugin#foo#"); (2) the given {funcname}.
+"
+" If [arglist] or [dict] are provided, they are bound to the returned Funcref,
+" turning it into a |Partial|. See |function()|.
 "
 " This is meant as a convenience function to reduce boilerplate when declaring
 " TypeVim objects. Instead of long, explicit assignments like,
@@ -371,8 +379,18 @@ endfunction
 " <
 "
 " Which is functionally equivalent.
-function! typevim#make#Member(funcname) abort
+"
+" @default
+" @throws WrongType if {funcname} is not a string, or [argslist] is not a list, or [dict] is not a dictionary.
+function! typevim#make#Member(funcname, ...) abort
+  call typevim#ensure#VimIsCompatible()
   call maktaba#ensure#IsString(a:funcname)
+  let a:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  if a:0 ># 1
+    let a:dict = maktaba#ensure#IsDict(a:2)
+  else
+    let a:dict = 0
+  endif
   let l:full_name = typevim#value#GetStackFrame(1)
 
   " strip everything after the last '#'
@@ -385,7 +403,12 @@ function! typevim#make#Member(funcname) abort
         \ . '(called from: "%s")', l:full_name)
   endif
 
-  return function(l:prefix.'#'.a:funcname)
+  " function ignores empty arglists, but will bind to an empty dict
+  if maktaba#value#IsDict(a:dict)
+    return function(l:prefix.'#'.a:funcname, a:arglist, a:dict)
+  else
+    return function(l:prefix.'#'.a:funcname, a:arglist)
+  endif
 endfunction
 
 ""
@@ -422,6 +445,7 @@ endfunction
 " @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
 " @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
 function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
+  call typevim#ensure#VimIsCompatible()
   call typevim#ensure#IsValidTypename(a:typename)
   call typevim#ensure#IsValidIdentifier(a:funcname)
   call maktaba#ensure#IsList(a:parameters)

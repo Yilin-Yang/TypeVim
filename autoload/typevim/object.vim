@@ -327,6 +327,7 @@ endfunction
 " objects.
 " @default cur_indent_level=0
 function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
+  call typevim#ensure#VimIsCompatible()
   call maktaba#ensure#IsNumber(a:cur_indent_level)
   call maktaba#ensure#IsList(a:seen_objects)
   if maktaba#value#IsDict(a:Obj)

@@ -2,6 +2,19 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 
 ""
+" Returns 1 if this version of vim supports |Partial| function references, and
+" 0 otherwise.
+function! typevim#value#HasPartials() abort
+  return has('patch-7.4.1836')
+endfunction
+
+""
+" Returns 1 if this version of vim supports |lambda|s, and 0 otherwise.
+function! typevim#value#HasLambdas() abort
+  return has('patch-7.4.2044')
+endfunction
+
+""
 " Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
 " compare against |v:true| or |v:false| if those constants are not defined in
 " the running version of vim.

@@ -32,13 +32,22 @@
 "   specifically. It will simply pass this object unmodified to its attached
 "   success handlers.
 
+""
+" Returns the script number of this file. Taken from vim's docs.
+function! s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
+endfun
+
 let s:typename = 'Promise'
 
 let s:PENDING = 'pending'
 let s:FULFILLED = 'fulfilled'
 let s:BROKEN = 'rejected'
 
-let s:default_handler = {arg -> arg}
+function! s:DefaultHandler(Val) abort
+  return a:Val
+endfunction
+let s:default_handler = function('<SNR>'.s:SID().'_DefaultHandler')
 
 let s:promise_id = 0
 
