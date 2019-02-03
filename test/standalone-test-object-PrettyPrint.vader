@@ -1,5 +1,15 @@
 Include: PrintIntoBuffer.vader
 
+Execute (typevim#object#PrettyPrint: Declare Helpers):
+  ""
+  " The default clean-upper changes depending on the running version of vim.
+  " For consistency of test cases that use Expect blocks, check that the
+  " default clean-upper is present, and delete it from the buffer.
+  function! CheckAndWipeCleanUpper()
+    Assert search('"CleanUp": function('), 'Did not print a clean-upper!'
+    normal! dd
+  endfunction
+
 Execute (typevim#object#GetIndentBlock: Ordinary):
   AssertEqual '', typevim#object#GetIndentBlock(0)
   AssertEqual '  ', typevim#object#GetIndentBlock(1)
@@ -186,10 +196,11 @@ Expect:
 Execute (typevim#object#PrettyPrint: Primitive Object):
   let g:val = TestBase#New(3.14)
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
+Then (Check for Destructor):
+  call CheckAndWipeCleanUpper()
 Expect:
 
   OBJECT: {
-    "CleanUp": function('<lambda>1'),
     "GetVal": function('TestBase#GetVal'),
     "SetVal": function('TestBase#SetVal'),
     "StringifyVals": function('TestBase#StringifyVals'),
