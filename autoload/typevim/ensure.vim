@@ -1,19 +1,4 @@
 ""
-" Assert that the running vim editor supports the features needed to run
-" TypeVim.
-"
-" Features checked by this function are hard dependencies for TypeVim;
-" versions that fail this check are officially unsupported.
-function! typevim#ensure#VimIsCompatible() abort
-  " nice to have: lambdas, 7.4.2044
-  if !typevim#value#HasPartials()
-    throw maktaba#error#MissingFeature(
-        \ 'TypeVim depends on Partial functions, which are not present in this '
-        \ . 'version of vim.')
-  endif
-endfunction
-
-""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
 " support lambdas.
 "
@@ -32,7 +17,7 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasLambdas() abort
-  if !typevim#value#HasPartials()
+  if !typevim#value#HasLambdas()
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support lambdas.')
   endif

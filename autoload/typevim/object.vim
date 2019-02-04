@@ -326,8 +326,9 @@ endfunction
 " (optionally) a [cur_indent_level], used when pretty-printing dicts and
 " objects.
 " @default cur_indent_level=0
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
 function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
-  call typevim#ensure#VimIsCompatible()
+  call typevim#ensure#HasPartials()
   call maktaba#ensure#IsNumber(a:cur_indent_level)
   call maktaba#ensure#IsList(a:seen_objects)
   if maktaba#value#IsDict(a:Obj)
@@ -443,8 +444,10 @@ endfunction
 "
 " {cur_depth} and {max_depth} are used for brevity, to avoid recursing too
 " deeply into large collections and bloating the output.
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
 " @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintFuncref(Obj, cur_depth, max_depth) abort
+  call typevim#ensure#HasPartials()
   let l:str = "function('".get(a:Obj, 'name')."'"
   if !typevim#value#IsPartial(a:Obj)
     return l:str.')'

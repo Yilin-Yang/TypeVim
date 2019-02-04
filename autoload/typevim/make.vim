@@ -237,10 +237,11 @@ endfunction
 "
 " @default CleanUp = 0
 " @throws BadValue if the given {typename} is not a valid typename, see @function(typevim#value#IsValidTypename).
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
 " @throws NotAuthorized if {prototype} defines attributes that should've been initialized by this function.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
-  call typevim#ensure#VimIsCompatible()
+  call typevim#ensure#HasPartials()
   let a:CleanUp = get(a:000, 0, s:Default_dtor)
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
@@ -289,10 +290,11 @@ endfunction
 " @default clobber_base_vars=0
 "
 " @throws BadValue if {typename} is not a valid typename.
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
 " @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
-  call typevim#ensure#VimIsCompatible()
+  call typevim#ensure#HasPartials()
   let a:CleanUp = get(a:000, 0, s:Default_dtor)
   let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
   call typevim#ensure#IsValidTypename(a:typename)
@@ -381,9 +383,10 @@ endfunction
 " Which is functionally equivalent.
 "
 " @default
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
 " @throws WrongType if {funcname} is not a string, or [argslist] is not a list, or [dict] is not a dictionary.
 function! typevim#make#Member(funcname, ...) abort
-  call typevim#ensure#VimIsCompatible()
+  call typevim#ensure#HasPartials()
   call maktaba#ensure#IsString(a:funcname)
   let a:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
   if a:0 ># 1
@@ -445,7 +448,6 @@ endfunction
 " @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
 " @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
 function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
-  call typevim#ensure#VimIsCompatible()
   call typevim#ensure#IsValidTypename(a:typename)
   call typevim#ensure#IsValidIdentifier(a:funcname)
   call maktaba#ensure#IsList(a:parameters)

@@ -144,6 +144,7 @@ endfunction
 " Returns 1 when the given object is a Partial (see `:help Partial`) and 0
 " otherwise.
 function! typevim#value#IsPartial(Obj) abort
+  call typevim#ensure#HasPartials()
   if !maktaba#value#IsFuncref(a:Obj) | return 0 | endif
   if !empty(get(a:Obj, 'args')) || !empty(get(a:Obj, 'dict'))
     return 1
@@ -160,6 +161,7 @@ endfunction
 "
 " @throws WrongType if {Func} is not a Funcref.
 function! typevim#value#DecomposePartial(Func) abort
+  call typevim#ensure#HasPartials()
   call maktaba#ensure#IsFuncref(a:Func)
   let l:funcname   = get(a:Func, 'name')
   let l:Funcref    = get(a:Func, 'func')
