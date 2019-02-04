@@ -1,6 +1,6 @@
 {
   "name": "TypeVim",
-  "description": "Don't lose features in translation; use good object-orientation!",
+  "description": "Object-oriented programming helpers and goodies for VimL.",
   "version": "0.0.0",
   "author": "Yilin Yang <yiliny@umich.edu>",
   "repository": {"type": "git", "url": "git://github.com/Yilin-Yang/TypeVim"},

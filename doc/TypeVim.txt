@@ -1,4 +1,4 @@
-*TypeVim.txt*	Don't lose features in translation; use good object-orientation!
+*TypeVim.txt*	Object-oriented programming helpers and goodies for VimL.
 Yilin Yang <yiliny@umich.edu>                              *TypeVim* *TypeVim*
 
 ==============================================================================
