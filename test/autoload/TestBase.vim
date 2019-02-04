@@ -15,6 +15,11 @@ function! TestBase#New(Val, ...) abort
   endif
 endfunction
 
+function! TestBase#CleanUp() dict abort
+  call typevim#ensure#IsType(l:self, s:typename)
+  return 1
+endfunction
+
 function! TestBase#GetVal() dict abort
   call typevim#ensure#IsType(l:self, s:typename)
   return l:self['__val']

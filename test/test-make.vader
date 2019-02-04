@@ -12,7 +12,7 @@ Then (Invoke Functions):
   AssertEqual 'foo', g:obj.GetVal()
 
 Execute (typevim#make#Class: Class with Simple Destructor):
-  let g:obj = TestBase#New(3.14, { -> 1})
+  let g:obj = TestBase#New(3.14, function('TestBase#CleanUp'))
   call typevim#ensure#IsType(g:obj, 'TestBase')
   AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
   AssertEqual 1, g:obj.CleanUp(),

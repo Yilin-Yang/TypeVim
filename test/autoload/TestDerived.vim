@@ -20,13 +20,19 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
   endif
 
   if a:set_base_dtor
-    let l:parent = TestBase#New(6.28, { -> 1})
+    let l:parent = TestBase#New(6.28, function('TestBase#CleanUp'))
   else
     let l:parent = TestBase#New(6.28)
   endif
 
   return typevim#make#Derived(
-      \ s:typename, l:parent, l:new, { -> 1}, a:enable_clobber)
+      \ s:typename, l:parent, l:new,
+      \ typevim#make#Member('CleanUp'), a:enable_clobber)
+endfunction
+
+function! TestDerived#CleanUp() dict abort
+  call typevim#ensure#IsType(l:self, s:typename)
+  return 1
 endfunction
 
 function! TestDerived#GetVal() dict abort

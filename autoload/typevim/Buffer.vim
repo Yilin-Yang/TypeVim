@@ -433,15 +433,15 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
     let l:num_to_write = len(a:replacement)
     let l:num_in_range = l:end - l:lnum + 1
     let l:bufnr = l:self.bufnr()
-    call deletebufline(l:bufnr, l:lnum, l:end)
-    call appendbufline(l:bufnr, l:lnum, a:replacement)
+    silent call deletebufline(l:bufnr, l:lnum, l:end)
+    silent call appendbufline(l:bufnr, l:lnum, a:replacement)
   else  " fallback implementation
     " open the buffer and overwrite the given lines, then switch back
     let l:bufnr = l:self.bufnr()
     let l:cur_buf = bufnr('%')
     let l:winview = winsaveview()
     execute 'keepalt buffer '.l:bufnr
-    call maktaba#buffer#Overwrite(l:lnum, l:end, a:replacement)
+    silent call maktaba#buffer#Overwrite(l:lnum, l:end, a:replacement)
     execute 'keepalt buffer '.l:cur_buf
     call winrestview(l:winview)
   endif
@@ -491,7 +491,7 @@ function! typevim#Buffer#InsertLines(after, lines) dict abort
     let l:cur_buf = bufnr('%')
     let l:winview = winsaveview()
     execute 'keepalt buffer '.l:bufnr
-    if append(l:lnum, a:lines)
+    silent if append(l:lnum, a:lines)
       throw maktaba#error#Failure('Call to append() returned nonzero exit code')
     endif
     execute 'keepalt buffer '.l:cur_buf

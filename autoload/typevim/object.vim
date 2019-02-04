@@ -30,7 +30,7 @@ endfunction
 
 ""
 " Returns a Partial consisting of the given {Funcref} that is bound to this
-" particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
+" particular {obj} and to [arglist], i.e. return `function(a:Funcref,
 " a:arglist, a:obj)`.
 "
 " If the member function is already bound to an argslist, then [argslist] will
@@ -76,7 +76,7 @@ function! typevim#object#Bind(Funcref, obj, ...) abort
       \ typevim#value#DecomposePartial(a:Funcref)
   if !empty(l:bound_dict)
     if a:force_rebind || l:bound_dict is a:obj
-      return funcref(l:Funcref, l:bound_args + a:arglist, a:obj)
+      return function(l:Funcref, l:bound_args + a:arglist, a:obj)
     else
       throw maktaba#error#NotAuthorized('Cannot rebind already bound Partial '
             \ . '%s to new object %s (already bound to: %s); set '
@@ -86,7 +86,7 @@ function! typevim#object#Bind(Funcref, obj, ...) abort
           \ typevim#object#ShallowPrint(l:bound_dict))
     endif
   endif
-  return funcref(l:Funcref, l:bound_args + a:arglist, a:obj)
+  return function(l:Funcref, l:bound_args + a:arglist, a:obj)
 endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
