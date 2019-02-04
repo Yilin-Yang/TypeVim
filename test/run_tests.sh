@@ -8,16 +8,20 @@
 # PARAM:    TEST_INTERNATIONAL  If set to '-i' or '--international', re-run
 #                               tests in non-English locales.
 printUsage() {
-  echo "USAGE: ./run_tests.sh [--vim | --neovim] [-v|--visible] [-h|--help] [-i|--international] [-f <FILE_PAT> | --file=<FILE_PAT>]"
+  echo "USAGE: ./run_tests.sh [--vim | --neovim] [-v|--visible] [-h|--help] [-i|--international] [-f <FILE_PAT> | --file=<FILE_PAT>] [-e <VIM_PATH> | --vim_exe=<VIM_PATH>]"
   echo ""
   echo "Run test cases for this plugin."
   echo ""
   echo "Arguments:"
   printf "\t--vim | --neovim    Whether to run tests using vim or neovim\n"
   printf "\t-v, --visible       Whether to run tests in an interactive vim instance\n"
+  printf "\t                    (Script will not fail with nonzero exit code on test failure)\n"
   printf "\t-h, --help           Print this helptext\n"
   printf "\t-i, --international  Re-run tests using non-English locales\n"
   printf "\t-f <PAT>, --file=<PAT>   Run only tests globbed (matched) by <PAT>\n"
+  printf "\t-v <PATH>, --vim_exe=<PATH>   Use the given (n)vim executable.\n"
+  printf "\t                              Unaffected by --vim or --neovim"
+  printf "\n"
 }
 
 runAndExitOnFail() {
@@ -71,10 +75,13 @@ runTests() {
   fi
 }
 
-BASE_CMD_NVIM="nvim --headless -Nnu .test_vimrc -i NONE"
-BASE_CMD_VIM="vim -Nnu .test_vimrc -i NONE"
+NVIM_PATH_DEFAULT='nvim '
+VIM_PATH_DEFAULT='vim '
+BASE_CMD_NVIM="--headless -Nnu .test_vimrc -i NONE"
+BASE_CMD_VIM="-Nnu .test_vimrc -i NONE"
 RUN_VIM=1
 RUN_GIVEN=0
+GAVE_PATH=0
 export VISIBLE=0
 VADER_CMD="-c 'Vader! *'"
 GLOB_ORDINARY='test-*.vader'
@@ -97,14 +104,24 @@ while [[ $# -gt 0 ]]; do
     '--neovim')
       RUN_VIM=0
       ;;
-    "--file="*)
+    '--file='*)
       GLOB_USER="${ARG#*=}"
       RUN_GIVEN=1
       ;;
-    "-f")
+    '-f')
       GLOB_USER="$2"
       RUN_GIVEN=1
       shift  # past pattern
+      ;;
+    '--vim_exe='*)
+      EXE_PATH="${ARG#*=}"
+      GAVE_PATH=1
+      shift
+      ;;
+    '-e')
+      EXE_PATH="$2"
+      GAVE_PATH=1
+      shift
       ;;
     "-h")
       printUsage
@@ -123,11 +140,20 @@ set -p
 export VADER_OUTPUT_FILE=/dev/stderr
 if [ $RUN_VIM -ne 0 ]; then
   BASE_CMD=$BASE_CMD_VIM
+  if [ $GAVE_PATH -ne 0 ]; then
+    BASE_CMD="${EXE_PATH} ${BASE_CMD_VIM}"
+  else
+    BASE_CMD="${VIM_PATH_DEFAULT} ${BASE_CMD_VIM}"
+  fi
   if [ $VISIBLE -eq 0 ]; then
     VADER_CMD="$VADER_CMD > /dev/null"
   fi
 else
-  BASE_CMD=$BASE_CMD_NVIM
+  if [ $GAVE_PATH -ne 0 ]; then
+    BASE_CMD="${EXE_PATH} ${BASE_CMD_NVIM}"
+  else
+    BASE_CMD="${NVIM_PATH_DEFAULT} ${BASE_CMD_NVIM}"
+  fi
 fi
 
 if [ $RUN_GIVEN -eq 1 ]; then
