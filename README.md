@@ -1,4 +1,4 @@
-TypeVim [ALPHA]
+TypeVim [ALPHA] [![Build Status](https://travis-ci.com/Yilin-Yang/TypeVim.svg?branch=master)](https://travis-ci.com/Yilin-Yang/TypeVim)
 ================================================================================
 TypeVim is a plugin built to make object-oriented programming in VimL easier. It
 provides helper functions that allow users to more easily define their own
