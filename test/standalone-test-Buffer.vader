@@ -54,7 +54,7 @@ Given (Ten Lines of Text):
 
 Execute (Buffer: Delete Buffer Contents):
   call g:buffer.SetBuffer(bufnr('%'))
-  call g:buffer.DeleteLines(0, 5)
+  call g:buffer.DeleteLines(1, 5)
 Expect:
   sixth line
   seventh line
@@ -64,7 +64,7 @@ Expect:
 
 Execute (Buffer: Delete Everything):
   call g:buffer.SetBuffer(bufnr('%'))
-  call g:buffer.DeleteLines(0, -1)
+  call g:buffer.DeleteLines(1, -1)
 Expect:
   
 
@@ -86,6 +86,28 @@ Expect:
   ninth line
   tenth line
 
+Execute (Buffer: Replace Single Line):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(1, 1, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+
 Execute (Buffer: Replace Last Lines, Purely Numerically):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
@@ -93,57 +115,13 @@ Execute (Buffer: Replace Last Lines, Purely Numerically):
     \ 'foo2',
     \ 'foo3',
   \ ]
-  call g:buffer.ReplaceLines(6, 11, g:lines)
+  call g:buffer.ReplaceLines(6, 10, g:lines)
 Expect:
   first line
   second line
   third line
   fourth line
   fifth line
-  foo1
-  foo2
-  foo3
-
-Execute (Buffer: Replace Last Lines, Using Dollar $):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  call g:buffer.ReplaceLines(6, '$', g:lines)
-Expect:
-  first line
-  second line
-  third line
-  fourth line
-  fifth line
-  foo1
-  foo2
-  foo3
-
-Execute (Buffer: Replace Everything, 0 and $):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  call g:buffer.ReplaceLines(0, '$', g:lines)
-Expect:
-  foo1
-  foo2
-  foo3
-
-Execute (Buffer: Replace Everything, 1 and $):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  call g:buffer.ReplaceLines(1, '$', g:lines)
-Expect:
   foo1
   foo2
   foo3
@@ -155,13 +133,13 @@ Execute (Buffer: Replace Everything, Explicit Numeral):
     \ 'foo2',
     \ 'foo3',
   \ ]
-  call g:buffer.ReplaceLines(1, 11, g:lines)
+  call g:buffer.ReplaceLines(1, 10, g:lines)
 Expect:
   foo1
   foo2
   foo3
 
-Execute (Buffer: Insert Lines):
+Execute (Buffer: Prepend Lines):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -230,17 +208,38 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: Gave $ Start, Non-Dollar End):
+Execute (Buffer: endline before startline):
   call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines('$', 3, g:lines)
+  let g:lines = []
+  AssertThrows call g:buffer.ReplaceLines(4, 2, g:lines)
   AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
       \ 'Threw wrong exception: '.g:vader_exception
-  AssertThrows call g:buffer.ReplaceLines('$', 0, g:lines)
+
+Execute (Buffer: endline before startline (both negative)):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = []
+  AssertThrows call g:buffer.ReplaceLines(-4, -5, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline before (negative) startline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = []
+  AssertThrows call g:buffer.ReplaceLines(-8, 2, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: endline (negative) before startline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = []
+  AssertThrows call g:buffer.ReplaceLines(4, -8, g:lines)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (Buffer: Negative Values are Out of Range):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = []
+  AssertThrows call g:buffer.ReplaceLines(-12, -8, g:lines)
   AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
       \ 'Threw wrong exception: '.g:vader_exception
 
@@ -250,61 +249,6 @@ Execute (Buffer: Is Open in this Tab, Yes):
 Then:
   AssertEqual 1, g:buffer.IsOpenInTab()
   AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
-
-Execute (Buffer: Nonzero startline, 0 endline):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines(4, 0, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-
-Execute (Buffer: endline before startline):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines(4, 2, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-
-Execute (Buffer: endline before startline (both negative)):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines(-4, -5, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-
-Execute (Buffer: endline before (negative) startline):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines(-8, 2, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-
-Execute (Buffer: endline (negative) before startline):
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:lines = [
-    \ 'foo1',
-    \ 'foo2',
-    \ 'foo3',
-  \ ]
-  AssertThrows call g:buffer.ReplaceLines(4, -8, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (Buffer: Is Open in Previous Tab):
   call g:buffer.SetBuffer(bufnr('%'))
@@ -390,14 +334,3 @@ Execute (Buffer: Switch, Is Open in Different (Specific) Tab (which is given), a
 Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
-
-Execute (Buffer: Cleanup):
-  let g:tabnr = tabpagenr('$')
-  while g:tabnr ># 2
-    execute 'tabnext ' . g:tabnr
-    if bufname('%') ==# ''
-      tabclose
-    endif
-    let g:tabnr -= 1
-  endwhile
-  call g:buffer.CleanUp()

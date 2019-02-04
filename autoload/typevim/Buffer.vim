@@ -110,7 +110,6 @@ function! typevim#Buffer#New(...) abort
 
   let l:new = {
     \ '__bufnr': l:bufnr,
-    \ '_NormalizeLineNos': typevim#make#Member('_NormalizeLineNos'),
     \ 'getbufvar': typevim#make#Member('getbufvar'),
     \ 'setbufvar': typevim#make#Member('setbufvar'),
     \ 'bufnr': typevim#make#Member('bufnr'),
@@ -147,45 +146,23 @@ endfunction
 
 ""
 " @private
-" @dict Buffer
-" "Normalize" the given {startline} and {endline} into positive integers or
-" `"$"`; leave positive line numbers untouched, but "wrap around" negative
-" line numbers to the appropriate "true" line number. See
-" @function(Buffer.ReplaceLines) for more details.
+" "Normalize" the given {line} and into a non-negative integer; leave positive
+" line numbers untouched, but "wrap around" negative line numbers to the
+" appropriate "true" line number using the number of lines in the buffer,
+" {num_lines}. Returns the normalized line number.
 "
-" Returns a list of the normalized values: `[startline_norm, endline_norm]`.
-"
-" @throws BadValue if the final normalized {startline} is greater than the normalized {endline}.
-" @throws WrongType if {startline} or {endline} aren't a number or "$".
-function! typevim#Buffer#_NormalizeLineNos(startline, endline) dict abort
-  call s:CheckType(l:self)
-  let l:num_lines = l:self.NumLines()
-  return s:NormalizeLineNos(
-      \ maktaba#ensure#TypeMatchesOneOf(a:startline, [0, '']),
-      \ maktaba#ensure#TypeMatchesOneOf(a:endline,   [0, '']),
-      \ l:num_lines)
-endfunction
-
-function! s:NormalizeLineNos(startline, endline, num_lines) abort
-  let l:startline = s:NormalizeLineNo(a:startline, a:num_lines)
-  let l:endline   = s:NormalizeLineNo(a:endline,   a:num_lines)
-  if l:startline ># l:endline
-    throw maktaba#error#BadValue(
-        \ 'Given starting line no. %d is greater than ending line no. %d.',
-        \ l:startline, l:endline)
-  endif
-  return [
-      \ maktaba#ensure#IsNumber(l:startline),
-      \ maktaba#ensure#IsNumber(l:endline)]
-endfunction
-
+" @throws WrongType if {line} is not a number or "$", or if {num_lines} is not a number.
 function! s:NormalizeLineNo(line, num_lines) abort
+  call maktaba#ensure#IsNumber(a:num_lines)
   if maktaba#value#IsString(a:line)
     if a:line ==# '$'
       return a:num_lines + 1
     else
-      call maktaba#ensure#IsNumber(a:num_lines)  " throw 'expected number'
+      throw maktaba#error#WrongType(
+          \ 'Given line number is a string, but is not "$": %s', a:line)
     endif
+  else
+    call maktaba#ensure#IsNumber(a:num_lines)
   endif
   if a:line >=# 0
     let l:to_return = a:line
@@ -400,63 +377,53 @@ endfunction
 " through {endline}, end-inclusive, with the given {replacement}, a list of
 " strings (one string per line).
 "
-" {startline} and {endline} can assume special values, like 0, `"$"`, and
-" negative numbers. 0 is the "line before-the-start" of the buffer; `"$"` is
-" the "line after-the-end"; and negative numbers are used for "negative"
-" indexing, where -1 is the last line of the buffer, -2 is the second-to-last
-" line, and so on.
+" The number of lines in {replacement} can be does not need to be equal to
+" `endline - startline + 1`, i.e. this function can replace part of a buffer
+" with more lines than were originally there, or with fewer. For instance, if
+" {replacement} is an empty list, the given line range will be deleted.
 "
-" If {startline} and {endline} are both 0, {replacement} will be prepended to
-" the start of the buffer, above line 1. A {startline} value of `"$"` means
-" that {replacement} should be appended to the end of the buffer, below the
-" last line; if {endline} is not also `"$"`, in this case, ERROR(BadValue)
-" will be thrown.
+" Indexing is one-based: line 1 is the first line of the buffer. {startline}
+" and {endline} can assume negative values; -1 is the last line of the buffer,
+" -2 is the second-to-last line, and so on. 0 and `"$"` are not accepted
+" values.
 "
-" A nonzero {startline} value and an {endline} value of `"$"` will replace
-" all lines till the end of the buffer. If {startline} is nonzero and
-" {endline} is 0, an ERROR(BadValue) will be thrown.
-"
-" If {startline} and {endline} are equal, then the function will insert
-" {replacement} below line {startline}.
-"
-" @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} is 0 or `"$"` and is unequal to {endline}.
-" @throws WrongType if {startline} or {endline} are not numbers or "$", or if {replacement} is not a list of strings.
+" @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} or {endline} are 0.
+" @throws WrongType if {startline} or {endline} are not numbers, or if {replacement} is not a list of strings.
 function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
   call s:CheckType(l:self)
+  call maktaba#ensure#IsNumber(a:startline)
+  call maktaba#ensure#IsNumber(a:endline)
   call maktaba#ensure#IsList(a:replacement)
-  let [l:lnum, l:end] = l:self._NormalizeLineNos(a:startline, a:endline)
-  let l:num_lines = l:self.NumLines()
-  if has('nvim')
-    if l:lnum ==# l:num_lines  " append after the end
-      let l:replace_after = -1
-      if l:end !=# l:num_lines
-        throw maktaba#error#BadValue(
-            \ 'startline is past the end: %s; but endline is unequal: %s',
-            \ l:lnum, l:end)
-      endif
-    elseif !l:lnum  " replace after before-the-start
-      " echoerr l:end !=# '0'
-      " echoerr string(l:lnum.', '.l:end)
-      let l:replace_after = 0
-    elseif l:lnum ># 0
-      let l:replace_after = l:lnum - 1
-      if !l:end
-        throw maktaba#error#BadValue(
-            \ 'endline was 0, but startline was not also 0',
-            \ l:lnum, l:end)
-      endif
-    else
-      throw maktaba#error#Failure('Expected normalized lnum, got: %d', l:lnum)
-    endif
 
-    if l:end ># 0
-      " nvim_buf_set_lines is zero-based, end-exclusive,
-      let l:replace_through = l:end  " so don't subtract
-    elseif l:end ==# l:lnum
-      let l:replace_through = l:replace_after
-    else
-      throw maktaba#error#Failure('Expected normalized end, got: %d', l:end)
-    endif
+  let l:num_lines = l:self.NumLines()
+  if !(a:startline && a:endline)
+    throw maktaba#error#BadValue(
+        \ 'Gave invalid line no. 0 in line range: [%d, %d]',
+        \ a:startline, a:endline)
+  elseif a:startline ># l:num_lines || a:endline ># l:num_lines
+    throw maktaba#error#BadValue(
+        \ 'Given line nos. are out of range (num_lines: %d): [%d, %d]',
+        \ l:num_lines, a:startline, a:endline)
+  endif
+  let l:lnum = s:NormalizeLineNo(a:startline, l:num_lines)
+  let l:end  = s:NormalizeLineNo(a:endline,   l:num_lines)
+  if !(l:lnum ># 0 && l:end ># 0)
+    throw maktaba#error#Failure(
+        \ 'Expected normalized line range, got: [%d, %d]', l:lnum, l:end)
+  elseif l:lnum ># l:num_lines || l:end ># l:num_lines
+    throw maktaba#error#Failure(
+        \ 'Normalized line nos. are out of range (num_lines: %d): [%d, %d]',
+        \ l:num_lines, l:lnum, l:end)
+  elseif l:lnum ># l:end
+    throw maktaba#error#BadValue(
+        \ 'Normalized {startline} is greater than {endline}. '
+        \ . 'Gave: [%d, %d]; normalized to: [%d, %d]',
+        \ a:startline, a:endline, l:lnum, l:end)
+  endif
+
+  if has('nvim')
+    let l:replace_after   = l:lnum - 1
+    let l:replace_through = l:end
     call nvim_buf_set_lines(
       \ l:self['__bufnr'],
       \ l:replace_after,
@@ -472,39 +439,51 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
 endfunction
 
 ""
-" Insert the given {lines} just below line {after}.
-" If {after} is `"$"`, append lines to the end of the buffer. If {after} is 0,
-" prepend lines to the start of the buffer.
+" Insert the given {lines} just below line {after}. Similar to
+" @function(Buffer.ReplaceLines), except that it does not overwrite any of the
+" lines in the buffer.
 "
-" @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not
-" a dict.
+" This function uses the same indexing scheme @function(Buffer.ReplaceLines),
+" with the following additions:
+"
+" - {after} may be 0, which is the "line before-the-start" of the buffer.
+"   If {after} is 0, then the given {lines} will be prepended to the start of
+"   the buffer, i.e. above line 1.
+" - {after} may be `"$"`, which is the "line after-the-end" of the buffer. If
+"   {after} is `"$"`, then the given {lines} will be appended to the end of
+"   the buffer.
+"
+" @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
 function! typevim#Buffer#InsertLines(after, lines) dict abort
   call s:CheckType(l:self)
-  call l:self.ReplaceLines(a:after, a:after, a:lines)
-  " call nvim_buf_set_lines(
-  "   \ l:self['__bufnr'],
-  "   \ a:after,
-  "   \ a:after,
-  "   \ a:strict_indexing,
-  "   \ a:lines)
+  let l:num_lines = l:self.NumLines()
+  let l:lnum = s:NormalizeLineNo(a:after, l:num_lines)
+  if has('nvim')
+    if l:lnum ==# l:num_lines + 1
+      let l:lnum = -1  " append to the end
+    endif
+    call nvim_buf_set_lines(
+      \ l:self['__bufnr'],
+      \ l:lnum,
+      \ l:lnum,
+      \ 1,
+      \ a:lines)
+  elseif has('patch-8.1.0037')  " has appendbuflines (8.1.0037)
+    " TODO
+  elseif has('patch-8.0.1039')  " has setbuflines (0.1039);
+    " TODO
+  else
+  endif
 endfunction
 
 ""
 " @dict Buffer
-" Remove lines from this buffer over a range, starting after line number
-" {after} and continuing until line number {through}. If [strict_indexing] is
-" 1, an exception will be thrown if the given lines are "out of range".
+" Delete lines {startline} through {endline}, end-inclusive.
 "
-" @throws WrongType if {after} or {through} are not numbers, or if [strict_indexing] is not a boolean.
-function! typevim#Buffer#DeleteLines(after, through, ...) dict abort
+" See @function(Buffer.ReplaceLines) for details on exceptions and indexing.
+function! typevim#Buffer#DeleteLines(startline, endline) dict abort
   call s:CheckType(l:self)
-  let a:strict_indexing = typevim#ensure#IsBool(get(a:000, 0, 0))
-  call nvim_buf_set_lines(
-    \ l:self['__bufnr'],
-    \ a:after,
-    \ a:through,
-    \ a:strict_indexing,
-    \ [])
+  call l:self.ReplaceLines(a:startline, a:endline, [])
 endfunction
 
 ""
