@@ -15,6 +15,18 @@ function! typevim#value#HasLambdas() abort
 endfunction
 
 ""
+" Returns 1 if this version of vim supports |setbuflines|, and 0 otherwise.
+function! typevim#value#HasSetBuflines() abort
+  return has('patch-8.0.1039')
+endfunction
+
+""
+" Returns 1 if this version of vim supports |appendbuflines|, and 0 otherwise.
+function! typevim#value#HasAppendBuflines() abort
+  return has('patch-8.1.0037')
+endfunction
+
+""
 " Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
 " compare against |v:true| or |v:false| if those constants are not defined in
 " the running version of vim.

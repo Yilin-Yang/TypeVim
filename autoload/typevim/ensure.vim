@@ -40,6 +40,32 @@ function! typevim#ensure#HasLambdas() abort
 endfunction
 
 ""
+" Throws an ERROR(MissingFeature) if the current version of vim does not
+" support lambdas.
+"
+" Returns 1.
+function! typevim#ensure#HasSetBuflines() abort
+  if !typevim#value#HasSetBuflines()
+    throw maktaba#error#MissingFeature(
+        \ 'This vim version does not support setbuflines().')
+  endif
+  return 1
+endfunction
+
+""
+" Throws an ERROR(MissingFeature) if the current version of vim does not
+" support lambdas.
+"
+" Returns 1.
+function! typevim#ensure#HasAppendBuflines() abort
+  if !typevim#value#HasAppendBuflines()
+    throw maktaba#error#MissingFeature(
+        \ 'This vim version does not support appendbuflines().')
+  endif
+  return 1
+endfunction
+
+""
 " Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
 " |v:false|. Returns the given {Val} for convenience.
 function! typevim#ensure#IsBool(Val) abort

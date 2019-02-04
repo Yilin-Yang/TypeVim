@@ -430,9 +430,9 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
       \ l:replace_through,
       \ 0,
       \ a:replacement)
-  elseif has('patch-8.1.0037')  " has appendbuflines (8.1.0037)
+  elseif typevim#value#HasSetBuflines()
     " TODO
-  elseif has('patch-8.0.1039')  " has setbuflines (0.1039);
+  elseif typevim#value#HasSetBuflines()
     " TODO
   else
   endif
