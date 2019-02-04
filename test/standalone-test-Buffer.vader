@@ -208,6 +208,98 @@ Expect:
   foo2
   foo3
 
+Execute (Buffer: Insert Lines At End w/ Explicit Line Number):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(10, g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Insert Lines At End w/ Explicit Line Number Past-the-End):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(11, g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Insert Lines At End w/ Explicit Line Number Past-the-End):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(11, g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+  foo1
+  foo2
+  foo3
+
+Execute (Buffer: Insert Lines At End w/ Negative Indexing):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(-1, g:lines)
+Expect:
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+  foo1
+  foo2
+  foo3
+
 Execute (Buffer: endline before startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []

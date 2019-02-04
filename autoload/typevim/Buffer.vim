@@ -99,12 +99,10 @@ function! typevim#Buffer#New(...) abort
     "
     " do this, and then give the newly created buffer a correct name
     let l:winview = winsaveview()
-    let l:old_redraw = &lazyredraw
     let l:cur_buf = bufnr('%')
     execute 'keepalt buffer '.l:bufnr
     execute 'file '.l:bufname
     execute 'keepalt buffer '.l:cur_buf
-    let &lazyredraw = l:old_redraw
     call winrestview(l:winview)
   endif
 
@@ -192,9 +190,10 @@ endfunction
 function! typevim#Buffer#getbufvar(varname, ...) dict abort
   call s:CheckType(l:self)
   let a:default = get(a:000, 0, 0)
+  let a:gave_default = a:0
   let l:to_return = 0
   execute 'let l:to_return = getbufvar(l:self["__bufnr"], a:varname'
-      \ . (type(a:default) !=# v:t_bool ? ', a:default)' : ')')
+      \ . (a:gave_default ? ', a:default)' : ')')
   return l:to_return
 endfunction
 
@@ -425,16 +424,26 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
     let l:replace_after   = l:lnum - 1
     let l:replace_through = l:end
     call nvim_buf_set_lines(
-      \ l:self['__bufnr'],
+      \ l:self.bufnr(),
       \ l:replace_after,
       \ l:replace_through,
       \ 0,
       \ a:replacement)
-  elseif typevim#value#HasSetBuflines()
-    " TODO
-  elseif typevim#value#HasSetBuflines()
-    " TODO
-  else
+  elseif typevim#value#HasDeleteBufline()
+    let l:num_to_write = len(a:replacement)
+    let l:num_in_range = l:end - l:lnum + 1
+    let l:bufnr = l:self.bufnr()
+    call deletebufline(l:bufnr, l:lnum, l:end)
+    call appendbufline(l:bufnr, l:lnum, a:replacement)
+  else  " fallback implementation
+    " open the buffer and overwrite the given lines, then switch back
+    let l:bufnr = l:self.bufnr()
+    let l:cur_buf = bufnr('%')
+    let l:winview = winsaveview()
+    execute 'keepalt buffer '.l:bufnr
+    call maktaba#buffer#Overwrite(l:lnum, l:end, a:replacement)
+    execute 'keepalt buffer '.l:cur_buf
+    call winrestview(l:winview)
   endif
 endfunction
 
@@ -451,7 +460,8 @@ endfunction
 "   the buffer, i.e. above line 1.
 " - {after} may be `"$"`, which is the "line after-the-end" of the buffer. If
 "   {after} is `"$"`, then the given {lines} will be appended to the end of
-"   the buffer.
+"   the buffer. (Note that you can also specify -1, or just explicitly specify
+"   the line number of the last line in the buffer.)
 "
 " @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
 function! typevim#Buffer#InsertLines(after, lines) dict abort
@@ -463,16 +473,29 @@ function! typevim#Buffer#InsertLines(after, lines) dict abort
       let l:lnum = -1  " append to the end
     endif
     call nvim_buf_set_lines(
-      \ l:self['__bufnr'],
-      \ l:lnum,
-      \ l:lnum,
-      \ 1,
-      \ a:lines)
-  elseif has('patch-8.1.0037')  " has appendbuflines (8.1.0037)
-    " TODO
-  elseif has('patch-8.0.1039')  " has setbuflines (0.1039);
-    " TODO
-  else
+        \ l:self.bufnr(),
+        \ l:lnum,
+        \ l:lnum,
+        \ 1,
+        \ a:lines)
+  elseif typevim#value#HasAppendBufline()
+    call appendbuflines(
+        \ l:self.bufnr(),
+        \ l:lnum,
+        \ a:lines)
+  else  " fallback implementation
+    " truncate line nos. 'past-the-end' to avoid out-of-range errors
+    let l:lnum = l:lnum ># l:num_lines ? l:num_lines : l:lnum
+    " open the buffer and append the lines, then switch back
+    let l:bufnr = l:self.bufnr()
+    let l:cur_buf = bufnr('%')
+    let l:winview = winsaveview()
+    execute 'keepalt buffer '.l:bufnr
+    if append(l:lnum, a:lines)
+      throw maktaba#error#Failure('Call to append() returned nonzero exit code')
+    endif
+    execute 'keepalt buffer '.l:cur_buf
+    call winrestview(l:winview)
   endif
 endfunction
 
