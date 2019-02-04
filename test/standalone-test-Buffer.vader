@@ -139,6 +139,12 @@ Expect:
   foo2
   foo3
 
+Execute (Buffer: Delete Everything, Explicit Numeral):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.DeleteLines(1, 10)
+Expect:
+  
+
 Execute (Buffer: Prepend Lines):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [

@@ -100,7 +100,9 @@
 " TypeVim also provides additional "sugar" meant to make OOP easier. As of the
 " time of writing, this includes: pretty printers (like
 " @function(typevim#object#PrettyPrint) and @function(typevim#object#ShallowPrint))
-" for printing objects in human-readable fashion; and the @dict(Promise)
+" for printing objects in human-readable fashion; the object-oriented
+" @dict(Buffer) wrapper object, including its version-agnostic functions for
+" editing the wrapped buffer "in the background"; and the @dict(Promise)
 " datatype.
 
 ""

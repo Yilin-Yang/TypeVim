@@ -15,22 +15,22 @@
 "
 " - 2.2) @dict(Promise) tries to adhere to the Google VimScript style guide, and
 "   names its member functions in UpperCamelCase, including
-"   @function(Promise.Then). `Promise.then` is an alias of this function,
+"   @function(Promise.Then). `Promise.then()` is an alias of this function,
 "   since Promise/A+ requires that the `then` function be all lowercase.
 "
-" - 2.2.4) @dict(Promise) does not delay `then` callbacks until the callstack
-"   contains only "platform code." This is mostly for practical reasons, to
+" - 2.2.4) @dict(Promise) does not delay `then()` callbacks until the callstack
+"   "contains only platform code." This is mostly for practical reasons, to
 "   avoid having to write a Promise callback "scheduler."
 "
 " - 2.3.1) When resolving a @dict(Promise) with itself, Promise throws an
 "   ERROR(BadValue) instead of an ERROR(WrongType) (`"TypeError"`). This is
-"   for better consistency with vim-maktaba, since ERROR(BadValue) makes more
-"   sense for this case.
+"   for better consistency with vim-maktaba, since ERROR(BadValue) better
+"   describes the nature of the error.
 "
 " - 2.3.3) @dict(Promise) offers no special handling when resolved with
-"   objects that have a `then` property, but which are not @dict(Promise)s
-"   specifically. It will simply pass this object unmodified to its attached
-"   success handlers.
+"   objects that possess a `then` property, but which are not @dict(Promise)s
+"   instances specifically. It will simply pass this object unmodified to its
+"   attached success handlers.
 
 ""
 " Returns the script number of this file. Taken from vim's docs.
@@ -58,8 +58,7 @@ let s:promise_id = 0
 " object, if provided.
 "
 " The [Doer] will be initialized (through a call to its `SetCallbacks` method)
-" with two Funcrefs: as with JavaScript Promises, these are `Resolve` and
-" `Reject`.
+" with two Funcrefs: `Resolve` and `Reject`.
 "
 " The `Resolve` Funcref, when called by the [Doer], will fulfill ("resolve")
 " this Promise with the passed value (e.g. `Resolve("foo")` will pass `"foo"`
@@ -321,8 +320,8 @@ endfunction
 " Attach a success handler {Resolve} and optionally an error handler [Reject]
 " to this Promise. If this Promise resolves, it will call back {Resolve}
 " with the resolved value. If it rejects, it will call back [Reject], or throw
-" an ERROR(NotFound) exception due to an unhandled rejection if no [Reject]
-" handler was attached.
+" an ERROR(NotFound) exception due to an unhandled rejection if there are no
+" [Reject] error handlers "in the chain." (See @function(Promise.Reject).)
 "
 " If this Promise is already resolved, it will call {Resolve} immediately with
 " the resolved value. If it was already rejected, it will call [Reject]
@@ -419,7 +418,7 @@ endfunction
 " @dict Promise
 " Return the stored value/reason from this Promise's resolution/rejection.
 "
-" @throws NotFound if this Resolve has not been resolved or rejected.
+" @throws NotFound if this Promise has not been resolved or rejected.
 function! typevim#Promise#Get() dict abort
   call s:TypeCheck(l:self)
   if l:self['__state'] ==# s:PENDING

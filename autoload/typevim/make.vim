@@ -51,12 +51,12 @@ endfun
 "         \ '__double_underscore': a:optional_float,
 "         \ '__means_definitely_private': 42,
 "         \ 'PublicFunction':
-"             \ typevim#PrefixFunc('PublicFunction'),
+"             \ typevim#make#Member('PublicFunction'),
 "         \ '__PrivateFunction':
-"             \ typevim#PrefixFunc('__PrivateFunction'),
+"             \ typevim#make#Member('__PrivateFunction'),
 "         \ }
 "
-"     return typevim#make#Class(l:example_prototype)
+"     return typevim#make#Class('ExampleClass', l:example_prototype)
 "   endfunction
 " <
 "
@@ -75,13 +75,13 @@ endfun
 "   endfunction
 " <
 " Note how the functions are named. In step (3), the calls to
-" @function(typevim#PrefixFunc) return Funcrefs equivalent to
+" @function(typevim#make#Member) return Funcrefs equivalent to
 " `function('myplugin#ExampleClass#PublicFunction')` and
 " `function('myplugin#ExampleClass#__PrivateFunction')`, respectively. See
 " `:help function()` and `:help Funcref` for more details on what this means.
 "
 " You can see that the full `function('...')` expression is very verbose;
-" `object#PrefixFunc()` is a helper function to help eliminate that
+" `typevim#make#Member()` is a helper function to help eliminate that
 " boilerplate.
 "
 " Finally, test your class, or just start using it!
@@ -112,9 +112,9 @@ endfun
 "     let l:derived_prototype = {
 "         \ '__mem_var': a:mem_var,
 "         \ 'PublicFunction':
-"             \ typevim#PrefixFunc('OverridesPublicFunction'),
+"             \ typevim#make#Member('OverridesPublicFunction'),
 "         \ 'DerivedClassFunc':
-"             \ typevim#PrefixFunc('DerivedClassFunc'),
+"             \ typevim#make#Member('DerivedClassFunc'),
 "         \ }
 "
 "     return typevim#make#Derived(
@@ -364,7 +364,7 @@ endfunction
 "       \ 'DoAThing':
 "           \ function('myplugin#subdirectory#LongClassName#DoAThing'),
 "     " ...
-"     return typevim#make#Class(l:new)
+"     return typevim#make#Class('LongClassName', l:new)
 "   endfunction
 "
 "   function! myplugin#subdirectory#LongClassName#DoAThing() dict abort
