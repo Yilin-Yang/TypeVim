@@ -1,12 +1,13 @@
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
-" support lambdas.
+" support |Partial|s.
 "
 " Returns 1.
 function! typevim#ensure#HasPartials() abort
   if !typevim#value#HasPartials()
     throw maktaba#error#MissingFeature(
-        \ 'This vim version does not support Partials.')
+        \ 'This vim version does not support Partials and/or the ability to '
+        \ . 'get() the components of a Partial.')
   endif
   return 1
 endfunction

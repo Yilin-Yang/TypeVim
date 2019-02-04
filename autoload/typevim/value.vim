@@ -2,10 +2,12 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 
 ""
-" Returns 1 if this version of vim supports |Partial| function references, and
-" 0 otherwise.
+" Returns 1 if this version of vim supports |Partial| function references AND
+" the ability to |get()| the components of a |Partial| or |Funcref| object,
+" and 0 otherwise.
 function! typevim#value#HasPartials() abort
-  return has('patch-7.4.1836')
+  return has('patch-7.4.1842')
+  " return has('patch-7.4.1836')
 endfunction
 
 ""
