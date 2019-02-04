@@ -1,0 +1,5 @@
+Execute (vim-maktaba: Setup, Get Plugin Object):
+  let g:plugin = maktaba#plugin#Get('TypeVim')
+
+Execute (vim-maktaba: Is Library Plugin):
+  AssertEqual 1, g:plugin.IsLibrary()

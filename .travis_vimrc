@@ -18,6 +18,7 @@ set runtimepath+=vader.vim
 set runtimepath+=~/.vim/bundle/vader.vim
 set runtimepath+=vim-maktaba
 set runtimepath+=~/.vim/bundle/vim-maktaba
+call maktaba#plugin#Detect()
 filetype plugin indent on
 syntax enable
 set autoread
