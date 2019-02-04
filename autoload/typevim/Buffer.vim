@@ -433,8 +433,18 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
     let l:num_to_write = len(a:replacement)
     let l:num_in_range = l:end - l:lnum + 1
     let l:bufnr = l:self.bufnr()
-    silent call deletebufline(l:bufnr, l:lnum, l:end)
-    silent call appendbufline(l:bufnr, l:lnum, a:replacement)
+    if l:num_to_write ==# l:num_in_range
+      silent call setbufline(l:bufnr, l:lnum, a:replacement)
+    else  " num lines to insert, num lines to be overwritten are different
+      silent call deletebufline(l:bufnr, l:lnum, l:end)
+      " note that deletebufline will 'scooch up' the lines below the given
+      " range, so subtract one from the line number to append above them
+      silent call appendbufline(l:bufnr, l:lnum - 1, a:replacement)
+      if l:num_in_range ==# l:num_lines
+        " remove superfluous last line, when replacing all lines in the buffer
+        call deletebufline(l:bufnr, '$', '$')
+      endif
+    endif
   else  " fallback implementation
     " open the buffer and overwrite the given lines, then switch back
     let l:bufnr = l:self.bufnr()
@@ -479,10 +489,15 @@ function! typevim#Buffer#InsertLines(after, lines) dict abort
         \ 1,
         \ a:lines)
   elseif typevim#value#HasAppendBufline()
-    call appendbuflines(
+    " truncate line nos. 'past-the-end' to avoid out-of-range errors
+    let l:lnum = l:lnum ># l:num_lines ? l:num_lines : l:lnum
+    silent if appendbufline(
         \ l:self.bufnr(),
         \ l:lnum,
         \ a:lines)
+      throw maktaba#error#Failure(
+          \ 'Call to appendbufline() returned nonzero exit code')
+    endif
   else  " fallback implementation
     " truncate line nos. 'past-the-end' to avoid out-of-range errors
     let l:lnum = l:lnum ># l:num_lines ? l:num_lines : l:lnum
