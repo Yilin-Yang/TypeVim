@@ -9,8 +9,17 @@
 " success handler to the "next link" Promise; on rejection, passes the return
 " value of the error handler to the "next link" Promise.
 
+""
+" Returns the script number of this file. Taken from vim's docs.
+function! s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
+endfun
+
 let s:typename = 'HandlerAttachment'
-let s:default_handler = {arg -> arg}
+function! s:DefaultHandler(Arg) abort
+  return a:Arg
+endfunction
+let s:default_handler = function('<SNR>'.s:SID().'_DefaultHandler')
 
 ""
 " @private

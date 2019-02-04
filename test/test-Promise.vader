@@ -51,6 +51,14 @@ Execute (typevim#Promise: Set Up):
     throw 'except: '.string(a:Val)
   endfunction
 
+  function! ValPlusOne(Val) abort
+    return a:Val + 1
+  endfunction
+
+  function! ReturnZero(...) abort
+    return 0
+  endfunction
+
 Execute (typevim#Promise: Immediate Fulfillment):
   let g:promise = typevim#Promise#New()
   call g:promise.Then(function('SetVal'))
@@ -217,7 +225,7 @@ Execute (typevim#Promise: Resolve with Rejected Promise):
   let g:x = typevim#Promise#New(g:doer)
 
   " silently 'pre-reject' this Promise
-  call g:x.Catch({ -> 0})
+  call g:x.Catch(function('ReturnZero'))
   call g:doer.Reject('no')
 
   let g:promise =  typevim#Promise#New()
@@ -308,7 +316,7 @@ Execute (typevim#Promise: Rejection by Doer):
 Execute (typevim#Promise: Test Promise Chaining):
   let g:doer = MockDoer#New()
   let g:promise = typevim#Promise#New(g:doer)
-  let g:next_link = g:promise.Then({ val -> val + 1}, function('SetOther'))
+  let g:next_link = g:promise.Then(function('ValPlusOne'), function('SetOther'))
   call g:doer.Resolve(0)
   AssertEqual 1, g:next_link.Get()
 
@@ -316,8 +324,8 @@ Execute (typevim#Promise: Test Deep Promise Chaining):
   let g:doer = MockDoer#New()
   let g:promise = typevim#Promise#New(g:doer)
   let g:last_link =
-      \ g:promise.Then({ val -> val + 1}, function('SetVal'))
-      \.Then({ val -> val + 1 }, function('SetOther'))
+      \ g:promise.Then(function('ValPlusOne'), function('SetVal'))
+      \.Then(function('ValPlusOne'), function('SetOther'))
   call g:doer.Resolve(0)
   AssertEqual 2, g:last_link.Get()
   AssertEqual 'fulfilled', g:last_link.State()
@@ -326,8 +334,8 @@ Execute (typevim#Promise: Unhandled Rejection at End of Chain):
   let g:doer = MockDoer#New()
   let g:promise = typevim#Promise#New(g:doer)
   let g:last_link =
-      \ g:promise.Then({ val -> val + 1})
-      \.Then({ val -> val + 1 })
+      \ g:promise.Then(function('ValPlusOne'))
+      \.Then(function('ValPlusOne'))
       \.Then(function('SetVal'))
   AssertThrows call g:doer.Reject('rejected')
   AssertNotEqual -1, match(g:vader_exception,
