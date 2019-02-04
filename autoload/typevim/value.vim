@@ -15,15 +15,21 @@ function! typevim#value#HasLambdas() abort
 endfunction
 
 ""
-" Returns 1 if this version of vim supports |setbuflines|, and 0 otherwise.
-function! typevim#value#HasSetBuflines() abort
+" Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
+function! typevim#value#HasSetBufline() abort
   return has('patch-8.0.1039')
 endfunction
 
 ""
-" Returns 1 if this version of vim supports |appendbuflines|, and 0 otherwise.
-function! typevim#value#HasAppendBuflines() abort
+" Returns 1 if this version of vim supports |appendbufline|, and 0 otherwise.
+function! typevim#value#HasAppendBufline() abort
   return has('patch-8.1.0037')
+endfunction
+
+""
+" Returns 1 if this version of vim supports |deletebufline|, and 0 otherwise.
+function! typevim#value#HasDeleteBufline() abort
+  return has('patch-8.1.0039')
 endfunction
 
 ""

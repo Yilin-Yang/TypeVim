@@ -13,39 +13,39 @@ endfunction
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
-" support lambdas.
+" support |setbufline()|.
 "
 " Returns 1.
-function! typevim#ensure#HasLambdas() abort
-  if !typevim#value#HasLambdas()
+function! typevim#ensure#HasSetBufline() abort
+  if !typevim#value#HasSetBufline()
     throw maktaba#error#MissingFeature(
-        \ 'This vim version does not support lambdas.')
+        \ 'This vim version does not support setbufline().')
   endif
   return 1
 endfunction
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
-" support lambdas.
+" support |appendbufline()|.
 "
 " Returns 1.
-function! typevim#ensure#HasSetBuflines() abort
-  if !typevim#value#HasSetBuflines()
+function! typevim#ensure#HasAppendBufline() abort
+  if !typevim#value#HasAppendBufline()
     throw maktaba#error#MissingFeature(
-        \ 'This vim version does not support setbuflines().')
+        \ 'This vim version does not support appendbufline().')
   endif
   return 1
 endfunction
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
-" support lambdas.
+" support |deletebufline()|.
 "
 " Returns 1.
-function! typevim#ensure#HasAppendBuflines() abort
-  if !typevim#value#HasAppendBuflines()
+function! typevim#ensure#HasDeleteBufline() abort
+  if !typevim#value#HasDeleteBufline()
     throw maktaba#error#MissingFeature(
-        \ 'This vim version does not support appendbuflines().')
+        \ 'This vim version does not support deletebufline().')
   endif
   return 1
 endfunction
