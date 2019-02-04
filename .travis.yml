@@ -47,14 +47,12 @@ script:
     VIM_EXE=$HOME/out/7.4.1842/bin/vim
     echo 'Running Vim 7.4 tests.' \
       && $VIM_EXE --version \
-      && ./run_tests.sh --vim
-        \ --vim_exe=$VIM_EXE --international
+      && ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
   - |
     VIM_EXE=$HOME/out/8/bin/vim
     echo 'Running Vim 8.1+ tests.' \
       && $VIM_EXE --version \
-      && ./run_tests.sh --vim
-        \ --vim_exe=$VIM_EXE --international
+      && ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
   - |
     echo 'Running neovim tests.' \
       && ./run_tests.sh --neovim --international
