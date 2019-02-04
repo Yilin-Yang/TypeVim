@@ -121,14 +121,29 @@ function from the `ensure` namespace.
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
-typevim#Buffer#DeleteLines({after}, {through}, [strict_indexing])
-                                                *typevim#Buffer#DeleteLines()*
-  Remove lines from this buffer over a range, starting after line number
-  {after} and continuing until line number {through}. If [strict_indexing] is
-  1, an exception will be thrown if the given lines are "out of range".
+typevim#ensure#HasPartials()                    *typevim#ensure#HasPartials()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not
+  support |Partial|s.
 
-  Throws ERROR(WrongType) if {after} or {through} are not numbers, or if
-  [strict_indexing] is not a boolean.
+  Returns 1.
+
+typevim#ensure#HasSetBufline()                *typevim#ensure#HasSetBufline()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not
+  support |setbufline()|.
+
+  Returns 1.
+
+typevim#ensure#HasAppendBufline()          *typevim#ensure#HasAppendBufline()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not
+  support |appendbufline()|.
+
+  Returns 1.
+
+typevim#ensure#HasDeleteBufline()          *typevim#ensure#HasDeleteBufline()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not
+  support |deletebufline()|.
+
+  Returns 1.
 
 typevim#ensure#IsBool({Val})                         *typevim#ensure#IsBool()*
   Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
@@ -182,6 +197,8 @@ typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
   [CleanUp] is 0 if omitted.
   Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
   |typevim#value#IsValidTypename()|.
+  Throws ERROR(MissingFeature) if the current version of vim does not support
+  |Partial|s.
   Throws ERROR(NotAuthorized) if {prototype} defines attributes that should've
   been initialized by this function.
   Throws ERROR(WrongType) if arguments don't have the types named above.
@@ -216,16 +233,22 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   [clobber_base_vars] is 0 if omitted.
 
   Throws ERROR(BadValue) if {typename} is not a valid typename.
+  Throws ERROR(MissingFeature) if the current version of vim does not support
+  |Partial|s.
   Throws ERROR(NotAuthorized) when the given {prototype} would redeclare a
   non-Funcref member variable of the base class, and [clobber_base_vars] is
   not 1.
   Throws ERROR(WrongType) if arguments don't have the types named above.
 
-typevim#make#Member({funcname})                        *typevim#make#Member()*
-  Return a Funcref to the function with the name constructed by concatenating
-  the following: (1) the "autoload prefix" from which this function was called
-  (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim` the
-  prefix would be "myplugin#foo#"); (2) the given {funcname}.
+typevim#make#Member({funcname}, [arglist], [dict])     *typevim#make#Member()*
+  Return a |Funcref| to the function with the name constructed by
+  concatenating the following: (1) the "autoload prefix" from which this
+  function was called (e.g. if called from
+  `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim` the prefix would be
+  "myplugin#foo#"); (2) the given {funcname}.
+
+  If [arglist] or [dict] are provided, they are bound to the returned Funcref,
+  turning it into a |Partial|. See |function()|.
 
   This is meant as a convenience function to reduce boilerplate when declaring
   TypeVim objects. Instead of long, explicit assignments like,
@@ -255,6 +278,13 @@ typevim#make#Member({funcname})                        *typevim#make#Member()*
 <
 
   Which is functionally equivalent.
+
+  [arglist] is [] if omitted.
+  [dict] is nothing if omitted.
+  Throws ERROR(MissingFeature) if the current version of vim does not support
+  |Partial|s.
+  Throws ERROR(WrongType) if {funcname} is not a string, or [arglist] is not a
+  list, or [dict] is not a dictionary.
 
 typevim#make#AbstractFunc({typename}, {funcname}, {parameters})
                                                  *typevim#make#AbstractFunc()*
@@ -297,7 +327,7 @@ typevim#make#AbstractFunc({typename}, {funcname}, {parameters})
 typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
                                                        *typevim#object#Bind()*
   Returns a Partial consisting of the given {Funcref} that is bound to this
-  particular {obj} and to [arglist], i.e. return `funcref(a:Funcref,
+  particular {obj} and to [arglist], i.e. return `function(a:Funcref,
   a:arglist, a:obj)`.
 
   If the member function is already bound to an argslist, then [argslist] will
@@ -353,6 +383,23 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   [max_depth] is 1 if omitted.
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
+
+typevim#value#HasPartials()                      *typevim#value#HasPartials()*
+  Returns 1 if this version of vim supports |Partial| function references AND
+  the ability to |get()| the components of a |Partial| or |Funcref| object,
+  and 0 otherwise.
+
+typevim#value#HasLambdas()                        *typevim#value#HasLambdas()*
+  Returns 1 if this version of vim supports |lambda|s, and 0 otherwise.
+
+typevim#value#HasSetBufline()                  *typevim#value#HasSetBufline()*
+  Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
+
+typevim#value#HasAppendBufline()            *typevim#value#HasAppendBufline()*
+  Returns 1 if this version of vim supports |appendbufline|, and 0 otherwise.
+
+typevim#value#HasDeleteBufline()            *typevim#value#HasDeleteBufline()*
+  Returns 1 if this version of vim supports |deletebufline|, and 0 otherwise.
 
 typevim#value#IsBool({Val})                           *typevim#value#IsBool()*
   Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
@@ -464,9 +511,7 @@ typevim#Buffer#New([properties])                                *Buffer.New()*
   `bufhidden`: A string. The buffer's |bufhidden| setting. Defaults to `hide`.
   `buflisted`: A boolean. The buffer's |buflisted| setting. Defaults to 0.
   `bufname`: A string. The name to be given to the buffer. If empty, the
-    buffer will be given a name that is arbitrary, but unique. If the given
-    name matches that of an existing (different) buffer, this function will
-    throw an ERROR(BadValue).
+    buffer will be given a name that is arbitrary, but unique.
   `bufnr`: A number. If empty or zero, then this |TypeVim.Buffer| will be
     initialized with a new vim buffer. This can be set to a nonzero value to
     give this |TypeVim.Buffer| ownership of an existing vim buffer with that
@@ -486,6 +531,9 @@ typevim#Buffer#New([properties])                                *Buffer.New()*
   may fail and throw an exception.
 
   [properties] is {} if omitted.
+  Throws ERROR(BadValue) if the given `bufname` matches an existing buffer
+  that isn't `bufnr` (when nonzero), this function will throw an
+  ERROR(BadValue).
   Throws ERROR(WrongType) if the type of a value in [properties] doesn't match
   the list above.
 
@@ -504,6 +552,8 @@ Buffer.setbufvar({varname}, {Val})                        *Buffer.setbufvar()*
 
 Buffer.bufnr()                                                *Buffer.bufnr()*
   Returns the |bufnr| of the buffer owned by this |TypeVim.Buffer|.
+
+  Throws ERROR(NotFound) if this |TypeVim.Buffer|'s buffer no longer exists.
 
 Buffer.Open([cmd], [keepalt])                                  *Buffer.Open()*
   Open this buffer in the currently focused window.
@@ -573,8 +623,65 @@ Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
   Throws ERROR(WrongType) if {open_vertical} is not a boolean, if [cmd] is not
   a string, if [pos] is not a string, or if [size] is not a number.
 
+Buffer.NumLines()                                          *Buffer.NumLines()*
+  Return the total number of lines in this buffer.
+
+Buffer.GetLines({startline}, [endline], [strict_indexing]) *Buffer.GetLines()*
+  Return lines {startline} to [endline], end-inclusive, from this buffer as a
+  list of strings. If [strict_indexing] is 1, throw exceptions when requesting
+  a line from "out of range."
+
+Buffer.ReplaceLines({startline}, {endline}, {replacement})
+                                                       *Buffer.ReplaceLines()*
+  Change, add, or remove lines from this buffer, replacing lines {startline}
+  through {endline}, end-inclusive, with the given {replacement}, a list of
+  strings (one string per line).
+
+  The number of lines in {replacement} can be does not need to be equal to
+  `endline - startline + 1`, i.e. this function can replace part of a buffer
+  with more lines than were originally there, or with fewer. For instance, if
+  {replacement} is an empty list, the given line range will be deleted.
+
+  Indexing is one-based: line 1 is the first line of the buffer. {startline}
+  and {endline} can assume negative values; -1 is the last line of the buffer,
+  -2 is the second-to-last line, and so on. 0 and `"$"` are not accepted
+  values.
+
+  Throws ERROR(BadValue) if the {startline} is positioned after the {endline}
+  in the buffer, or if the given lines are out of range for the current
+  buffer, or if {startline} or {endline} are 0.
+  Throws ERROR(WrongType) if {startline} or {endline} are not numbers, or if
+  {replacement} is not a list of strings.
+
+Buffer.InsertLines({after}, {lines})                    *Buffer.InsertLines()*
+  Insert the given {lines} just below line {after}. Similar to
+  |Buffer.ReplaceLines()|, except that it does not overwrite any of the lines
+  in the buffer.
+
+  This function uses the same indexing scheme |Buffer.ReplaceLines()|, with
+  the following additions:
+
+  {after} may be 0, which is the "line before-the-start" of the buffer. If
+    {after} is 0, then the given {lines} will be prepended to the start of the
+    buffer, i.e. above line 1.
+  {after} may be `"$"`, which is the "line after-the-end" of the buffer. If
+    {after} is `"$"`, then the given {lines} will be appended to the end of
+    the buffer. (Note that you can also specify -1, or just explicitly specify
+    the line number of the last line in the buffer.)
+
+  Throws ERROR(WrongType) if {after} is not a number or `"$"`, or if {lines}
+  is not a list.
+
+Buffer.DeleteLines({startline}, {endline})              *Buffer.DeleteLines()*
+  Delete lines {startline} through {endline}, end-inclusive.
+
+  See |Buffer.ReplaceLines()| for details on exceptions and indexing.
+
 Buffer.IsOpenInTab([tabnr])                             *Buffer.IsOpenInTab()*
-  Whether this Buffer is open in the tabpage with the given [tabnr].
+  Returns 1 if this |TypeVim.Buffer| is open in the tabpage with the given
+  [tabnr], and 0 otherwise. If the buffer owned by this |TypeVim.Buffer| no
+  longer exists, return 0.
+
   [tabnr] is the current tabpage if omitted.
   Throws ERROR(BadValue) if [tabnr] is less than 1.
   Throws ERROR(WrongType) if [tabnr] is not a number.

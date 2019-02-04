@@ -360,6 +360,7 @@ function! typevim#Buffer#NumLines() dict abort
 endfunction
 
 ""
+" @dict Buffer
 " Return lines {startline} to [endline], end-inclusive, from this buffer as a
 " list of strings. If [strict_indexing] is 1, throw exceptions when requesting
 " a line from "out of range."
@@ -372,6 +373,7 @@ function! typevim#Buffer#GetLines(startline, ...) dict abort
 endfunction
 
 ""
+" @dict Buffer
 " Change, add, or remove lines from this buffer, replacing lines {startline}
 " through {endline}, end-inclusive, with the given {replacement}, a list of
 " strings (one string per line).
@@ -458,6 +460,7 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
 endfunction
 
 ""
+" @dict Buffer
 " Insert the given {lines} just below line {after}. Similar to
 " @function(Buffer.ReplaceLines), except that it does not overwrite any of the
 " lines in the buffer.

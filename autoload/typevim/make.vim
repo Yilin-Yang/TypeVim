@@ -382,9 +382,10 @@ endfunction
 "
 " Which is functionally equivalent.
 "
-" @default
+" @default arglist=[]
+" @default dict=nothing
 " @throws MissingFeature if the current version of vim does not support |Partial|s.
-" @throws WrongType if {funcname} is not a string, or [argslist] is not a list, or [dict] is not a dictionary.
+" @throws WrongType if {funcname} is not a string, or [arglist] is not a list, or [dict] is not a dictionary.
 function! typevim#make#Member(funcname, ...) abort
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsString(a:funcname)
