@@ -1,5 +1,10 @@
 Execute (Declare Interface Helpers):
+  ""
+  " Unlock and unlet a TypeVim interface object.
+  " {varname} is the name of the interface object as a string, e.g.
+  " `"g:test_interface"`.
   function! CleanUp(varname) abort
+    call maktaba#ensure#IsString(a:varname)
     try
       execute 'call '.a:varname.'.CleanUp()'
       execute 'unlet '.a:varname
