@@ -182,6 +182,15 @@ endfunction
 let s:Default_dtor = function('<SNR>'.s:SID().'_DefaultCleanUpper')
 
 ""
+" Clean-upper for an interface. Unlock the interface to allow modification or
+" reassignment.
+function s:InterfaceCleanUpper() dict abort
+  unlockvar! l:self
+  return 0
+endfunction
+let s:Interface_dtor = function('<SNR>'.s:SID().'_InterfaceCleanUpper')
+
+""
 " Returns a string containing an error message complaining that the user tried
 " to illegally assign to the "reserved attribute" {property}. Optionally
 " prints the (stringified) value they tried to assign, [value].
@@ -375,6 +384,10 @@ endfunction
 " functions. The given {prototype} is modified directly, and is returned for
 " convenience.
 "
+" The returned object is a TypeVim object with the typename
+" `"TypeVimInterface"`. It is made immutable using |lockvar|. It may be
+" unlocked through a call to its `CleanUp()` function.
+"
 " {typename} is the human-readable name of the interface.
 "
 " The structure of {prototype} is similar to that of TypeScript interfaces:
@@ -417,7 +430,7 @@ function! typevim#make#Interface(typename, prototype) abort
   "   - is_tag: whether the property is a string with few allowable values
   "   - type: the type of the property, or a list of types that the property
   "   may have
-  for [l:key, l:Val] in a:prototype
+  for [l:key, l:Val] in items(a:prototype)
     call typevim#ensure#IsValidInterfaceProp(l:key)
     let l:constraints = {}
 
@@ -441,7 +454,7 @@ function! typevim#make#Interface(typename, prototype) abort
     elseif typevim#value#IsTypeConstant(l:Val)
       let l:constraints['type'] = l:Val
     else
-      throw maktaba#error#BadValue(
+      throw maktaba#error#WrongType(
           \ 'Values in interface prototype should be v:t_TYPE values, '
           \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
           \ typevim#object#ShallowPrint(l:Val))
@@ -449,7 +462,7 @@ function! typevim#make#Interface(typename, prototype) abort
     let a:prototype[l:key] = l:constraints
   endfor
   let a:prototype[typevim#attribute#INTERFACE()] = a:typename
-  call typevim#make#Class('TypeVimInterface', a:prototype)
+  call typevim#make#Class('TypeVimInterface', a:prototype, s:Interface_dtor)
   lockvar! a:prototype
   return a:prototype
 endfunction

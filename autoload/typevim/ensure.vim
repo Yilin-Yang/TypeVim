@@ -259,7 +259,7 @@ function! typevim#ensure#Implements(Obj, Interface) abort
     let l:is_implementation = !typevim#value#Implements(a:Obj, a:Interface)
   catch /ERROR(WrongType)/
     throw maktaba#error#BadValue(
-        \ 'Gave bad arguments to Implements (should be a TypeVim object and a '
+        \ 'Gave bad arguments to Implements (should be a dictionary and a '
           \ . 'TypeVim interface): [%s, %s]',
         \ typevim#object#ShallowPrint(a:Obj),
         \ typevim#object#ShallowPrint(a:Interface))

@@ -1,0 +1,22 @@
+Execute (typevim#make#Class: Rudimentary Class):
+  let g:obj = TestBase#New(3.14)
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
+  AssertEqual 0, g:obj.CleanUp(), 'Object not initialized with default clean-upper.'
+  Assert !has_key(g:obj, typevim#attribute#CLEAN_UPPER_LIST()),
+      \ printf('Had a clean-upper list when it should not have: %s',
+      \ typevim#object#ShallowPrint(g:obj))
+Then (Invoke Functions):
+  AssertEqual 3.14, g:obj.GetVal()
+  call g:obj.SetVal('foo')
+  AssertEqual 'foo', g:obj.GetVal()
+
+Execute (typevim#make#Class: Class with Simple Destructor):
+  let g:obj = TestBase#New(3.14, function('TestBase#CleanUp'))
+  call typevim#ensure#IsType(g:obj, 'TestBase')
+  AssertEqual ['TestBase'], g:obj[typevim#attribute#TYPE()]
+  AssertEqual 1, g:obj.CleanUp(),
+      \ 'Object not initialized with given clean-upper.'
+  Assert !has_key(g:obj, typevim#attribute#CLEAN_UPPER_LIST()),
+      \ printf('Had a clean-upper list when it should not have: %s',
+      \ typevim#object#ShallowPrint(g:obj))

@@ -1,0 +1,155 @@
+Execute (typevim#make#Interface: Declare Helpers):
+  function! CleanUp(varname) abort
+    try
+      execute 'call '.a:varname.'.CleanUp()'
+      execute 'unlet '.a:varname
+    catch
+      throw 'Could not clean up interface: '.a:varname
+    endtry
+  endfunction
+
+Execute (typevim#make#Interface: Interface, Error Checking):
+  function! Foo() abort
+  endfunction
+
+  function! Bar() abort
+  endfunction
+
+  let g:interface = {'foo': 9}
+  AssertThrows call typevim#make#Interface('Bad', g:interface)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  let g:interface = {'foo': 'fdsfsdf'}
+  AssertThrows call typevim#make#Interface('Bad', g:interface)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  let g:interface = {'foo': []}
+  AssertThrows call typevim#make#Interface('Bad', g:interface)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  let g:interface = {'foo': [typevim#Number(), 'foo']}
+  AssertThrows call typevim#make#Interface('Bad', g:interface)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  let g:interface = {'foo': ['foo', 'bar', typevim#Number()]}
+  AssertThrows call typevim#make#Interface('Bad', g:interface)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#make#Interface: Interface, Simple Types):
+  function! Foo() abort
+  endfunction
+
+  function! Bar() abort
+  endfunction
+
+  let g:interface = {
+      \ 'foo': typevim#Number(),
+      \ 'bar': typevim#String(),
+      \ 'func': typevim#Func(),
+      \ }
+  call typevim#make#Interface('Simple', g:interface)
+Then:
+  AssertEqual 'Simple', g:interface[typevim#attribute#INTERFACE()]
+
+  let g:instance = {'foo': 4596, 'bar': 'fdsfsdfsd', 'func': function('Foo')}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with exact plain-old-data implementation'
+
+  let g:instance = {
+      \ 'foo': 4596,
+      \ 'bar': 'fdsfsdfsd',
+      \ 'func': function('Foo'),
+      \ 'abcd': 15.4
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with larger plain-old-data implementation'
+
+  let g:instance = {'foo': 4596}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with partial (but incomplete) implementation'
+
+  let g:instance = {'foo': 4596.05, 'bar': 'asd', 'func': function('Bar')}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with implementation having wrong types'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Multiple Allowable Types):
+  let g:interface = {
+      \ 'foo': typevim#Number(),
+      \ 'bar': [typevim#String(), typevim#Dict(), typevim#Number()],
+      \ }
+  call typevim#make#Interface('Multiple', g:interface)
+Then:
+  AssertEqual 'Multiple', g:interface[typevim#attribute#INTERFACE()]
+
+  let g:instance = {'foo': 4596, 'bar': 'fdsfsdfsd'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with exact implementation implementation'
+
+  let g:instance = {'foo': 4596, 'bar': {}, 'abcd': 15.4}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with larger implementation from middle of list'
+
+  let g:instance = {'bar': 4596}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with partial (but incomplete) implementation'
+
+  let g:instance = {'foo': 4596, 'bar': []}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with implementation having wrong types'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Class Implementation):
+  let g:interface = {
+      \ 'GetVal': typevim#Func(),
+      \ 'foo': typevim#Number(),
+      \ }
+  call typevim#make#Interface('Object', g:interface)
+Then:
+  let g:instance = TestBase#New(3.14)
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on noncompliant object'
+
+  let g:instance['foo'] = 81.1
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on noncompliant object'
+
+  let g:instance['foo'] = 3
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on compliant object'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Tagged Object):
+  let g:interface = {
+      \ 'foo': typevim#Number(),
+      \ 'tag': ['1', '2', 'blah-de-blah'],
+      \ }
+  call typevim#make#Interface('Tagged', g:interface)
+Then:
+  let g:instance = {'foo': 4596, 'tag': '1'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on 1'
+
+  let g:instance = {'foo': 4596, 'tag': '2'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on 2'
+
+  let g:instance = {'foo': 4596, 'tag': 'blah-de-blah'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on "blah-de-blah"'
+
+  let g:instance = {'foo': 4596, 'tag': 'blah-de'}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on "blah-de"'
+
+  let g:instance = {'foo': 4596, 'tag': 1}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on number 1 that can be implicitly converted to a string'
