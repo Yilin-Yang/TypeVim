@@ -237,7 +237,8 @@ endfunction
 " Return a "typevim-configured" instance of a class. Meant to be called from
 " inside a type's constructor, where it will take a {prototype} dictionary
 " (containing member functions and member variables), annotate it with type
-" information, and perform additional configuration (e.g. adding clean-uppers).
+" information, perform additional configuration (e.g. adding clean-uppers),
+" and return it for convenience.
 "
 " {typename} is the name of the type being declared.
 "
@@ -287,7 +288,9 @@ endfunction
 " {prototype} is a dictionary object containing member variables (with default
 " values) and member functions, which might be virtual. If the parent
 " class defines functions with the same name (i.e. same dictionary key), they
-" will be overridden with those of the {prototype}.
+" will be overridden with those of the {prototype}. The {prototype} dictionary
+" given is modified after being passed in, and is returned from this function
+" for convenience.
 "
 " [CleanUp] is an optional dictionary function that performs cleanup for the
 " object, or 0. When invoked, defined clean-uppers will be called in reverse
