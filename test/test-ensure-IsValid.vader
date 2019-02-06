@@ -89,17 +89,19 @@ Execute (typevim#ensure#IsTypeConstant: Explicit Numerals):
   endfor
 
 Execute (typevim#ensure#IsTypeConstant: Actual Type Constants):
-  try
-    call typevim#ensure#IsTypeConstant(v:t_bool)
-    call typevim#ensure#IsTypeConstant(v:t_dict)
-    call typevim#ensure#IsTypeConstant(v:t_float)
-    call typevim#ensure#IsTypeConstant(v:t_func)
-    call typevim#ensure#IsTypeConstant(v:t_list)
-    call typevim#ensure#IsTypeConstant(v:t_number)
-    call typevim#ensure#IsTypeConstant(v:t_string)
-  catch
-    Assert 0, 'Threw an exception when it should not have: '.g:vader_exception
-  endtry
+  if typevim#value#HasTypeConstants()
+    try
+      call typevim#ensure#IsTypeConstant(v:t_bool)
+      call typevim#ensure#IsTypeConstant(v:t_dict)
+      call typevim#ensure#IsTypeConstant(v:t_float)
+      call typevim#ensure#IsTypeConstant(v:t_func)
+      call typevim#ensure#IsTypeConstant(v:t_list)
+      call typevim#ensure#IsTypeConstant(v:t_number)
+      call typevim#ensure#IsTypeConstant(v:t_string)
+    catch
+      Assert 0, 'Threw an exception when it should not have: '.g:vader_exception
+    endtry
+  endif
 
 Execute (typevim#ensure#IsTypeConstant: Negative Numbers):
   AssertThrows call typevim#ensure#IsTypeConstant(-1)
