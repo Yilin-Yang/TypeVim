@@ -150,6 +150,29 @@ Execute (typevim#make#Extension: Specialization of Base's Tags):
   AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
       \ 'Failed when using tag allowable in both'
 
+Execute (typevim#make#Extension: Shared Type Lists):
+  " edge case: user is sharing a separate list of types between multiple
+  " interface declarations
+  let g:shared_typelist = [typevim#Number(), typevim#Bool(), typevim#String()]
+  let g:int_1 = {'foo': g:shared_typelist}
+  call typevim#make#Interface('Int_1', g:int_1)
+
+  call add(g:shared_typelist, typevim#Float())
+  let g:int_2 = {'boo': g:shared_typelist}
+  call typevim#make#Extension('Int_2', g:int_1, g:int_2)
+
+  let g:instance = {'foo': 1.23, 'boo': 4.56}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:int_1),
+      \ 'Failed on comparison to base'
+
+  let g:instance = {'foo': 1.23, 'boo': 4.56}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:int_2),
+      \ 'Failed on bad comparison to extension'
+
+  let g:instance = {'foo': 1, 'boo': 4.56}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:int_2),
+      \ 'Failed on good comparison to extension'
+
 Execute (typevim#make#Extension: Error Handling, Conflicting Types):
   let g:extension = {
       \ 'num': typevim#Float()

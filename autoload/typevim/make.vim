@@ -524,7 +524,7 @@ function! typevim#make#Extension(typename, base, prototype) abort
   let l:extension = typevim#make#Interface(a:typename, a:prototype)
   unlockvar! l:extension
 
-  let l:base = copy(a:base)
+  let l:base = deepcopy(a:base)
 
   " verify that interfaces are compatible
   for [l:property, l:Constraints] in items(l:extension)
