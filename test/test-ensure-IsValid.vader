@@ -51,7 +51,12 @@ Execute (typevim#ensure#IsValidInterfaceProp: Valid, Uppercase First):
 Execute (typevim#ensure#IsValidInterfaceProp: Valid, Ends w/ Question Mark):
   AssertEqual 'Abcdefg?', typevim#ensure#IsValidInterfaceProp('Abcdefg?')
 
-Execute (typevim#ensure#IsValidInterfaceProp: Only a Question Mark):
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Multiple Question Marks):
+  AssertThrows call typevim#ensure#IsValidInterfaceProp('Abcdefg??')
+  AssertEqual 'ERROR(BadValue): Given interface property has illegal character ''?'' at index: 7',
+      \ g:vader_exception
+
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Only a Question Mark):
   AssertThrows call typevim#ensure#IsValidInterfaceProp('?')
   AssertEqual 'ERROR(BadValue): Interface property must start with letter: ?',
       \ g:vader_exception

@@ -1,12 +1,4 @@
-Execute (typevim#make#Interface: Declare Helpers):
-  function! CleanUp(varname) abort
-    try
-      execute 'call '.a:varname.'.CleanUp()'
-      execute 'unlet '.a:varname
-    catch
-      throw 'Could not clean up interface: '.a:varname
-    endtry
-  endfunction
+Include: InterfaceHelpers.vader
 
 Execute (typevim#make#Interface: Interface, Error Checking):
   function! Foo() abort
@@ -76,6 +68,48 @@ Then:
   let g:instance = {'foo': 4596.05, 'bar': 'asd', 'func': function('Bar')}
   AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
       \ 'Failed with implementation having wrong types'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Built-In Booleans vs. 0 or 1):
+  let g:interface = {
+      \ 'foo': typevim#Bool(),
+      \ 'boo?': [typevim#String(), typevim#Bool()],
+      \ }
+  call typevim#make#Interface('Bool', g:interface)
+Then:
+  if typevim#value#HasTypeConstants()
+    let g:instance = {'foo': v:true}
+    AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+        \ 'Failed with v:true'
+    let g:instance = {'foo': v:false}
+    AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+        \ 'Failed with v:false'
+    let g:instance = {'foo': v:false, 'boo': v:false}
+    AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+        \ 'Failed with v:false for multi-type'
+  endif
+  let g:instance = {'foo': 1}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 1'
+  let g:instance = {'foo': 0}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 0'
+  let g:instance = {'foo': 0, 'boo': 1}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 1 for multi-type'
+  let g:instance = {'foo': 0, 'boo': 0}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 0 for multi-type'
+  let g:instance = {'foo': 2}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 2'
+  let g:instance = {'foo': 'bar'}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with string "bar"'
+  let g:instance = {'foo': 1, 'boo': 2}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number 2 for multi-type'
 
   call CleanUp('g:interface')
 
@@ -180,3 +214,5 @@ Then:
   let g:instance = {'foo': 4596, 'tag': 1}
   AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
       \ 'Failed on number 1 that can be implicitly converted to a string'
+
+  call CleanUp('g:interface')

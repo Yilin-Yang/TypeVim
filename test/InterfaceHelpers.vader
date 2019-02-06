@@ -1,0 +1,9 @@
+Execute (Declare Interface Helpers):
+  function! CleanUp(varname) abort
+    try
+      execute 'call '.a:varname.'.CleanUp()'
+      execute 'unlet '.a:varname
+    catch
+      throw 'Could not clean up interface: '.a:varname
+    endtry
+  endfunction

@@ -215,9 +215,18 @@ function! typevim#value#Implements(Obj, Interface) abort
       endif
       if index(l:type, l:Val) ==# -1 | return 0 | endif
     elseif maktaba#value#IsList(l:type)  " l:type is a list of allowable types
-      if index(l:type, type(l:Val)) ==# -1 | return 0 | endif
+      if index(l:type, type(l:Val)) ==# -1
+        if typevim#value#IsBool(l:Val) && index(l:type, typevim#Bool()) !=# -1
+          continue
+        endif
+        return 0
+      endif
     elseif maktaba#value#IsNumber(l:type)  " l:type is a single allowable type
-      if l:type !=# type(l:Val) | return 0 | endif
+      if l:type ==# typevim#Bool()
+        if !typevim#value#IsBool(l:Val) | return 0 | endif
+      elseif l:type !=# type(l:Val)
+        return 0
+      endif
     else
       throw maktaba#error#Failure(
           \ 'Interface object contains non-parsable constraint for '
