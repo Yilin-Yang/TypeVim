@@ -14,6 +14,33 @@ endfunction
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
+" support |lambda|s.
+"
+" Returns 1.
+function! typevim#ensure#HasLambdas() abort
+  if !typevim#value#HasLambdas()
+    throw maktaba#error#MissingFeature(
+        \ 'This vim version does not support lambdas.')
+  endif
+  return 1
+endfunction
+
+""
+" Throws an ERROR(MissingFeature) if the current version of vim does not
+" have |v:t_TYPE| constants.
+"
+" Returns 1.
+function! typevim#ensure#HasTypeConstants() abort
+  if !typevim#value#HasTypeConstants()
+    throw maktaba#error#MissingFeature(
+        \ 'This vim version does not have type constants, '
+        \ . 'e.g. v:t_bool, v:t_dict, etc.')
+  endif
+  return 1
+endfunction
+
+""
+" Throws an ERROR(MissingFeature) if the current version of vim does not
 " support |setbufline()|.
 "
 " Returns 1.
@@ -116,7 +143,7 @@ function! typevim#ensure#IsValidIdentifier(id) abort
           \ 'Expected a non-empty string for an identifier.')
     endif
     if match(a:id[0], '[A-Za-z]') ==# -1
-      throw maktaba#error#BadValue('identifier must start with letter: '.a:id)
+      throw maktaba#error#BadValue('Identifier must start with letter: '.a:id)
     endif
     let l:idx = 1 | while l:idx <# len(a:id)
       let l:char = a:id[l:idx]
@@ -132,6 +159,45 @@ function! typevim#ensure#IsValidIdentifier(id) abort
   endif
   return a:id
 endfunction
+
+""
+" Throws an ERROR(BadValue) if the given {id} is not a valid interface
+" property with a reason; otherwise, does nothing.
+"
+" Returns the given {id} for convenience.
+"
+" @throws WrongType if the given {id} is not a string.
+function! typevim#ensure#IsValidInterfaceProp(id) abort
+  if !maktaba#value#IsString(a:id)
+    throw maktaba#error#WrongType('Given "id" is not a string: %s',
+        \ typevim#object#ShallowPrint(a:id))
+  endif
+  if !typevim#value#IsValidInterfaceProp(a:id)
+    if empty(a:id)
+      throw maktaba#error#BadValue(
+          \ 'Expected a non-empty string for an interface property.')
+    endif
+    if match(a:id[0], '[A-Za-z]') ==# -1
+      throw maktaba#error#BadValue(
+          \ 'Interface property must start with letter: '.a:id)
+    endif
+    let l:idx = 1 | while l:idx <# len(a:id)
+      let l:char = a:id[l:idx]
+      if match(l:char, '[A-Za-z0-9_]') ==# -1
+          \ && !(l:idx ==# len(a:id) - 1 && l:char ==# '?')
+      throw maktaba#error#BadValue(
+          \ 'Given interface property has illegal character ''%s'' at index: %d',
+          \ l:char, l:idx)
+      endif
+    let l:idx += 1 | endwhile
+    throw maktaba#error#Failure(
+        \ 'Reported that interface property "%s" was invalid, but it seems to '
+        \ . 'be okay?',
+        \ a:id)
+  endif
+  return a:id
+endfunction
+
 
 ""
 " Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.

@@ -18,6 +18,13 @@ function! typevim#value#HasLambdas() abort
 endfunction
 
 ""
+" Returns 1 if this version of vim supports |v:t_TYPE| constants, and 0
+" otherwise.
+function! typevim#value#HasTypeConstants() abort
+  return has('patch-7.4.2071')
+endfunction
+
+""
 " Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
 function! typevim#value#HasSetBufline() abort
   return has('patch-8.0.1039')
@@ -82,6 +89,20 @@ function! typevim#value#IsValidIdentifier(id) abort
     return 0
   endif
   return match(a:id, '^[A-Za-z]\{1}[A-Za-z0-9_]*$') ==# 0
+endfunction
+
+""
+" Returns 1 when the given {id} is a a valid interface property, 0 otherwise.
+"
+" A valid interface property must meet the same requirements as a valid
+" identifier (see @function(typevim#value#IsValidTypename)), but can end with
+" a question mark.
+function! typevim#value#IsValidInterfaceProp(id) abort
+  if !maktaba#value#IsString(a:id) || empty(a:id)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:id)
+    return 0
+  endif
+  return match(a:id, '^[A-Za-z]\{1}[A-Za-z0-9_]*[?]\{0,1}$') ==# 0
 endfunction
 
 ""

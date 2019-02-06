@@ -32,15 +32,42 @@ Execute (typevim#ensure#IsValidIdentifier: Valid, Uppercase First):
 
 Execute (typevim#ensure#IsValidIdentifier: Invalid, Underscore First):
   AssertThrows call typevim#ensure#IsValidIdentifier('_Abcdefg')
-  AssertEqual 'ERROR(BadValue): identifier must start with letter: _Abcdefg', g:vader_exception
+  AssertEqual 'ERROR(BadValue): Identifier must start with letter: _Abcdefg', g:vader_exception
 
 Execute (typevim#ensure#IsValidIdentifier: Invalid, Number First):
   AssertThrows call typevim#ensure#IsValidIdentifier('1Abcdefg')
-  AssertEqual 'ERROR(BadValue): identifier must start with letter: 1Abcdefg', g:vader_exception
+  AssertEqual 'ERROR(BadValue): Identifier must start with letter: 1Abcdefg', g:vader_exception
 
 Execute (typevim#ensure#IsValidIdentifier: Invalid, Illegal Character):
   AssertThrows call typevim#ensure#IsValidIdentifier('Abcdefg-')
   AssertEqual 'ERROR(BadValue): Given identifier has illegal character ''-'' at index: 7', g:vader_exception
+
+Execute (typevim#ensure#IsValidInterfaceProp: Valid, Lowercase First):
+  AssertEqual 'foo_Bar', typevim#ensure#IsValidInterfaceProp('foo_Bar')
+
+Execute (typevim#ensure#IsValidInterfaceProp: Valid, Uppercase First):
+  AssertEqual 'Abcdefg', typevim#ensure#IsValidInterfaceProp('Abcdefg')
+
+Execute (typevim#ensure#IsValidInterfaceProp: Valid, Ends w/ Question Mark):
+  AssertEqual 'Abcdefg?', typevim#ensure#IsValidInterfaceProp('Abcdefg?')
+
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Question Mark Partway Through):
+  AssertThrows call typevim#ensure#IsValidInterfaceProp('Abcd?efg')
+  AssertEqual 'ERROR(BadValue): Given interface property has illegal character ''?'' at index: 4',
+      \ g:vader_exception
+
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Underscore First):
+  AssertThrows call typevim#ensure#IsValidInterfaceProp('_Abcdefg')
+  AssertEqual 'ERROR(BadValue): Interface property must start with letter: _Abcdefg', g:vader_exception
+
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Number First):
+  AssertThrows call typevim#ensure#IsValidInterfaceProp('1Abcdefg')
+  AssertEqual 'ERROR(BadValue): Interface property must start with letter: 1Abcdefg', g:vader_exception
+
+Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Illegal Character):
+  AssertThrows call typevim#ensure#IsValidInterfaceProp('Abcdefg-')
+  AssertEqual 'ERROR(BadValue): Given interface property has illegal character ''-'' at index: 7',
+      \ g:vader_exception
 
 Execute (typevim#ensure#IsValidObject: Valid Base Class):
   let g:obj = TestBase#New(3.14)
