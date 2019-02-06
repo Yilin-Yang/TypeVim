@@ -79,6 +79,33 @@ Then:
 
   call CleanUp('g:interface')
 
+Execute (typevim#make#Interface: Optional Parameters):
+  let g:interface = {
+      \ 'foo?': typevim#Number(),
+      \ 'bar?': [typevim#String(), typevim#Dict(), typevim#Number()],
+      \ }
+  call typevim#make#Interface('Optional', g:interface)
+Then:
+  AssertEqual 'Optional', g:interface[typevim#attribute#INTERFACE()]
+
+  let g:instance = {'foo': 4596, 'bar': 'fdsfsdfsd'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with exact implementation implementation'
+
+  let g:instance = {'foo': 4596, 'abcd': 15.4}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with omitted optional parameter'
+
+  let g:instance = {'abcd': 15.4}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with all optional parameters omitted'
+
+  let g:instance = {'foo': 4596, 'bar': 23, 'abcd': 15.4}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with optional parameters having a different valid type'
+
+  call CleanUp('g:interface')
+
 Execute (typevim#make#Interface: Multiple Allowable Types):
   let g:interface = {
       \ 'foo': typevim#Number(),

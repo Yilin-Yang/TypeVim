@@ -416,8 +416,8 @@ endfunction
 " throw |E121| "Undefined variable" exceptions. The presence of this feature
 " can be checked using @function(typevim#value#HasTypeConstants).
 "
-" @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary, or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values or a list of strings
 " @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however).
+" @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary, or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values or a list of strings
 "
 function! typevim#make#Interface(typename, prototype) abort
   call maktaba#ensure#IsString(a:typename)
@@ -434,8 +434,14 @@ function! typevim#make#Interface(typename, prototype) abort
     call typevim#ensure#IsValidInterfaceProp(l:key)
     let l:constraints = {}
 
-    let l:constraints['is_optional'] = l:key[-1] ==# '?'
     let l:constraints['is_tag'] = 0
+    let l:constraints['is_optional'] = 0
+    if l:key[-1:-1] ==# '?'
+      let l:constraints['is_optional'] = 1
+      unlet a:prototype[l:key]
+      let l:key = l:key[:-2]  " trim question mark
+      let a:prototype[l:key] = l:Val
+    endif
 
     if maktaba#value#IsList(l:Val) && !empty(l:Val)
       let l:type_list = []

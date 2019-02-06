@@ -198,6 +198,8 @@ function! typevim#value#Implements(Obj, Interface) abort
     if has_key(s:RESERVED_ATTRIBUTES, l:property) | continue | endif
     if !l:Constraints['is_optional'] && !has_key(a:Obj, l:property)
       return 0
+    elseif l:Constraints['is_optional'] && !has_key(a:Obj, l:property)
+      continue
     endif
 
     let l:type = l:Constraints['type']
