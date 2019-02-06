@@ -106,6 +106,13 @@ function! typevim#value#IsValidInterfaceProp(id) abort
 endfunction
 
 ""
+" Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
+" constant, and 0 otherwise.
+function! typevim#value#IsTypeConstant(Val) abort
+  return maktaba#value#IsNumber(a:Val) && a:Val >=# 0 && a:Val <=# 6
+endfunction
+
+""
 " Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 "
 " A valid TypeVim object is a dictionary. It shall contain the following

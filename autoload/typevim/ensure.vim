@@ -198,6 +198,18 @@ function! typevim#ensure#IsValidInterfaceProp(id) abort
   return a:id
 endfunction
 
+""
+" Throws an ERROR(WrongType) if the given {Val} is not equal to a |v:t_TYPE|
+" constant.
+"
+" Returns {Val} for convenience.
+function! typevim#value#IsTypeConstant(Val) abort
+  if !typevim#value#IsTypeConstant(a:Val)
+    throw matkaba#error#WrongType('Given item is not a v:t_TYPE constant: %s',
+        \ typevim#object#ShallowPrint(a:Val))
+  endif
+  return a:Val
+endfunction
 
 ""
 " Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
