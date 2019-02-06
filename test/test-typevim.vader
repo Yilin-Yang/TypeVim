@@ -1,0 +1,19 @@
+Execute (typevim: Test Type Constants):
+  AssertEqual 6, typevim#Bool(),   'Failed on: Bool'
+  AssertEqual 4, typevim#Dict(),   'Failed on: Dict'
+  AssertEqual 5, typevim#Float(),  'Failed on: Float'
+  AssertEqual 2, typevim#Func(),   'Failed on: Func'
+  AssertEqual 3, typevim#List(),   'Failed on: List'
+  AssertEqual 0, typevim#Number(), 'Failed on: Number'
+  AssertEqual 1, typevim#String(), 'Failed on: String'
+
+Execute (typevim: Test Type Constants w/ Built-Ins):
+  if typevim#value#HasTypeConstants()
+    AssertEqual v:t_bool,   typevim#Bool(),   'Failed on: Bool'
+    AssertEqual v:t_dict,   typevim#Dict(),   'Failed on: Dict'
+    AssertEqual v:t_float,  typevim#Float(),  'Failed on: Float'
+    AssertEqual v:t_func,   typevim#Func(),   'Failed on: Func'
+    AssertEqual v:t_list,   typevim#List(),   'Failed on: List'
+    AssertEqual v:t_number, typevim#Number(), 'Failed on: Number'
+    AssertEqual v:t_string, typevim#String(), 'Failed on: String'
+  endif

@@ -113,3 +113,66 @@
 ""
 " @section About
 " TypeVim is provided under the terms of the MIT license.
+
+""
+" Return the numerical value of |v:t_bool|.
+function! typevim#Bool() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_bool
+  endif
+  return 6
+endfunction
+
+""
+" Return the numerical value of |v:t_dict|.
+function! typevim#Dict() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_dict
+  endif
+  return 4
+endfunction
+
+""
+" Return the numerical value of |v:t_float|.
+function! typevim#Float() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_float
+  endif
+  return 5
+endfunction
+
+""
+" Return the numerical value of |v:t_func|.
+function! typevim#Func() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_func
+  endif
+  return 2
+endfunction
+
+""
+" Return the numerical value of |v:t_list|.
+function! typevim#List() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_list
+  endif
+  return 3
+endfunction
+
+""
+" Return the numerical value of |v:t_number|.
+function! typevim#Number() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_number
+  endif
+  return 0
+endfunction
+
+""
+" Return the numerical value of |v:t_string|.
+function! typevim#String() abort
+  if typevim#value#HasTypeConstants()
+    return v:t_string
+  endif
+  return 1
+endfunction
