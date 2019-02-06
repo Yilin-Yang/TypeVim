@@ -488,8 +488,9 @@ function s:ThrowIncompatible(type, ...) abort
         \ [s:incompats_to_errs[a:type]] + a:000)
   catch
     throw maktaba#error#Failure(
-        \ 'Failed to produce error msg. for incompatible interfaces, err: %s',
-        \ v:exception)
+        \ 'Failed to produce error msg. for incompatible interfaces, err: %s, '
+          \ . 'args: %s, %s',
+        \ v:exception, a:type, typevim#object#ShallowPrint(a:000))
   endtry
   throw l:error_msg
 endfunction
@@ -497,10 +498,10 @@ let s:incompats_to_errs = {}
 let s:incompats_to_errs['DIFFERENT_TYPE'] =
     \ 'Property "%s", with type constraint: %s, has different type in base: %s'
 let s:incompats_to_errs['NONOPTIONAL_IN_BASE'] =
-    \ 'Optional property "%s" is non-optional in base interace.'
+    \ 'Optional property "%s" is non-optional in base interface.'
 let s:incompats_to_errs['TYPE_TOO_PERMISSIVE'] =
-    \ 'Property "%", with type constraint: %s, allows types not allowed in base,'
-    \ . 'including: %s'
+    \ 'Property "%s", with type constraint: %s, allows types not allowed in '
+    \ . 'base, including: %s'
 
 ""
 " Return an interface, with the name {typename}, based on {prototype} that
@@ -523,10 +524,10 @@ function! typevim#make#Extension(typename, base, prototype) abort
   let l:extension = typevim#make#Interface(a:typename, a:prototype)
   unlockvar! l:extension
 
-  let l:base = copy(l:base)
+  let l:base = copy(a:base)
 
   " verify that interfaces are compatible
-  for [l:property, l:Constraints] in l:extension
+  for [l:property, l:Constraints] in items(l:extension)
     if has_key(s:RESERVED_ATTRIBUTES, l:property) | continue | endif
     if !has_key(l:base, l:property) | continue | endif
     let l:BaseProp = l:base[l:property]

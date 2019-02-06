@@ -1,0 +1,191 @@
+Include: InterfaceHelpers.vader
+
+Execute (typevim#make#Extension: Set-Up):
+  let g:prototype = {
+      \ 'num': typevim#Number(),
+      \ 'num_or_str': [typevim#Number(), typevim#String()],
+      \ 'opt_float?': typevim#Float(),
+      \ 'tag': ['1', '2', '3'],
+      \ 'opt_tag?': ['4', '5', '6'],
+      \ }
+  let g:base = typevim#make#Interface('Base', deepcopy(g:prototype))
+
+Execute (typevim#make#Extension: Basic Extension):
+  let g:extension = {
+      \ 'foo': typevim#Float(),
+      \ 'bar': typevim#Bool(),
+      \ }
+  call typevim#make#Extension('Extension', g:base, g:extension)
+Then:
+  AssertEqual 'Extension', g:extension[typevim#attribute#INTERFACE()]
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:base),
+      \ 'Failed on comparison to base interface'
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed on comparison to interface extension'
+
+  let g:instance['bar'] = 2
+  AssertEqual 0, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed after breaking extension implementation'
+  AssertEqual 1, typevim#value#Implements(g:instance, g:base),
+      \ 'Failed after breaking extension implementation, on comparison to base'
+
+  let g:instance['num'] = 'foo'
+  AssertEqual 0, typevim#value#Implements(g:instance, g:base),
+      \ 'Failed after breaking base implementation'
+
+  call CleanUp('g:extension')
+
+Execute (typevim#make#Extension: Extend w/ Duplicate):
+  let g:extension = copy(g:prototype)
+  call typevim#make#Extension('Base', g:base, g:extension)
+  AssertEqual g:base, g:extension
+  call CleanUp('g:extension')
+
+Execute (typevim#make#Extension: Specialization of Base Multi-Types):
+  let g:extension = {
+      \ 'num_or_str': [typevim#Number()]
+      \ }
+  call typevim#make#Extension('Base', g:base, g:extension)
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 10,
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed with valid instance'
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 0, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed with general base implementation'
+
+  call CleanUp('g:extension')
+
+  let g:extension = {
+      \ 'num_or_str': typevim#Number()
+      \ }
+  call typevim#make#Extension('Base', g:base, g:extension)
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 10,
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed with valid instance'
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 0, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed with general base implementation'
+
+  call CleanUp('g:extension')
+
+Execute (typevim#make#Extension: Optional in Base, Not in Extension):
+  let g:extension = {
+      \ 'opt_float': typevim#Float(),
+      \ }
+  call typevim#make#Extension('Base', g:base, g:extension)
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '3',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 0, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when omitting parameter that is only optional in base'
+
+  let g:instance['opt_float'] = 2.3
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when including parameter that is only optional in base'
+
+Execute (typevim#make#Extension: Specialization of Base's Tags):
+  let g:extension = {
+      \ 'tag': ['2', '3']
+      \ }
+  call typevim#make#Extension('Base', g:base, g:extension)
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '1',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 0, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when using tag only allowable in base'
+
+  let g:instance = {
+      \ 'num': 0,
+      \ 'num_or_str': 'foo',
+      \ 'tag': '2',
+      \ 'foo': 1.23,
+      \ 'bar': 0,
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when using tag allowable in both'
+
+Execute (typevim#make#Extension: Error Handling, Conflicting Types):
+  let g:extension = {
+      \ 'num': typevim#Float()
+      \ }
+  AssertThrows call typevim#make#Extension('Base', g:base, g:extension)
+  AssertEqual 'ERROR(NotAuthorized): Property "num", with type constraint: 5, '
+        \ . 'has different type in base: 0',
+      \ g:vader_exception,
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#make#Extension: Error Handling, Too Permissive):
+  let g:extension = {
+      \ 'num_or_str': [typevim#Float()]
+      \ }
+  AssertThrows call typevim#make#Extension('Base', g:base, g:extension)
+  AssertEqual 'ERROR(NotAuthorized): Property "num_or_str", with type '
+        \ . 'constraint: [ 5 ], allows types not allowed in base, including: 5',
+      \ g:vader_exception,
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#make#Extension: Error Handling, Tags That Aren't in Base):
+  let g:extension = {
+      \ 'opt_tag?': ['4', '7', '6']
+      \ }
+  AssertThrows call typevim#make#Extension('Base', g:base, g:extension)
+  AssertEqual 'ERROR(NotAuthorized): Property "opt_tag", with type '
+        \ . "constraint: [ '4', '7', '6' ], allows types not allowed in base, including: 7",
+      \ g:vader_exception,
+      \ 'Threw wrong exception: '.g:vader_exception
+
+Execute (typevim#make#Extension: Error Handling, Non-Optional in Base):
+  let g:extension = {
+      \ 'num?': typevim#Number()
+      \ }
+  AssertThrows call typevim#make#Extension('Base', g:base, g:extension)
+  AssertEqual 'ERROR(NotAuthorized): Optional property "num" is non-optional '
+        \ . 'in base interface.',
+      \ g:vader_exception,
+      \ 'Threw wrong exception: '.g:vader_exception
