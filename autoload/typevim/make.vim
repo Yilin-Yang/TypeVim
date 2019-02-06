@@ -396,7 +396,8 @@ endfunction
 " @function(typescript#value#IsValidIdentifier)), though each may end with a
 " `"?"` to indicate that the property is optional.
 "
-" The value associated with that key is a:
+" The value associated with that key is called a property constraint, and may
+" be a:
 " - |v:t_TYPE|, that is, a number indicating that property's type in
 "   valid implementations of the interface, or,
 " - A nonempty list of |v:t_TYPE| values, where each value corresponds to an
@@ -471,6 +472,96 @@ function! typevim#make#Interface(typename, prototype) abort
   call typevim#make#Class('TypeVimInterface', a:prototype, s:Interface_dtor)
   lockvar! a:prototype
   return a:prototype
+endfunction
+
+""
+" Throw an ERROR(BadValue) complaining of a mutually exclusive constraints.
+function s:ThrowIncompatible(type, ...) abort
+  call maktaba#ensure#IsString(a:type)
+  if !has_key(s:incompats_to_errs, a:type)
+    throw maktaba#error#Failure(
+        \ 'Given incompatibility type %s not found in dict when printing error',
+        \ a:type)
+  endif
+  try
+    let l:error_msg = call('maktaba#error#NotAuthorized',
+        \ [s:incompats_to_errs[a:type]] + a:000)
+  catch
+    throw maktaba#error#Failure(
+        \ 'Failed to produce error msg. for incompatible interfaces, err: %s',
+        \ v:exception)
+  endtry
+  throw l:error_msg
+endfunction
+let s:incompats_to_errs = {}
+let s:incompats_to_errs['DIFFERENT_TYPE'] =
+    \ 'Property "%s", with type constraint: %s, has different type in base: %s'
+let s:incompats_to_errs['NONOPTIONAL_IN_BASE'] =
+    \ 'Optional property "%s" is non-optional in base interace.'
+let s:incompats_to_errs['TYPE_TOO_PERMISSIVE'] =
+    \ 'Property "%", with type constraint: %s, allows types not allowed in base,'
+    \ . 'including: %s'
+
+""
+" Return an interface, with the name {typename}, based on {prototype} that
+" extends the given {base} interface. As with @function(typevim#makeInterface),
+" the given {prototype} is modified directly and locked using |lockvar|.
+"
+" Any object that implements the interface made from {prototype} must
+" necessarily implement the {base} interface, i.e. {prototype} cannot impose
+" constraints that are incompatible with the {base} interface, such that an
+" object cannot implement both interfaces at the same time.
+"
+" @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however).
+" @throws NotAuthorized if a property constraint in {prototype} is incompatible with a property constraint in {base}.
+" @throws WrongType if {typename} is not a string, {base} is not a TypeVim interface, or if {prototype} does not satisfy the type checks in @function(typevim#make#Interface).
+function! typevim#make#Extension(typename, base, prototype) abort
+  call maktaba#ensure#IsString(a:typename)
+  call typevim#ensure#IsType(a:base, 'TypeVimInterface')
+  call maktaba#ensure#IsDict(a:prototype)
+
+  let l:extension = typevim#make#Interface(a:typename, a:prototype)
+  unlockvar! l:extension
+
+  let l:base = copy(l:base)
+
+  " verify that interfaces are compatible
+  for [l:property, l:Constraints] in l:extension
+    if has_key(s:RESERVED_ATTRIBUTES, l:property) | continue | endif
+    if !has_key(l:base, l:property) | continue | endif
+    let l:BaseProp = l:base[l:property]
+
+    if !l:BaseProp['is_optional'] && l:Constraints['is_optional']
+      call s:ThrowIncompatible('NONOPTIONAL_IN_BASE', l:property)
+    endif
+
+    let l:base_type = maktaba#value#IsList(l:BaseProp['type']) ?
+        \ l:BaseProp['type'] : [ l:BaseProp['type'] ]
+    let l:this_type = maktaba#value#IsList(l:Constraints['type']) ?
+        \ l:Constraints['type'] : [ l:Constraints['type'] ]
+    if len(l:base_type) ==# 1 && len(l:this_type) ==# 1
+      if l:base_type[0] !=# l:this_type[0]
+        call s:ThrowIncompatible(
+            \ 'DIFFERENT_TYPE', l:property, l:this_type[0], l:base_type[0])
+      endif
+    endif
+    for l:type in l:this_type
+      if index(l:base_type, l:type) ==# -1
+        " this interface property allows a type not allowed in the base
+        call s:ThrowIncompatible(
+            \ 'TYPE_TOO_PERMISSIVE',
+            \ l:property,
+            \ typevim#object#ShallowPrint(l:this_type),
+            \ l:type)
+      endif
+    endfor
+  endfor
+
+  " combine these interfaces, using the equivalent or more greatly constrained
+  " properties from the extension when there's a name collision with the base
+  call extend(l:extension, l:base, 'keep')
+  lockvar! l:extension
+  return l:extension
 endfunction
 
 ""
