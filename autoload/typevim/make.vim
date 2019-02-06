@@ -370,6 +370,48 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
 endfunction
 
 ""
+" Parse the given {prototype} into a TypeVim interface that can be used in
+" calls to @function(typevim#value#IsType). The given {prototype} is modified
+" directly, and is returned for convenience.
+"
+" {typename} is the human-readable name of the interface.
+"
+" The structure of {prototype} is similar to that of TypeScript interfaces:
+"
+" Each key is the name of a property, and should be a valid identifier (see
+" @function(typescript#value#IsValidIdentifier)), though each may end with a
+" `"?"` to indicate that the property is optional.
+"
+" The value associated with that key is a:
+" - |v:t_TYPE|, that is, a number indicating that property's type in
+"   valid implementations of the interface, or,
+" - A list of |v:t_TYPE| values, where each value corresponds to an allowable
+"   type.
+"
+" When writing an interface {prototype}, one may specify: a built-in |v:t_TYPE|
+" constant (e.g. |v:t_dict|, |v:t_func|); the literal number value of a
+" |v:t_TYPE| constant (e.g. `1` for |v:t_string|), though this is not
+" recommended since it lacks readability; or use TypeVim's helper functions
+" (e.g. @function(typevim#Number)), which return the same values as vim's
+" built-in |v:t_TYPE|s.
+"
+" The latter is recommended for compatibility reasons: the |v:t_TYPE|
+" constants are not available in older versions of vim, where their use will
+" throw |E121| "Undefined variable" exceptions. The presence of this feature
+" can be checked using @function(typevim#value#HasTypeConstants).
+"
+" @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary.
+" @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however); or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values.
+"
+function! typevim#make#Interface(typename, prototype) abort
+  call maktaba#ensure#IsString(a:typename)
+  call maktaba#ensure#IsDict(a:prototype)
+  for [l:key, l:Val] in a:prototype
+    call typevim#ensure#IsValidInterfaceProp(l:key)
+  endfor
+endfunction
+
+""
 " Return a |Funcref| to the function with the name constructed by concatenating
 " the following: (1) the "autoload prefix" from which this function was
 " called (e.g. if called from `~/.vim/bundle/myplugin/autoload/myplugin/foo.vim`
