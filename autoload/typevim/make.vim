@@ -223,6 +223,17 @@ function! s:AssignReserved(dict, attribute, Value) abort
 endfunction
 
 ""
+" Checks the given {Arg}. If {Arg} is a |Funcref|, returns it unmodified. If
+" it is the number 0, returns the default "dummy" clean-upper. Else, throw an
+" ERROR(WrongType).
+function! s:ReadCleanUpper(Arg) abort
+  if maktaba#value#IsNumber(a:Arg) && !a:Arg
+    return s:Default_dtor
+  endif
+  return maktaba#ensure#IsFuncref(a:Arg)
+endfunction
+
+""
 " Return a "typevim-configured" instance of a class. Meant to be called from
 " inside a type's constructor, where it will take a {prototype} dictionary
 " (containing member functions and member variables), annotate it with type
@@ -234,7 +245,8 @@ endfunction
 " values) and member functions, which might not be implemented.
 "
 " [CleanUp] is an optional dictionary function that performs cleanup for
-" the object.
+" the object, or 0. If [CleanUp] is 0, then the function will substitute a
+" "dummy" clean-upper.
 "
 " @default CleanUp = 0
 " @throws BadValue if the given {typename} is not a valid typename, see @function(typevim#value#IsValidTypename).
@@ -243,7 +255,7 @@ endfunction
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
   call typevim#ensure#HasPartials()
-  let a:CleanUp = get(a:000, 0, s:Default_dtor)
+  let a:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
@@ -278,9 +290,10 @@ endfunction
 " will be overridden with those of the {prototype}.
 "
 " [CleanUp] is an optional dictionary function that performs cleanup for the
-" object. When invoked, defined clean-uppers will be called in reverse order,
-" i.e.  the "most derived" clean-upper will be called first, with the
-" "original" base class clean-upper being called last.
+" object, or 0. When invoked, defined clean-uppers will be called in reverse
+" order, i.e. the "most derived" clean-upper will be called first, with the
+" "original" base class clean-upper being called last. If [CleanUp] is 0, this
+" function will substitute a "dummy" clean-upper.
 "
 " [clobber_base_vars] is a boolean flag that, if true, will allow member
 " variables of the base class to be overwritten by member variables of the
@@ -288,6 +301,7 @@ endfunction
 " modification of base class member variables is generally considered bad
 " style.
 "
+" @default CleanUp=0
 " @default clobber_base_vars=0
 "
 " @throws BadValue if {typename} is not a valid typename.
@@ -296,9 +310,9 @@ endfunction
 " @throws WrongType if arguments don't have the types named above, or if the base class {Parent} is not a valid TypeVim object.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   call typevim#ensure#HasPartials()
-  let a:CleanUp = get(a:000, 0, s:Default_dtor)
-  let a:clobber_base_vars = maktaba#ensure#IsBool(get(a:000, 1, 0))
   call typevim#ensure#IsValidTypename(a:typename)
+  let a:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
+  let a:clobber_base_vars = typevim#ensure#IsBool(get(a:000, 1, 0))
 
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()

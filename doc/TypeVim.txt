@@ -199,7 +199,8 @@ typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
   values) and member functions, which might not be implemented.
 
   [CleanUp] is an optional dictionary function that performs cleanup for the
-  object.
+  object, or 0. If [CleanUp] is 0, then the function will substitute a "dummy"
+  clean-upper.
 
   [CleanUp] is 0 if omitted.
   Throws ERROR(BadValue) if the given {typename} is not a valid typename, see
@@ -227,9 +228,10 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   be overridden with those of the {prototype}.
 
   [CleanUp] is an optional dictionary function that performs cleanup for the
-  object. When invoked, defined clean-uppers will be called in reverse order,
-  i.e.  the "most derived" clean-upper will be called first, with the
-  "original" base class clean-upper being called last.
+  object, or 0. When invoked, defined clean-uppers will be called in reverse
+  order, i.e. the "most derived" clean-upper will be called first, with the
+  "original" base class clean-upper being called last. If [CleanUp] is 0, this
+  function will substitute a "dummy" clean-upper.
 
   [clobber_base_vars] is a boolean flag that, if true, will allow member
   variables of the base class to be overwritten by member variables of the
@@ -237,6 +239,7 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   modification of base class member variables is generally considered bad
   style.
 
+  [CleanUp] is 0 if omitted.
   [clobber_base_vars] is 0 if omitted.
 
   Throws ERROR(BadValue) if {typename} is not a valid typename.

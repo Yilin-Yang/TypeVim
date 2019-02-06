@@ -8,11 +8,7 @@ function! TestBase#New(Val, ...) abort
       \ 'SetVal': typevim#make#Member('SetVal'),
       \ 'StringifyVals': typevim#make#Member('StringifyVals'),
       \ }
-  if maktaba#value#IsFuncref(a:Dtor)
-    return typevim#make#Class(s:typename, l:new, a:Dtor)
-  else
-    return typevim#make#Class(s:typename, l:new)
-  endif
+  return typevim#make#Class(s:typename, l:new, a:Dtor)
 endfunction
 
 function! TestBase#CleanUp() dict abort
