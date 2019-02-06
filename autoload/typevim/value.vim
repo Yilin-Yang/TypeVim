@@ -67,42 +67,42 @@ endfunction
 " cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
 " etc.
 "
-" {typename} cannot be an empty string, nor can it be a "reserved attribute".
+" {Typename} cannot be an empty string, nor can it be a "reserved attribute".
 " See @section(reserved) for more details.
-function! typevim#value#IsValidTypename(typename) abort
-  if !maktaba#value#IsString(a:typename) || empty(a:typename)
-      \ || has_key(s:RESERVED_ATTRIBUTES, a:typename)
+function! typevim#value#IsValidTypename(Typename) abort
+  if !maktaba#value#IsString(a:Typename) || empty(a:Typename)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:Typename)
     return 0
   endif
-  return match(a:typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
+  return match(a:Typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
 endfunction
 
 ""
-" Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
+" Returns 1 when the given {Id} is a a valid identifier, 0 otherwise.
 "
 " A valid identifier must meet the same requirements as a valid typename (see
 " @function(typevim#value#IsValidTypename)), but can start with either a
 " lowercase or uppercase letter.
-function! typevim#value#IsValidIdentifier(id) abort
-  if !maktaba#value#IsString(a:id) || empty(a:id)
-      \ || has_key(s:RESERVED_ATTRIBUTES, a:id)
+function! typevim#value#IsValidIdentifier(Id) abort
+  if !maktaba#value#IsString(a:Id) || empty(a:Id)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:Id)
     return 0
   endif
-  return match(a:id, '^[A-Za-z]\{1}[A-Za-z0-9_]*$') ==# 0
+  return match(a:Id, '^[A-Za-z]\{1}[A-Za-z0-9_]*$') ==# 0
 endfunction
 
 ""
-" Returns 1 when the given {id} is a a valid interface property, 0 otherwise.
+" Returns 1 when the given {Id} is a a valid interface property, 0 otherwise.
 "
 " A valid interface property must meet the same requirements as a valid
 " identifier (see @function(typevim#value#IsValidTypename)), but can end with
 " a question mark.
-function! typevim#value#IsValidInterfaceProp(id) abort
-  if !maktaba#value#IsString(a:id) || empty(a:id)
-      \ || has_key(s:RESERVED_ATTRIBUTES, a:id)
+function! typevim#value#IsValidInterfaceProp(Id) abort
+  if !maktaba#value#IsString(a:Id) || empty(a:Id)
+      \ || has_key(s:RESERVED_ATTRIBUTES, a:Id)
     return 0
   endif
-  return match(a:id, '^[A-Za-z]\{1}[A-Za-z0-9_]*[?]\{0,1}$') ==# 0
+  return match(a:Id, '^[A-Za-z]\{1}[A-Za-z0-9_]*[?]\{0,1}$') ==# 0
 endfunction
 
 ""
