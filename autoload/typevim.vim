@@ -73,6 +73,11 @@
 " different points in a class hierarchy: when calling a class instance's
 " `CleanUp()` function, those clean-uppers will be called in reverse order,
 " going from the most derived class up to the base class.
+"
+" All valid TypeVim objects shall have a clean-upper, even if it does nothing.
+" This is largely handled by TypeVim itself: calls to
+" @function(typevim#make#Class) and @function(typevim#make#Derived) will
+" automatically provide dummy clean-uppers if none are provided.
 
 ""
 " @section Type Information, type

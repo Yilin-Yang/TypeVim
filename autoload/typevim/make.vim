@@ -174,6 +174,7 @@ endfun
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
+let s:CLN_UP_FUNC = typevim#attribute#CLEAN_UPPER()
 
 function s:DefaultCleanUpper() abort
   return 0
@@ -251,7 +252,7 @@ function! typevim#make#Class(typename, prototype, ...) abort
 
   if maktaba#value#IsFuncref(a:CleanUp)
       \ || maktaba#value#IsNumber(a:CleanUp)
-    call s:AssignReserved(l:new, 'CleanUp', a:CleanUp)
+    call s:AssignReserved(l:new, s:CLN_UP_FUNC, a:CleanUp)
   else
     throw maktaba#error#WrongType(
         \ 'CleanUp should be a Funcref, or a number '
@@ -292,7 +293,7 @@ endfunction
 " @throws BadValue if {typename} is not a valid typename.
 " @throws MissingFeature if the current version of vim does not support |Partial|s.
 " @throws NotAuthorized when the given {prototype} would redeclare a non-Funcref member variable of the base class, and [clobber_base_vars] is not 1.
-" @throws WrongType if arguments don't have the types named above.
+" @throws WrongType if arguments don't have the types named above, or if the base class {Parent} is not a valid TypeVim object.
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   call typevim#ensure#HasPartials()
   let a:CleanUp = get(a:000, 0, s:Default_dtor)
@@ -309,15 +310,22 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
         \ . 'or a base class "prototype" dict: %s',
         \ typevim#object#ShallowPrint(a:Parent))
   endif
+  call typevim#ensure#IsValidObject(l:base)
 
   if maktaba#value#IsFuncref(a:CleanUp)
     " only create clean-upper list if actually necessary
-    if !has_key(l:base, s:CLN_UP_LIST_ATTR)
-      let l:OldCleanUp = l:base['CleanUp']
+    if !has_key(l:base, s:CLN_UP_FUNC)
+      " having no clean-upper would only occur if the base class isn't a
+      " TypeVim object
+      throw maktaba#error#Failure(
+          \ 'Base class object is not a TypeVim object: %s',
+          \ typevim#object#ShallowPrint(l:base))
+    elseif !has_key(l:base, s:CLN_UP_LIST_ATTR)
+      let l:OldCleanUp = l:base[s:CLN_UP_FUNC]
       if l:OldCleanUp !=# s:Default_dtor
         let l:base[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, a:CleanUp]
       else
-        let l:base['CleanUp'] = a:CleanUp
+        let l:base[s:CLN_UP_FUNC] = a:CleanUp
       endif
     endif
   endif

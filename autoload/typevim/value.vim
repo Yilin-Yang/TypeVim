@@ -1,5 +1,6 @@
 let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
+let s:CLEAN_UPPER = typevim#attribute#CLEAN_UPPER()
 
 ""
 " Returns 1 if this version of vim supports |Partial| function references AND
@@ -86,15 +87,30 @@ endfunction
 ""
 " Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 "
-" A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
-" dictionary, whose keys are typenames (see @function(IsValidTypename)) and
-" whose values can be anything, though it is suggested that they be an
-" arbitrary number (typically `1`).
+" A valid TypeVim object is a dictionary. It shall contain the following
+" attributes:
+" - A TYPE list: a list of strings containing the names of every class in
+"   the object's class hierarchy, with the original base class as the first
+"   element and the "most derived" class as the last.
+" - A CLEAN-UPPER: a member function, taking no arguments, that handles
+"   clean-up for the object. This function may do nothing: if, for instance,
+"   @function(typevim#make#Class) is not given a clean-upper, the resulting
+"   object will be given a "dummy" clean-upper.
+"
+" See @section(reserved) for more details.
 function! typevim#value#IsValidObject(Val) abort
-  if !(maktaba#value#IsDict(a:Val) && has_key(a:Val, s:TYPE_ATTR))
+  if !maktaba#value#IsDict(a:Val)
     return 0
   endif
-  let l:type_val = a:Val[s:TYPE_ATTR]
+  if !(has_key(a:Val, s:CLEAN_UPPER)
+      \ && maktaba#value#IsFuncref(a:Val[s:CLEAN_UPPER]))
+    return 0
+  endif
+  if has_key(a:Val, s:TYPE_ATTR)
+    let l:type_val = a:Val[s:TYPE_ATTR]
+  else
+    return 0
+  endif
   if maktaba#value#IsList(l:type_val)
     for l:type in l:type_val
       if !typevim#value#IsValidTypename(l:type)

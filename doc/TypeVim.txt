@@ -90,6 +90,11 @@ in a class hierarchy: when calling a class instance's `CleanUp()` function,
 those clean-uppers will be called in reverse order, going from the most
 derived class up to the base class.
 
+All valid TypeVim objects shall have a clean-upper, even if it does nothing.
+This is largely handled by TypeVim itself: calls to |typevim#make#Class()| and
+|typevim#make#Derived()| will automatically provide dummy clean-uppers if none
+are provided.
+
 ==============================================================================
 SUGAR                                                          *TypeVim-sugar*
 
@@ -240,7 +245,8 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   Throws ERROR(NotAuthorized) when the given {prototype} would redeclare a
   non-Funcref member variable of the base class, and [clobber_base_vars] is
   not 1.
-  Throws ERROR(WrongType) if arguments don't have the types named above.
+  Throws ERROR(WrongType) if arguments don't have the types named above, or if
+  the base class {Parent} is not a valid TypeVim object.
 
 typevim#make#Member({funcname}, [arglist], [dict])     *typevim#make#Member()*
   Return a |Funcref| to the function with the name constructed by
@@ -434,10 +440,17 @@ typevim#value#IsValidIdentifier({id})      *typevim#value#IsValidIdentifier()*
 typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 
-  A valid TypeVim object is a dictionary; it contains a `'TYPE'` entry, also a
-  dictionary, whose keys are typenames (see |IsValidTypename()|) and whose
-  values can be anything, though it is suggested that they be an arbitrary
-  number (typically `1`).
+  A valid TypeVim object is a dictionary. It shall contain the following
+  attributes:
+  A TYPE list: a list of strings containing the names of every class in the
+    object's class hierarchy, with the original base class as the first
+    element and the "most derived" class as the last.
+  A CLEAN-UPPER: a member function, taking no arguments, that handles clean-up
+    for the object. This function may do nothing: if, for instance,
+    |typevim#make#Class()| is not given a clean-upper, the resulting object
+    will be given a "dummy" clean-upper.
+
+  See |TypeVim-reserved| for more details.
 
 typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
   Returns 1 when the given {Obj} is an instance of the type {typename}, and 0

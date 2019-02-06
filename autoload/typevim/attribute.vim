@@ -60,3 +60,10 @@ endfunction
 function! typevim#attribute#CLEAN_UPPER_LIST() abort
   return s:Attributes['CLEAN_UPPER_LIST']
 endfunction
+
+""
+" Return the standardized name of a 'CleanUpper' function.
+" @private
+function! typevim#attribute#CLEAN_UPPER() abort
+  return 'CleanUp'
+endfunction
