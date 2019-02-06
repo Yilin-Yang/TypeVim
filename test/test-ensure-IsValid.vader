@@ -69,6 +69,46 @@ Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Illegal Character):
   AssertEqual 'ERROR(BadValue): Given interface property has illegal character ''-'' at index: 7',
       \ g:vader_exception
 
+Execute (typevim#ensure#IsTypeConstant: Explicit Numerals):
+  for g:i in range(7)
+    try
+      call typevim#ensure#IsTypeConstant(g:i)
+    catch
+      Assert 0, 'Threw an exception when it should not have: '.g:vader_exception
+    endtry
+  endfor
+
+Execute (typevim#ensure#IsTypeConstant: Actual Type Constants):
+  try
+    call typevim#ensure#IsTypeConstant(v:t_bool)
+    call typevim#ensure#IsTypeConstant(v:t_dict)
+    call typevim#ensure#IsTypeConstant(v:t_float)
+    call typevim#ensure#IsTypeConstant(v:t_func)
+    call typevim#ensure#IsTypeConstant(v:t_list)
+    call typevim#ensure#IsTypeConstant(v:t_number)
+    call typevim#ensure#IsTypeConstant(v:t_string)
+  catch
+    Assert 0, 'Threw an exception when it should not have: '.g:vader_exception
+  endtry
+
+Execute (typevim#ensure#IsTypeConstant: Negative Numbers):
+  AssertThrows call typevim#ensure#IsTypeConstant(-1)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+
+  AssertThrows call typevim#ensure#IsTypeConstant(-105)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+
+Execute (typevim#ensure#IsTypeConstant: Too-Large Numbers):
+  AssertThrows call typevim#ensure#IsTypeConstant(84)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+
+Execute (typevim#ensure#IsTypeConstant: Non-Integer Values):
+  AssertThrows call typevim#ensure#IsTypeConstant(1.5)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+
+  AssertThrows call typevim#ensure#IsTypeConstant(-0.87)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+
 Execute (typevim#ensure#IsValidObject: Valid Base Class):
   let g:obj = TestBase#New(3.14)
   AssertEqual g:obj, typevim#ensure#IsValidObject(g:obj)
