@@ -203,9 +203,9 @@ endfunction
 " constant.
 "
 " Returns {Val} for convenience.
-function! typevim#value#IsTypeConstant(Val) abort
+function! typevim#ensure#IsTypeConstant(Val) abort
   if !typevim#value#IsTypeConstant(a:Val)
-    throw matkaba#error#WrongType('Given item is not a v:t_TYPE constant: %s',
+    throw maktaba#error#WrongType('Given item is not a v:t_TYPE constant: %s',
         \ typevim#object#ShallowPrint(a:Val))
   endif
   return a:Val

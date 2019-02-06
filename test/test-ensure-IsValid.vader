@@ -93,21 +93,26 @@ Execute (typevim#ensure#IsTypeConstant: Actual Type Constants):
 
 Execute (typevim#ensure#IsTypeConstant: Negative Numbers):
   AssertThrows call typevim#ensure#IsTypeConstant(-1)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
 
   AssertThrows call typevim#ensure#IsTypeConstant(-105)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#ensure#IsTypeConstant: Too-Large Numbers):
   AssertThrows call typevim#ensure#IsTypeConstant(84)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#ensure#IsTypeConstant: Non-Integer Values):
   AssertThrows call typevim#ensure#IsTypeConstant(1.5)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
 
   AssertThrows call typevim#ensure#IsTypeConstant(-0.87)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#ensure#IsValidObject: Valid Base Class):
   let g:obj = TestBase#New(3.14)
