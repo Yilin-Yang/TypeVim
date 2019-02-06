@@ -176,6 +176,8 @@ let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
 let s:CLN_UP_FUNC = typevim#attribute#CLEAN_UPPER()
 
+let s:TYPEVIM_INTERFACE = 'TypeVimInterface'
+
 function s:DefaultCleanUpper() abort
   return 0
 endfunction
@@ -379,6 +381,24 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
 endfunction
 
 ""
+" Returns 1 when the given {Val} is a valid non-tag interface constraint, i.e.
+" a |v:t_TYPE| or another interface, but not a list thereof, and not a tag.
+function! s:IsConstraint(Val) abort
+  if typevim#value#IsTypeConstant(a:Val)
+      \ || typevim#value#IsType(a:Val, 'TypeVimInterface')
+    return 1
+  endif
+  return 0
+endfunction
+
+function! s:ThrowWrongConstraintType(Gave) abort
+  throw maktaba#error#WrongType(
+      \ 'Values in interface prototype should be v:t_TYPE values, '
+      \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
+      \ typevim#object#ShallowPrint(a:Gave))
+endfunction
+
+""
 " Parse the given {prototype} into an immutable TypeVim interface object that
 " can be used in calls to @function(typevim#value#Implements) and similar
 " functions. The given {prototype} is modified directly, and is returned for
@@ -400,8 +420,9 @@ endfunction
 " be a:
 " - |v:t_TYPE|, that is, a number indicating that property's type in
 "   valid implementations of the interface, or,
-" - A nonempty list of |v:t_TYPE| values, where each value corresponds to an
-"   allowable type.
+" - Another TypeVim interface object, or,
+" - A nonempty list of |v:t_TYPE| values and/or TypeVim interface objects,
+"   where each value corresponds to an allowable type, or,
 " - A nonempty list of strings ("tags"), where each string is an allowable
 "   value for the property (inferred to be of type |v:t_string|).
 "
@@ -451,25 +472,26 @@ function! typevim#make#Interface(typename, prototype) abort
         for l:tag in l:Val
           call add(l:type_list, maktaba#ensure#IsString(l:tag))
         endfor
-      elseif typevim#value#IsTypeConstant(l:Val[0])
+      elseif s:IsConstraint(l:Val[0])
         for l:type in l:Val
-          call add(l:type_list, typevim#ensure#IsTypeConstant(l:type))
+          if !s:IsConstraint(l:type)
+            call s:ThrowWrongConstraintType(l:type)
+          endif
+          call add(l:type_list, l:type)
         endfor
       else
+        call s:ThrowWrongConstraintType(l:Val)
       endif
       let l:constraints['type'] = l:type_list
-    elseif typevim#value#IsTypeConstant(l:Val)
+    elseif s:IsConstraint(l:Val)
       let l:constraints['type'] = l:Val
     else
-      throw maktaba#error#WrongType(
-          \ 'Values in interface prototype should be v:t_TYPE values, '
-          \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
-          \ typevim#object#ShallowPrint(l:Val))
+      call s:ThrowWrongConstraintType(l:Val)
     endif
     let a:prototype[l:key] = l:constraints
   endfor
   let a:prototype[typevim#attribute#INTERFACE()] = a:typename
-  call typevim#make#Class('TypeVimInterface', a:prototype, s:Interface_dtor)
+  call typevim#make#Class(s:TYPEVIM_INTERFACE, a:prototype, s:Interface_dtor)
   lockvar! a:prototype
   return a:prototype
 endfunction
@@ -518,7 +540,7 @@ let s:incompats_to_errs['TYPE_TOO_PERMISSIVE'] =
 " @throws WrongType if {typename} is not a string, {base} is not a TypeVim interface, or if {prototype} does not satisfy the type checks in @function(typevim#make#Interface).
 function! typevim#make#Extension(typename, base, prototype) abort
   call maktaba#ensure#IsString(a:typename)
-  call typevim#ensure#IsType(a:base, 'TypeVimInterface')
+  call typevim#ensure#IsType(a:base, s:TYPEVIM_INTERFACE)
   call maktaba#ensure#IsDict(a:prototype)
 
   let l:extension = typevim#make#Interface(a:typename, a:prototype)
