@@ -370,9 +370,10 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
 endfunction
 
 ""
-" Parse the given {prototype} into a TypeVim interface that can be used in
-" calls to @function(typevim#value#IsType). The given {prototype} is modified
-" directly, and is returned for convenience.
+" Parse the given {prototype} into an immutable TypeVim interface object that
+" can be used in calls to @function(typevim#value#Implements) and similar
+" functions. The given {prototype} is modified directly, and is returned for
+" convenience.
 "
 " {typename} is the human-readable name of the interface.
 "
@@ -385,8 +386,10 @@ endfunction
 " The value associated with that key is a:
 " - |v:t_TYPE|, that is, a number indicating that property's type in
 "   valid implementations of the interface, or,
-" - A list of |v:t_TYPE| values, where each value corresponds to an allowable
-"   type.
+" - A nonempty list of |v:t_TYPE| values, where each value corresponds to an
+"   allowable type.
+" - A nonempty list of strings ("tags"), where each string is an allowable
+"   value for the property (inferred to be of type |v:t_string|).
 "
 " When writing an interface {prototype}, one may specify: a built-in |v:t_TYPE|
 " constant (e.g. |v:t_dict|, |v:t_func|); the literal number value of a
@@ -400,15 +403,55 @@ endfunction
 " throw |E121| "Undefined variable" exceptions. The presence of this feature
 " can be checked using @function(typevim#value#HasTypeConstants).
 "
-" @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary.
-" @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however); or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values.
+" @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary, or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values or a list of strings
+" @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however).
 "
 function! typevim#make#Interface(typename, prototype) abort
   call maktaba#ensure#IsString(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
+
+  " modify the prototype as follows:
+  " - strip any question marks from key names
+  " - replace each value with a dictionary of constraints:
+  "   - is_optional: whether the property is optional
+  "   - is_tag: whether the property is a string with few allowable values
+  "   - type: the type of the property, or a list of types that the property
+  "   may have
   for [l:key, l:Val] in a:prototype
     call typevim#ensure#IsValidInterfaceProp(l:key)
+    let l:constraints = {}
+
+    let l:constraints['is_optional'] = l:key[-1] ==# '?'
+    let l:constraints['is_tag'] = 0
+
+    if maktaba#value#IsList(l:Val) && !empty(l:Val)
+      let l:type_list = []
+      if maktaba#value#IsString(l:Val[0])
+        let l:constraints['is_tag'] = 1
+        for l:tag in l:Val
+          call add(l:type_list, maktaba#ensure#IsString(l:tag))
+        endfor
+      elseif typevim#value#IsTypeConstant(l:Val[0])
+        for l:type in l:Val
+          call add(l:type_list, typevim#ensure#IsTypeConstant(l:type))
+        endfor
+      else
+      endif
+      let l:constraints['type'] = l:type_list
+    elseif typevim#value#IsTypeConstant(l:Val)
+      let l:constraints['type'] = l:Val
+    else
+      throw maktaba#error#BadValue(
+          \ 'Values in interface prototype should be v:t_TYPE values, '
+          \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
+          \ typevim#object#ShallowPrint(l:Val))
+    endif
+    let a:prototype[l:key] = l:constraints
   endfor
+  let a:prototype[typevim#attribute#INTERFACE()] = a:typename
+  call typevim#make#Class('TypeVimInterface', a:prototype)
+  lockvar! a:prototype
+  return a:prototype
 endfunction
 
 ""

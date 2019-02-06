@@ -22,6 +22,8 @@
 let s:Attributes = {
     \ 'TYPE': '___TYPE___',
     \ 'CLEAN_UPPER_LIST': '___CLEAN_UPPERS___',
+    \ 'INTERFACE': '___INTERFACE___',
+    \ 'CLEAN_UP': 'CleanUp',
     \ }
 
 let s:AttributesList = values(s:Attributes)
@@ -65,5 +67,12 @@ endfunction
 " Return the standardized name of a 'CleanUpper' function.
 " @private
 function! typevim#attribute#CLEAN_UPPER() abort
-  return 'CleanUp'
+  return s:Attributes['CLEAN_UP']
+endfunction
+
+""
+" Return the key used for storing the name of an interface.
+" @private
+function! typevim#attribute#INTERFACE() abort
+  return s:Attributes['INTERFACE']
 endfunction

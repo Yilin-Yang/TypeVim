@@ -229,13 +229,43 @@ endfunction
 "
 " Returns {Obj} for convenience.
 "
-" @throws WrongType if {Obj} is not a dict or {typename} is not a string.
+" @throws BadValue if {Obj} is not a dict or {typename} is not a string.
 function! typevim#ensure#IsType(Obj, typename) abort
-  call maktaba#ensure#IsDict(a:Obj)
-  call maktaba#ensure#IsString(a:typename)
+  try
+    call maktaba#ensure#IsDict(a:Obj)
+    call maktaba#ensure#IsString(a:typename)
+  catch
+    throw maktaba#error#BadValue(
+        \ 'Gave bad arguments to IsType (should be dict and string): [%s, %s]',
+        \ typevim#object#ShallowPrint(a:Obj),
+        \ typevim#object#ShallowPrint(a:typename))
+  endtry
   if !typevim#value#IsType(a:Obj, a:typename)
     throw maktaba#error#WrongType('Given object %s is not of type: %s',
         \ typevim#object#ShallowPrint(a:Obj, 2), a:typename)
   endif
   return a:Obj
+endfunction
+
+""
+" Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
+" {Interface}.
+"
+" Returns {Obj} for convenience.
+"
+" @throws BadValue if {Obj} is not a dict or {Interface} is not a TypeVim interface.
+function! typevim#ensure#Implements(Obj, Interface) abort
+  try
+    let l:is_implementation = !typevim#value#Implements(a:Obj, a:Interface)
+  catch /ERROR(WrongType)/
+    throw maktaba#error#BadValue(
+        \ 'Gave bad arguments to Implements (should be a TypeVim object and a '
+          \ . 'TypeVim interface): [%s, %s]',
+        \ typevim#object#ShallowPrint(a:Obj),
+        \ typevim#object#ShallowPrint(a:Interface))
+  endtry
+  if l:is_implementation | return a:Obj | endif
+  throw maktaba#error#WrongType(
+      \ 'Object does not implement interface: %s',
+      \ a:Interface[typevim#attribute#INTERFACE()])
 endfunction

@@ -187,6 +187,45 @@ function! typevim#value#IsType(Obj, typename) abort
   return 0
 endfunction
 
+""
+" Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.
+"
+" @throws WrongType if {Obj} is not a TypeVim object, or if {Interface} is not a TypeVim interface (i.e. an object constructed through a call to @function(typevim#make#Interface).)
+function! typevim#value#Implements(Obj, Interface) abort
+  call typevim#ensure#IsValidObject(a:Obj)
+  call typevim#ensure#IsType(a:Interface, 'TypeVimInterface')
+  for [l:property, l:constraints] in items(a:Interface)
+    if has_key(s:RESERVED_ATTRIBUTES, l:property) | continue | endif
+    if !l:constraints['is_optional'] && !has_key(a:Obj, l:property)
+      return 0
+    endif
+
+    let l:type = l:constraints['type']
+    let l:Val = a:Obj[l:property]
+    if l:constraints['is_tag']  " l:type is a list of allowable strings
+      if !maktaba#value#IsString(l:Val) | return 0 | endif
+      if !maktaba#value#IsList(l:type)
+        throw maktaba#error#Failure(
+            \ 'Interface property "%s" is a tag, but the tag list is not a '
+              \ . 'list of strings: %s',
+            \ l:property,
+            \ typevim#object#ShallowPrint(l:type))
+      endif
+      if index(l:type, l:Val) ==# -1 | return 0 | endif
+    elseif maktaba#value#IsList(l:type)  " l:type is a list of allowable types
+      if index(l:type, type(l:Val)) ==# -1 | return 0 | endif
+    elseif maktaba#value#IsNumber(l:type)  " l:type is a single allowable type
+      if l:type !=# type(l:Val) | return 0 | endif
+    else
+      throw maktaba#error#Failure(
+          \ 'Interface object contains non-parsable constraint for '
+            \ . 'property "%s": %s',
+          \ l:property, typevim#object#ShallowPrint(l:constraints))
+    endif
+  endfor
+  return 1
+endfunction
+
 function! s:NotTypeVimObject(Obj) abort
   throw maktaba#error#BadValue('Given object is not a TypeVim object: %s',
       \ typevim#object#ShallowPrint(a:Obj))
