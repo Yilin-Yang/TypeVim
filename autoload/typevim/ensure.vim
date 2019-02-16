@@ -256,7 +256,7 @@ endfunction
 " @throws BadValue if {Obj} is not a dict or {Interface} is not a TypeVim interface.
 function! typevim#ensure#Implements(Obj, Interface) abort
   try
-    let l:is_implementation = !typevim#value#Implements(a:Obj, a:Interface)
+    let l:is_implementation = typevim#value#Implements(a:Obj, a:Interface)
   catch /ERROR(WrongType)/
     throw maktaba#error#BadValue(
         \ 'Gave bad arguments to Implements (should be a dictionary and a '
