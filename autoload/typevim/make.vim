@@ -433,10 +433,10 @@ endfunction
 " (e.g. @function(typevim#Number)), which return the same values as vim's
 " built-in |v:t_TYPE|s.
 "
-" The latter is recommended for compatibility reasons: the |v:t_TYPE|
-" constants are not available in older versions of vim, where their use will
-" throw |E121| "Undefined variable" exceptions. The presence of this feature
-" can be checked using @function(typevim#value#HasTypeConstants).
+" The latter is version-agnostic and is recommended for compatibility reasons:
+" the |v:t_TYPE| constants are not available in older versions of vim, where
+" their use will throw |E121| "Undefined variable" exceptions. The presence of
+" the |v:t_TYPE| constants can be checked using @function(typevim#value#HasTypeConstants).
 "
 " @throws BadValue if keys in {prototype} are not valid identifiers (the `"?"` character is valid at the end of these keys, however).
 " @throws WrongType if {typename} is not a string, or {prototype} is not a dictionary, or if values in {prototype} are not |v:t_TYPE| values or a list of |v:t_TYPE| values or a list of strings

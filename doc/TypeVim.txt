@@ -343,10 +343,11 @@ typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
   (e.g. |typevim#Number()|), which return the same values as vim's built-in
   |v:t_TYPE|s.
 
-  The latter is recommended for compatibility reasons: the |v:t_TYPE|
-  constants are not available in older versions of vim, where their use will
-  throw |E121| "Undefined variable" exceptions. The presence of this feature
-  can be checked using |typevim#value#HasTypeConstants()|.
+  The latter is version-agnostic and is recommended for compatibility reasons:
+  the |v:t_TYPE| constants are not available in older versions of vim, where
+  their use will throw |E121| "Undefined variable" exceptions. The presence of
+  the |v:t_TYPE| constants can be checked using
+  |typevim#value#HasTypeConstants()|.
 
   Throws ERROR(BadValue) if keys in {prototype} are not valid identifiers (the
   `"?"` character is valid at the end of these keys, however).
