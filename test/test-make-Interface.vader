@@ -249,6 +249,29 @@ Then:
 
   call CleanUp('g:interface')
 
+Execute (typevim#make#Interface: Field is Literal Interface):
+  let g:interface = {
+      \ 'face': {
+        \ 'foo': typevim#Number(),
+        \ 'tag': ['1', '2', 'blah-de-blah'],
+        \ },
+      \ }
+  call typevim#make#Interface('Parent', g:interface)
+Then:
+  let g:instance = {'face': {'foo': 4596, 'tag': '1'}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid interface'
+
+  let g:instance = {'face': {'foo': 4596, 'tag': '3'}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface'
+
+  let g:instance = {'face': {'foo': 4596, 'tag': '1'}, 'heel': 'turn'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid, larger interface'
+
+  call CleanUp('g:interface')
+
 Execute (typevim#make#Interface: Multilevel Interface):
   let g:child_interface = {
       \ 'foo': typevim#Number(),
@@ -261,6 +284,35 @@ Execute (typevim#make#Interface: Multilevel Interface):
   call typevim#make#Interface('Parent', g:parent_interface)
   let g:interface = {
       \ 'ecaf': g:parent_interface,
+      \ }
+  call typevim#make#Interface('Grandparent', g:interface)
+Then:
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '1'}}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid interface'
+
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '3'}}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface, two levels deep'
+
+  let g:instance = {'ecaf': {'fac': {'foo': 4596, 'tag': '2'}}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface, one level deep'
+
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '1'}, 'heel': 'turn'}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid, larger interface'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Multilevel Literal Interface):
+  let g:interface = {
+      \ 'ecaf': {
+        \ 'face': {
+          \ 'foo': typevim#Number(),
+          \ 'tag': ['1', '2', 'blah-de-blah'],
+          \ },
+        \ },
       \ }
   call typevim#make#Interface('Grandparent', g:interface)
 Then:

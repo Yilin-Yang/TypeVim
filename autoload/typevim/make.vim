@@ -385,9 +385,15 @@ endfunction
 " a |v:t_TYPE| or another interface, but not a list thereof, and not a tag.
 function! s:IsConstraint(Val) abort
   if typevim#value#IsTypeConstant(a:Val)
-      \ || typevim#value#IsType(a:Val, 'TypeVimInterface')
     return 1
   endif
+  try
+    if typevim#value#IsType(a:Val, 'TypeVimInterface')
+      return 1
+    endif
+  catch /ERROR(BadValue)/
+    " ...
+  endtry
   return 0
 endfunction
 
@@ -421,6 +427,7 @@ endfunction
 " - |v:t_TYPE|, that is, a number indicating that property's type in
 "   valid implementations of the interface, or,
 " - Another TypeVim interface object, or,
+" - A valid TypeVim interface prototype, or,
 " - A nonempty list of |v:t_TYPE| values and/or TypeVim interface objects,
 "   where each value corresponds to an allowable type, or,
 " - A nonempty list of strings ("tags"), where each string is an allowable
@@ -485,6 +492,8 @@ function! typevim#make#Interface(typename, prototype) abort
       let l:constraints['type'] = l:type_list
     elseif s:IsConstraint(l:Val)
       let l:constraints['type'] = l:Val
+    elseif maktaba#value#IsDict(l:Val)
+      let l:constraints['type'] = typevim#make#Interface('{interface}', l:Val)
     else
       call s:ThrowWrongConstraintType(l:Val)
     endif
