@@ -227,6 +227,10 @@ function! typevim#value#Implements(Obj, Interface) abort
       elseif l:type !=# type(l:Val)
         return 0
       endif
+    elseif typevim#value#IsType(l:type, 'TypeVimInterface')
+      if !typevim#value#Implements(l:Val, l:type)
+        return 0
+      endif
     else
       throw maktaba#error#Failure(
           \ 'Interface object contains non-parsable constraint for '

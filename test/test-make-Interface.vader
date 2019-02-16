@@ -223,3 +223,26 @@ Then:
       \ 'Failed on number 1 that can be implicitly converted to a string'
 
   call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Field is Interface):
+  let g:child_interface = {
+      \ 'foo': typevim#Number(),
+      \ 'tag': ['1', '2', 'blah-de-blah'],
+      \ }
+  call typevim#make#Interface('Child', g:child_interface)
+  let g:interface = {
+      \ 'face': g:child_interface,
+      \ }
+  call typevim#make#Interface('Parent', g:interface)
+Then:
+  let g:instance = {'face': {'foo': 4596, 'tag': '1'}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid interface'
+
+  let g:instance = {'face': {'foo': 4596, 'tag': '3'}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface'
+
+  let g:instance = {'face': {'foo': 4596, 'tag': '1'}, 'heel': 'turn'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid, larger interface'
