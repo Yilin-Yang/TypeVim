@@ -107,9 +107,9 @@ endfunction
 
 ""
 " Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
-" constant, and 0 otherwise.
+" constant or @function(typevim#Any), and 0 otherwise.
 function! typevim#value#IsTypeConstant(Val) abort
-  return maktaba#value#IsNumber(a:Val) && a:Val >=# 0 && a:Val <=# 6
+  return maktaba#value#IsNumber(a:Val) && a:Val >=# 0 && a:Val <=# 7
 endfunction
 
 ""
@@ -224,6 +224,8 @@ function! typevim#value#Implements(Obj, Interface) abort
     elseif maktaba#value#IsNumber(l:type)  " l:type is a single allowable type
       if l:type ==# typevim#Bool()
         if !typevim#value#IsBool(l:Val) | return 0 | endif
+      elseif l:type ==# typevim#Any()
+        " pass
       elseif l:type !=# type(l:Val)
         return 0
       endif

@@ -78,6 +78,45 @@ Then:
 
   call CleanUp('g:interface')
 
+Execute (typevim#make#Interface: "Any" Type):
+  let g:interface = {
+      \ 'foo': typevim#Any(),
+      \ 'boo?': [typevim#String(), typevim#Bool(), typevim#Any()],
+      \ }
+  call typevim#make#Interface('Any', g:interface)
+Then:
+  let g:instance = {'foo': 1}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with number for foo'
+
+  let g:instance = {'foo': 1.23}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with float for foo'
+
+  if typevim#value#HasTypeConstants()
+    let g:instance = {'foo': v:true}
+    AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+        \ 'Failed with bool for foo'
+  endif
+
+  let g:instance = {'foo': []}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with list for foo'
+
+  let g:instance = {'foo': {}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with dict for foo'
+
+  let g:instance = {'foo': function('Foo')}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with Funcref for foo'
+
+  let g:instance = {'foo': 'bar'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed with string for foo'
+
+  call CleanUp('g:interface')
+
 Execute (typevim#make#Interface: Built-In Booleans vs. 0 or 1):
   let g:interface = {
       \ 'foo': typevim#Bool(),

@@ -128,6 +128,11 @@ function from the `ensure` namespace.
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#Any()                                                  *typevim#Any()*
+  Return a numerical constant representing "any type". As of the time of
+  writing, this is the numerical value returned by `type(v:null)` (see
+  |type()|), but this may change in the future.
+
 typevim#Bool()                                                *typevim#Bool()*
   Return the numerical value of |v:t_bool|.
 
@@ -328,12 +333,14 @@ typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
 
   The value associated with that key is called a property constraint, and may
   be a:
-  |v:t_TYPE|, that is, a number indicating that property's type in valid
-    implementations of the interface, or,
+  Type constant, that is, a number indicating that property's type in valid
+    implementations of the interface, i.e. one of the values of |v:t_TYPE| or
+    the value returned by |typevim#Any(()|), or,
   Another TypeVim interface object, or,
   A valid TypeVim interface prototype, or,
-  A nonempty list of |v:t_TYPE| values and/or TypeVim interface objects, where
-    each value corresponds to an allowable type, or,
+  A nonempty list of type constants values and/or TypeVim interface objects
+    and/or TypeVim interface prototypes, where each value corresponds to an
+    allowable type, or,
   A nonempty list of strings ("tags"), where each string is an allowable value
     for the property (inferred to be of type |v:t_string|).
 
@@ -342,7 +349,8 @@ typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
   of a |v:t_TYPE| constant (e.g. `1` for |v:t_string|), though this is not
   recommended since it lacks readability; or use TypeVim's helper functions
   (e.g. |typevim#Number()|), which return the same values as vim's built-in
-  |v:t_TYPE|s.
+  |v:t_TYPE|s. |typevim#Any(()|) may be used to indicate that any type is
+  acceptable.
 
   The latter is version-agnostic and is recommended for compatibility reasons:
   the |v:t_TYPE| constants are not available in older versions of vim, where
@@ -579,7 +587,7 @@ typevim#value#IsValidInterfaceProp({Id})
 
 typevim#value#IsTypeConstant({Val})           *typevim#value#IsTypeConstant()*
   Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
-  constant, and 0 otherwise.
+  constant or |typevim#Any()|, and 0 otherwise.
 
 typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   Returns 1 when the given object is a valid TypeVim object, 0 otherwise.

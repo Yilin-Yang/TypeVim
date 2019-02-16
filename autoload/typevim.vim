@@ -115,6 +115,17 @@
 " TypeVim is provided under the terms of the MIT license.
 
 ""
+" Return a numerical constant representing "any type". As of the time of
+" writing, this is the numerical value returned by `type(v:null)` (see
+" |type()|), but this may change in the future.
+function! typevim#Any() abort
+  if typevim#value#HasTypeConstants()
+    return type(v:null)
+  endif
+  return 7
+endfunction
+
+""
 " Return the numerical value of |v:t_bool|.
 function! typevim#Bool() abort
   if typevim#value#HasTypeConstants()

@@ -424,12 +424,14 @@ endfunction
 "
 " The value associated with that key is called a property constraint, and may
 " be a:
-" - |v:t_TYPE|, that is, a number indicating that property's type in
-"   valid implementations of the interface, or,
+" - Type constant, that is, a number indicating that property's type in
+"   valid implementations of the interface, i.e. one of the values of
+"   |v:t_TYPE| or the value returned by @function(typevim#Any()), or,
 " - Another TypeVim interface object, or,
 " - A valid TypeVim interface prototype, or,
-" - A nonempty list of |v:t_TYPE| values and/or TypeVim interface objects,
-"   where each value corresponds to an allowable type, or,
+" - A nonempty list of type constants values and/or TypeVim interface objects
+"   and/or TypeVim interface prototypes, where each value corresponds to an
+"   allowable type, or,
 " - A nonempty list of strings ("tags"), where each string is an allowable
 "   value for the property (inferred to be of type |v:t_string|).
 "
@@ -438,7 +440,8 @@ endfunction
 " |v:t_TYPE| constant (e.g. `1` for |v:t_string|), though this is not
 " recommended since it lacks readability; or use TypeVim's helper functions
 " (e.g. @function(typevim#Number)), which return the same values as vim's
-" built-in |v:t_TYPE|s.
+" built-in |v:t_TYPE|s. @function(typevim#Any()) may be used to indicate that
+" any type is acceptable.
 "
 " The latter is version-agnostic and is recommended for compatibility reasons:
 " the |v:t_TYPE| constants are not available in older versions of vim, where
