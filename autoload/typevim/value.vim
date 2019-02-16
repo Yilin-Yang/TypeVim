@@ -60,7 +60,7 @@ function! typevim#value#IsBool(Val) abort
 endfunction
 
 ""
-" Returns 1 when the given {typename} is valid, 0 otherwise.
+" Returns 1 when the given {Typename} is valid, 0 otherwise.
 "
 " A valid typename is a string of uppercase Latin letters, lowercase Latin
 " letters, numbers, and underscores. It must start with a capital letter, and
@@ -279,9 +279,6 @@ endfunction
 " from its top, then strip the function that called this function from its
 " top, and then return the topmost function remaining
 "
-" If [funcname] is provided, it will be prefixed with `"#"` and appended to
-" the returned string.
-"
 " Example inputs and outputs:
 " >
 "   function! Foo() abort
@@ -301,12 +298,10 @@ endfunction
 "   endfunction
 " <
 "
-" @default funcname=""
 " @throws NotFound if there is no stack frame {num_levels_down}.
-" @throws WrongType if {num_levels_down} is not a number or [funcname] is not a string.
-function! typevim#value#GetStackFrame(num_levels_down, ...) abort
+" @throws WrongType if {num_levels_down} is not a number.
+function! typevim#value#GetStackFrame(num_levels_down) abort
   call maktaba#ensure#IsNumber(a:num_levels_down)
-  let a:funcname = maktaba#ensure#IsString(get(a:000, 0, ''))
 
   " strip GetStackFrame from the callstack to get initial_callstack
   let l:strip_topmost_pat = '\zs.*\ze\.\.[^ .]\{-}$'

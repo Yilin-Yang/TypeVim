@@ -26,10 +26,10 @@ let s:default_handler = function('<SNR>'.s:SID().'_DefaultHandler')
 " @usage {Success_handler} [Error_handler]
 function! typevim#HandlerAttachment#New(Success_handler, ...) abort
   call maktaba#ensure#IsFuncref(a:Success_handler)
-  let a:Error_handler = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
+  let l:Error_handler = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
   let l:new = {
       \ '__Success_handler': a:Success_handler,
-      \ '__Error_handler': a:Error_handler,
+      \ '__Error_handler': l:Error_handler,
       \ '__next_link': {},
       \ 'StartDoing': typevim#make#Member('StartDoing'),
       \ 'HandleResolve': typevim#make#Member('HandleResolve'),

@@ -70,13 +70,13 @@ endfunction
 function! typevim#object#Bind(Funcref, obj, ...) abort
   call maktaba#ensure#IsFuncref(a:Funcref)
   call typevim#ensure#IsValidObject(a:obj)
-  let a:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
-  let a:force_rebind = maktaba#ensure#IsBool(get(a:000, 1, 0))
+  let l:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  let l:force_rebind = maktaba#ensure#IsBool(get(a:000, 1, 0))
   let [l:_, l:Funcref, l:bound_args, l:bound_dict] =
       \ typevim#value#DecomposePartial(a:Funcref)
   if !empty(l:bound_dict)
-    if a:force_rebind || l:bound_dict is a:obj
-      return function(l:Funcref, l:bound_args + a:arglist, a:obj)
+    if l:force_rebind || l:bound_dict is a:obj
+      return function(l:Funcref, l:bound_args + l:arglist, a:obj)
     else
       throw maktaba#error#NotAuthorized('Cannot rebind already bound Partial '
             \ . '%s to new object %s (already bound to: %s); set '
@@ -86,7 +86,7 @@ function! typevim#object#Bind(Funcref, obj, ...) abort
           \ typevim#object#ShallowPrint(l:bound_dict))
     endif
   endif
-  return function(l:Funcref, l:bound_args + a:arglist, a:obj)
+  return function(l:Funcref, l:bound_args + l:arglist, a:obj)
 endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
@@ -516,10 +516,10 @@ endfunction
 " @throws BadValue  if [max_depth] is negative.
 " @throws WrongType if [max_depth] is not a number.
 function! typevim#object#ShallowPrint(Obj, ...) abort
-  let a:max_depth = maktaba#ensure#IsNumber(get(a:000, 0, 1))
-  if a:max_depth <# 0
+  let l:max_depth = maktaba#ensure#IsNumber(get(a:000, 0, 1))
+  if l:max_depth <# 0
     throw maktaba#error#BadValue(
-        \ 'Gave negative max recursion depth: %d', a:max_depth)
+        \ 'Gave negative max recursion depth: %d', l:max_depth)
   endif
-  return s:ShallowPrintImpl(a:Obj, 0, a:max_depth)
+  return s:ShallowPrintImpl(a:Obj, 0, l:max_depth)
 endfunction

@@ -95,14 +95,14 @@ let s:promise_id = 0
 " @throws BadValue if [Doer]'s `SetCallbacks` function does not take either one argument or two arguments, or if [Doer] has no `SetCallbacks` function.
 " @throws WrongType if [Doer] is not an object, or if `Doer.SetCallbacks` is not a Funcref.
 function! typevim#Promise#New(...) abort
-  let a:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
-  if !has_key(a:Doer, 'SetCallbacks')
+  let l:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
+  if !has_key(l:Doer, 'SetCallbacks')
     throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
-        \ typevim#object#ShallowPrint(a:Doer, 2))
-  elseif !maktaba#value#IsFuncref(a:Doer['SetCallbacks'])
+        \ typevim#object#ShallowPrint(l:Doer, 2))
+  elseif !maktaba#value#IsFuncref(l:Doer['SetCallbacks'])
     throw maktaba#error#BadValue(
         \ "Given Doer's SetCallbacks is not a Funcref: %s",
-        \ typevim#object#ShallowPrint(a:Doer, 2))
+        \ typevim#object#ShallowPrint(l:Doer, 2))
   endif
 
   " NOTE: __handler_attachments is a list of triples: a Doer, a success handler, and an
@@ -112,7 +112,7 @@ function! typevim#Promise#New(...) abort
   let l:new = {
       \ '__id': s:promise_id,
       \ '__had_handlers': 0,
-      \ '__doer': a:Doer,
+      \ '__doer': l:Doer,
       \ '__state': s:PENDING,
       \ '__value': '[no value set]',
       \ '__handler_attachments': [],
@@ -130,7 +130,7 @@ function! typevim#Promise#New(...) abort
   let l:new = typevim#make#Class(s:typename, l:new)
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
   let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
-  call typevim#Promise#__SetDoerCallbacks(l:new.Resolve, l:new.Reject, a:Doer)
+  call typevim#Promise#__SetDoerCallbacks(l:new.Resolve, l:new.Reject, l:Doer)
   return l:new
 endfunction
 
@@ -349,13 +349,13 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   else
     let l:Resolve = s:default_handler
   endif
-  let a:Reject = get(a:000, 0, s:default_handler)
-  if maktaba#value#IsFuncref(a:Reject)
-    let l:Reject = a:Reject
+  let l:Reject = get(a:000, 0, s:default_handler)
+  if maktaba#value#IsFuncref(l:Reject)
+    let l:Reject = l:Reject
   else
     let l:Reject = s:default_handler
   endif
-  let a:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
+  let l:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
 
   let l:no_error_handler = l:Reject ==# s:default_handler
   if l:no_error_handler
@@ -384,7 +384,7 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
     call add(l:self['__handler_attachments'], l:handlers)
   endif
 
-  return a:chain ? l:next_link : 0
+  return l:chain ? l:next_link : 0
 endfunction
 
 ""
@@ -401,8 +401,8 @@ endfunction
 function! typevim#Promise#Catch(Reject, ...) dict abort
   call s:TypeCheck(l:self)
   call maktaba#ensure#IsFuncref(a:Reject)
-  let a:chain = maktaba#ensure#IsBool(get(a:000, 0, 1))
-  return l:self.Then(s:default_handler, a:Reject, a:chain)
+  let l:chain = maktaba#ensure#IsBool(get(a:000, 0, 1))
+  return l:self.Then(s:default_handler, a:Reject, l:chain)
 endfunction
 
 ""

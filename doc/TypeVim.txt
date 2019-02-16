@@ -128,9 +128,42 @@ function from the `ensure` namespace.
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
 
+typevim#Bool()                                                *typevim#Bool()*
+  Return the numerical value of |v:t_bool|.
+
+typevim#Dict()                                                *typevim#Dict()*
+  Return the numerical value of |v:t_dict|.
+
+typevim#Float()                                              *typevim#Float()*
+  Return the numerical value of |v:t_float|.
+
+typevim#Func()                                                *typevim#Func()*
+  Return the numerical value of |v:t_func|.
+
+typevim#List()                                                *typevim#List()*
+  Return the numerical value of |v:t_list|.
+
+typevim#Number()                                            *typevim#Number()*
+  Return the numerical value of |v:t_number|.
+
+typevim#String()                                            *typevim#String()*
+  Return the numerical value of |v:t_string|.
+
 typevim#ensure#HasPartials()                    *typevim#ensure#HasPartials()*
   Throws an ERROR(MissingFeature) if the current version of vim does not
   support |Partial|s.
+
+  Returns 1.
+
+typevim#ensure#HasLambdas()                      *typevim#ensure#HasLambdas()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not
+  support |lambda|s.
+
+  Returns 1.
+
+typevim#ensure#HasTypeConstants()          *typevim#ensure#HasTypeConstants()*
+  Throws an ERROR(MissingFeature) if the current version of vim does not have
+  |v:t_TYPE| constants.
 
   Returns 1.
 
@@ -172,6 +205,21 @@ typevim#ensure#IsValidIdentifier({id})    *typevim#ensure#IsValidIdentifier()*
 
   Throws ERROR(WrongType) if the given {id} is not a string.
 
+typevim#ensure#IsValidInterfaceProp({id})
+                                       *typevim#ensure#IsValidInterfaceProp()*
+  Throws an ERROR(BadValue) if the given {id} is not a valid interface
+  property with a reason; otherwise, does nothing.
+
+  Returns the given {id} for convenience.
+
+  Throws ERROR(WrongType) if the given {id} is not a string.
+
+typevim#ensure#IsTypeConstant({Val})         *typevim#ensure#IsTypeConstant()*
+  Throws an ERROR(WrongType) if the given {Val} is not equal to a |v:t_TYPE|
+  constant.
+
+  Returns {Val} for convenience.
+
 typevim#ensure#IsValidObject({Val})           *typevim#ensure#IsValidObject()*
   Throws an ERROR(WrongType) if the given {Val} is not a valid TypeVim object.
 
@@ -183,15 +231,23 @@ typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
 
   Returns {Obj} for convenience.
 
-  Throws ERROR(WrongType) if {Obj} is not a dict or {typename} is not a
-  string.
+  Throws ERROR(BadValue) if {Obj} is not a dict or {typename} is not a string.
+
+typevim#ensure#Implements({Obj}, {Interface})    *typevim#ensure#Implements()*
+  Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
+  {Interface}.
+
+  Returns {Obj} for convenience.
+
+  Throws ERROR(BadValue) if {Obj} is not a dict or {Interface} is not a
+  TypeVim interface.
 
 typevim#make#Class({typename}, {prototype}, [CleanUp])  *typevim#make#Class()*
   Return a "typevim-configured" instance of a class. Meant to be called from
   inside a type's constructor, where it will take a {prototype} dictionary
   (containing member functions and member variables), annotate it with type
-  information, and perform additional configuration (e.g. adding
-  clean-uppers).
+  information, perform additional configuration (e.g. adding clean-uppers),
+  and return it for convenience.
 
   {typename} is the name of the type being declared.
 
@@ -225,7 +281,9 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   {prototype} is a dictionary object containing member variables (with default
   values) and member functions, which might be virtual. If the parent class
   defines functions with the same name (i.e. same dictionary key), they will
-  be overridden with those of the {prototype}.
+  be overridden with those of the {prototype}. The {prototype} dictionary
+  given is modified after being passed in, and is returned from this function
+  for convenience.
 
   [CleanUp] is an optional dictionary function that performs cleanup for the
   object, or 0. When invoked, defined clean-uppers will be called in reverse
@@ -250,6 +308,71 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   not 1.
   Throws ERROR(WrongType) if arguments don't have the types named above, or if
   the base class {Parent} is not a valid TypeVim object.
+
+typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
+  Parse the given {prototype} into an immutable TypeVim interface object that
+  can be used in calls to |typevim#value#Implements()| and similar functions.
+  The given {prototype} is modified directly, and is returned for convenience.
+
+  The returned object is a TypeVim object with the typename
+  `"TypeVimInterface"`. It is made immutable using |lockvar|. It may be
+  unlocked through a call to its `CleanUp()` function.
+
+  {typename} is the human-readable name of the interface.
+
+  The structure of {prototype} is similar to that of TypeScript interfaces:
+
+  Each key is the name of a property, and should be a valid identifier (see
+  |typescript#value#IsValidIdentifier()|), though each may end with a `"?"` to
+  indicate that the property is optional.
+
+  The value associated with that key is called a property constraint, and may
+  be a:
+  |v:t_TYPE|, that is, a number indicating that property's type in valid
+    implementations of the interface, or,
+  Another TypeVim interface object, or,
+  A nonempty list of |v:t_TYPE| values and/or TypeVim interface objects, where
+    each value corresponds to an allowable type, or,
+  A nonempty list of strings ("tags"), where each string is an allowable value
+    for the property (inferred to be of type |v:t_string|).
+
+  When writing an interface {prototype}, one may specify: a built-in
+  |v:t_TYPE| constant (e.g. |v:t_dict|, |v:t_func|); the literal number value
+  of a |v:t_TYPE| constant (e.g. `1` for |v:t_string|), though this is not
+  recommended since it lacks readability; or use TypeVim's helper functions
+  (e.g. |typevim#Number()|), which return the same values as vim's built-in
+  |v:t_TYPE|s.
+
+  The latter is recommended for compatibility reasons: the |v:t_TYPE|
+  constants are not available in older versions of vim, where their use will
+  throw |E121| "Undefined variable" exceptions. The presence of this feature
+  can be checked using |typevim#value#HasTypeConstants()|.
+
+  Throws ERROR(BadValue) if keys in {prototype} are not valid identifiers (the
+  `"?"` character is valid at the end of these keys, however).
+  Throws ERROR(WrongType) if {typename} is not a string, or {prototype} is not
+  a dictionary, or if values in {prototype} are not |v:t_TYPE| values or a
+  list of |v:t_TYPE| values or a list of strings
+
+
+typevim#make#Extension({typename}, {base}, {prototype})
+                                                    *typevim#make#Extension()*
+  Return an interface, with the name {typename}, based on {prototype} that
+  extends the given {base} interface. As with |typevim#makeInterface()|, the
+  given {prototype} is modified directly and locked using |lockvar|.
+
+  Any object that implements the interface made from {prototype} must
+  necessarily implement the {base} interface, i.e. {prototype} cannot impose
+  constraints that are incompatible with the {base} interface, such that an
+  object cannot implement both interfaces at the same time.
+
+  Throws ERROR(BadValue) if keys in {prototype} are not valid identifiers (the
+  `"?"` character is valid at the end of these keys, however).
+  Throws ERROR(NotAuthorized) if a property constraint in {prototype} is
+  incompatible with a property constraint in {base}.
+  Throws ERROR(WrongType) if {typename} is not a string, {base} is not a
+  TypeVim interface, or if {prototype} does not satisfy the type checks in
+  |typevim#make#Interface()|.
 
 typevim#make#Member({funcname}, [arglist], [dict])     *typevim#make#Member()*
   Return a |Funcref| to the function with the name constructed by
@@ -403,6 +526,10 @@ typevim#value#HasPartials()                      *typevim#value#HasPartials()*
 typevim#value#HasLambdas()                        *typevim#value#HasLambdas()*
   Returns 1 if this version of vim supports |lambda|s, and 0 otherwise.
 
+typevim#value#HasTypeConstants()            *typevim#value#HasTypeConstants()*
+  Returns 1 if this version of vim supports |v:t_TYPE| constants, and 0
+  otherwise.
+
 typevim#value#HasSetBufline()                  *typevim#value#HasSetBufline()*
   Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
 
@@ -422,23 +549,35 @@ typevim#value#IsBool({Val})                           *typevim#value#IsBool()*
   when given |v:true| or |v:false| as inputs: it only accepts a |v:t_number|
   equal to 0 or 1.
 
-typevim#value#IsValidTypename({typename})    *typevim#value#IsValidTypename()*
-  Returns 1 when the given {typename} is valid, 0 otherwise.
+typevim#value#IsValidTypename({Typename})    *typevim#value#IsValidTypename()*
+  Returns 1 when the given {Typename} is valid, 0 otherwise.
 
   A valid typename is a string of uppercase Latin letters, lowercase Latin
   letters, numbers, and underscores. It must start with a capital letter, and
   cannot contain "unusual" characters, e.g. accented Latin letters, emoji,
   etc.
 
-  {typename} cannot be an empty string, nor can it be a "reserved attribute".
+  {Typename} cannot be an empty string, nor can it be a "reserved attribute".
   See |TypeVim-reserved| for more details.
 
-typevim#value#IsValidIdentifier({id})      *typevim#value#IsValidIdentifier()*
-  Returns 1 when the given {id} is a a valid identifier, 0 otherwise.
+typevim#value#IsValidIdentifier({Id})      *typevim#value#IsValidIdentifier()*
+  Returns 1 when the given {Id} is a a valid identifier, 0 otherwise.
 
   A valid identifier must meet the same requirements as a valid typename (see
   |typevim#value#IsValidTypename()|), but can start with either a lowercase or
   uppercase letter.
+
+typevim#value#IsValidInterfaceProp({Id})
+                                        *typevim#value#IsValidInterfaceProp()*
+  Returns 1 when the given {Id} is a a valid interface property, 0 otherwise.
+
+  A valid interface property must meet the same requirements as a valid
+  identifier (see |typevim#value#IsValidTypename()|), but can end with a
+  question mark.
+
+typevim#value#IsTypeConstant({Val})           *typevim#value#IsTypeConstant()*
+  Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
+  constant, and 0 otherwise.
 
 typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
@@ -462,6 +601,13 @@ typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
   Throws ERROR(BadValue) if {typename} isn't a valid typename.
   Throws ERROR(WrongType) if {typename} isn't a string.
 
+typevim#value#Implements({Obj}, {Interface})      *typevim#value#Implements()*
+  Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.
+
+  Throws ERROR(WrongType) if {Obj} is not a dictionary, or if {Interface} is
+  not a TypeVim interface (i.e. an object constructed through a call to
+  |typevim#make#Interface()|.)
+
 typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
   Returns 1 when the given object is a Partial (see `:help Partial`) and 0
   otherwise.
@@ -475,16 +621,12 @@ typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
 
   Throws ERROR(WrongType) if {Func} is not a Funcref.
 
-typevim#value#GetStackFrame({num_levels_down}, [funcname])
-                                               *typevim#value#GetStackFrame()*
+typevim#value#GetStackFrame({num_levels_down}) *typevim#value#GetStackFrame()*
   When invoked from a namespaced autoload function, return the name of the
   function {num_levels_down} the callstack, e.g. if called with
   {num_levels_down} = 2, get the callstack (as as string), strip this function
   from its top, then strip the function that called this function from its
   top, and then return the topmost function remaining
-
-  If [funcname] is provided, it will be prefixed with `"#"` and appended to
-  the returned string.
 
   Example inputs and outputs:
 >
@@ -505,10 +647,8 @@ typevim#value#GetStackFrame({num_levels_down}, [funcname])
     endfunction
 <
 
-  [funcname] is "" if omitted.
   Throws ERROR(NotFound) if there is no stack frame {num_levels_down}.
-  Throws ERROR(WrongType) if {num_levels_down} is not a number or [funcname]
-  is not a string.
+  Throws ERROR(WrongType) if {num_levels_down} is not a number.
 
 ==============================================================================
 DICTIONARIES                                                   *TypeVim-dicts*
@@ -925,12 +1065,12 @@ dictionary object initialized with your class's member variables and functions
     call maktaba#ensure#IsString(a:str2)
 
     " optional parameter with a default value of 3.14
-    let a:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
+    let l:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
 
     let l:example_prototype = {
         \ '_single_underscore': a:num1,
         \ '_implies_var_is_private': a:str2,
-        \ '__double_underscore': a:optional_float,
+        \ '__double_underscore': l:optional_float,
         \ '__means_definitely_private': 42,
         \ 'PublicFunction':
             \ typevim#make#Member('PublicFunction'),

@@ -53,22 +53,22 @@ let s:default_props = {
 " @throws BadValue if the given `bufname` matches an existing buffer that isn't `bufnr` (when nonzero), this function will throw an ERROR(BadValue).
 " @throws WrongType if the type of a value in [properties] doesn't match the list above.
 function! typevim#Buffer#New(...) abort
-  let a:properties = maktaba#ensure#IsDict(get(a:000, 0, {}))
-  if empty(a:properties)
-    let a:properties = deepcopy(s:default_props)
+  let l:properties = maktaba#ensure#IsDict(get(a:000, 0, {}))
+  if empty(l:properties)
+    let l:properties = deepcopy(s:default_props)
   else
     " fill in unspecified property from defaults
     for [l:key, l:val] in items(s:default_props)
-      if has_key(a:properties, l:key)
+      if has_key(l:properties, l:key)
         " check for correct argument types
-        call maktaba#ensure#TypeMatches(a:properties[l:key], l:val)
+        call maktaba#ensure#TypeMatches(l:properties[l:key], l:val)
       else
-        let a:properties[l:key] = l:val
+        let l:properties[l:key] = l:val
       endif
     endfor
   endif
 
-  if empty(a:properties['bufname'])
+  if empty(l:properties['bufname'])
     let s:bufname_mangle_ctr += 1
     let l:bufname = 'TypeVim::Buffer_'
     while bufnr('^'.l:bufname.s:bufname_mangle_ctr.'$') !=# -1
@@ -76,19 +76,19 @@ function! typevim#Buffer#New(...) abort
       let s:bufname_mangle_ctr += 1
     endwhile
     let l:bufname .= s:bufname_mangle_ctr
-    let a:properties['bufname'] = l:bufname
+    let l:properties['bufname'] = l:bufname
   else
-    let l:bufname = a:properties['bufname']
+    let l:bufname = l:properties['bufname']
     let l:bufnr_match = bufnr(l:bufname)
-    if l:bufnr_match !=# -1 && l:bufnr_match !=# a:properties['bufnr']
+    if l:bufnr_match !=# -1 && l:bufnr_match !=# l:properties['bufnr']
       throw maktaba#error#BadValue(
           \ 'Given bufname %s collides with buffer #%d',
           \ l:bufname, l:bufnr_match)
     endif
   endif
 
-  let l:bufnr = a:properties['bufnr']
-  let l:bufname = a:properties['bufname']
+  let l:bufnr = l:properties['bufnr']
+  let l:bufname = l:properties['bufname']
   if !l:bufnr
     let l:bufnr = bufnr('^'.l:bufname.'$', 1)
     " bufnr will *first* try to match the given bufname against existing
@@ -131,7 +131,7 @@ function! typevim#Buffer#New(...) abort
       \ exists('s:props_to_set') ?
           \ s:props_to_set : ['bufhidden', 'buflisted', 'buftype', 'swapfile']
   for l:prop in s:props_to_set
-    let l:val = a:properties[l:prop]
+    let l:val = l:properties[l:prop]
     call l:new.setbufvar('&'.l:prop, l:val)
   endfor
 
@@ -189,11 +189,11 @@ endfunction
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#getbufvar(varname, ...) dict abort
   call s:CheckType(l:self)
-  let a:default = get(a:000, 0, 0)
-  let a:gave_default = a:0
+  let l:default = get(a:000, 0, 0)
+  let l:gave_default = a:0
   let l:to_return = 0
   execute 'let l:to_return = getbufvar(l:self["__bufnr"], a:varname'
-      \ . (a:gave_default ? ', a:default)' : ')')
+      \ . (l:gave_default ? ', l:default)' : ')')
   return l:to_return
 endfunction
 
@@ -231,10 +231,10 @@ endfunction
 " |keepalt|.
 function! typevim#Buffer#Open(...) dict abort
   call s:CheckType(l:self)
-  let a:cmd = get(a:000, 0, '')
-  let a:keepalt = get(a:000, 1, 0)
-  let l:open_cmd = (a:keepalt ? 'keepalt ' : '') . 'buffer '
-  if !empty(a:cmd) | let l:open_cmd .= a:cmd.' ' | endif
+  let l:cmd = get(a:000, 0, '')
+  let l:keepalt = get(a:000, 1, 0)
+  let l:open_cmd = (l:keepalt ? 'keepalt ' : '') . 'buffer '
+  if !empty(l:cmd) | let l:open_cmd .= l:cmd.' ' | endif
   execute l:open_cmd.l:self['__bufnr']
 endfunction
 
@@ -255,18 +255,18 @@ endfunction
 " @throws WrongType if [open_in_any] is not a boolean, or if [tabnr] is not a number.
 function! typevim#Buffer#Switch(...) dict abort
   call s:CheckType(l:self)
-  let a:open_in_any = typevim#ensure#IsBool(get(a:000, 0, 1))
-  let a:tabnr = maktaba#ensure#IsNumber(get(a:000, 1, tabpagenr()))
+  let l:open_in_any = typevim#ensure#IsBool(get(a:000, 0, 1))
+  let l:tabnr = maktaba#ensure#IsNumber(get(a:000, 1, tabpagenr()))
   let l:bufnr = l:self.bufnr()
-  if a:tabnr ==# tabpagenr() || a:open_in_any
+  if l:tabnr ==# tabpagenr() || l:open_in_any
     " check if already open and active
     if winnr() ==# bufwinnr(l:bufnr) | return | endif
   endif
-  let l:range = [a:tabnr]
-  if a:open_in_any
+  let l:range = [l:tabnr]
+  if l:open_in_any
     call extend(
         \ l:range,
-        \ range(1, a:tabnr - 1) + range(a:tabnr + 1, tabpagenr('$')))
+        \ range(1, l:tabnr - 1) + range(l:tabnr + 1, tabpagenr('$')))
   endif
   for l:tab in l:range
     if !l:self.IsOpenInTab(l:tab) | continue | endif
@@ -275,7 +275,7 @@ function! typevim#Buffer#Switch(...) dict abort
     execute l:winnr.'wincmd w'
     break
   endfor
-  if bufnr('%') !=# l:bufnr || (!a:open_in_any && tabpagenr() !=# a:tabnr)
+  if bufnr('%') !=# l:bufnr || (!l:open_in_any && tabpagenr() !=# l:tabnr)
     throw maktaba#error#NotFound(
         \ 'Could not find and switch to buffer %d!', l:bufnr)
   endif
@@ -305,12 +305,12 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
   if !bufexists(a:bufnr)
     throw maktaba#error#NotFound('Cannot find buffer #'.a:bufnr)
   endif
-  let a:action = maktaba#ensure#IsString(get(a:000, 0, ''))
-  let a:force  = typevim#ensure#IsBool(get(a:000, 1, 1))
-  call maktaba#ensure#IsIn(a:action, ['', 'bunload', 'bdelete', 'bwipeout'])
+  let l:action = maktaba#ensure#IsString(get(a:000, 0, ''))
+  let l:force  = typevim#ensure#IsBool(get(a:000, 1, 1))
+  call maktaba#ensure#IsIn(l:action, ['', 'bunload', 'bdelete', 'bwipeout'])
   let l:to_return = l:self['__bufnr']
-  if a:action !=# ''
-    execute a:action . a:force ? '! ' : ' ' . l:to_return
+  if l:action !=# ''
+    execute l:action . l:force ? '! ' : ' ' . l:to_return
   endif
   let l:self['__bufnr'] = a:bufnr
   return l:to_return
@@ -340,14 +340,14 @@ endfunction
 " @throws WrongType if {open_vertical} is not a boolean, if [cmd] is not a string, if [pos] is not a string, or if [size] is not a number.
 function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
   call s:CheckType(l:self)
-  let a:orientation = a:open_vertical ? 'vertical ' : ' '
-  let a:cmd  = maktaba#ensure#IsString(get(a:000, 0, ''))
-  let a:pos  = maktaba#ensure#IsString(get(a:000, 1, ''))
-  let a:size = maktaba#ensure#IsNumber(get(a:000, 2, 0))
+  let l:orientation = a:open_vertical ? 'vertical ' : ' '
+  let l:cmd  = maktaba#ensure#IsString(get(a:000, 0, ''))
+  let l:pos  = maktaba#ensure#IsString(get(a:000, 1, ''))
+  let l:size = maktaba#ensure#IsNumber(get(a:000, 2, 0))
   call maktaba#ensure#IsIn(
-      \ a:pos, ['leftabove', 'aboveleft', 'rightbelow', 'belowright', 'topleft',
+      \ l:pos, ['leftabove', 'aboveleft', 'rightbelow', 'belowright', 'topleft',
       \ 'botright'])
-  execute 'silent '.a:pos.' '.a:orientation.' '.a:size.' split'
+  execute 'silent '.l:pos.' '.l:orientation.' '.l:size.' split'
   execute 'buffer! '.l:self['__bufnr']
 endfunction
 
@@ -367,9 +367,9 @@ endfunction
 function! typevim#Buffer#GetLines(startline, ...) dict abort
   call s:CheckType(l:self)
   call maktaba#ensure#IsNumber(a:startline)
-  let a:endline = maktaba#ensure#IsNumber(get(a:000, 0, a:startline))
-  let a:strict_indexing = typevim#ensure#IsBool(get(a:000, 1, 0))
-  return nvim_buf_get_lines(l:self['__bufnr'], a:startline, a:endline, a:strict_indexing)
+  let l:endline = maktaba#ensure#IsNumber(get(a:000, 0, a:startline))
+  let l:strict_indexing = typevim#ensure#IsBool(get(a:000, 1, 0))
+  return nvim_buf_get_lines(l:self['__bufnr'], a:startline, l:endline, l:strict_indexing)
 endfunction
 
 ""
@@ -537,17 +537,17 @@ endfunction
 " @throws BadValue if [tabnr] is less than 1.
 " @throws WrongType if [tabnr] is not a number.
 function! typevim#Buffer#IsOpenInTab(...) dict abort
-  let a:tabnr = maktaba#ensure#IsNumber(get(a:000, 0, tabpagenr()))
-  if a:tabnr <# 1
+  let l:tabnr = maktaba#ensure#IsNumber(get(a:000, 0, tabpagenr()))
+  if l:tabnr <# 1
     throw maktaba#error#BadValue(
-        \ 'Given tabnr should be 1 or greater: %d', a:tabnr)
+        \ 'Given tabnr should be 1 or greater: %d', l:tabnr)
   endif
   try
     let l:this_buf = l:self.bufnr()
   catch /ERROR(NotFound)/  " buffer no longer exists
     return 0
   endtry
-  let l:bufs_in_tab = tabpagebuflist(a:tabnr)
+  let l:bufs_in_tab = tabpagebuflist(l:tabnr)
   for l:buf in l:bufs_in_tab
     if l:buf ==# l:this_buf | return 1 | endif
   endfor

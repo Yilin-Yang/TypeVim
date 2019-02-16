@@ -43,12 +43,12 @@ endfun
 "     call maktaba#ensure#IsString(a:str2)
 "
 "     " optional parameter with a default value of 3.14
-"     let a:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
+"     let l:optional_float = maktaba#ensure#IsFloat(get(a:000, 0, 3.14))
 "
 "     let l:example_prototype = {
 "         \ '_single_underscore': a:num1,
 "         \ '_implies_var_is_private': a:str2,
-"         \ '__double_underscore': a:optional_float,
+"         \ '__double_underscore': l:optional_float,
 "         \ '__means_definitely_private': 42,
 "         \ 'PublicFunction':
 "             \ typevim#make#Member('PublicFunction'),
@@ -202,11 +202,11 @@ let s:Interface_dtor = function('<SNR>'.s:SID().'_InterfaceCleanUpper')
 function! s:IllegalRedefinition(attribute, ...) abort
   call maktaba#ensure#IsString(a:attribute)
   if a:0 ==# 1
-    let a:value = a:1
-    call maktaba#ensure#IsString(a:value)
+    let l:value = a:1
+    call maktaba#ensure#IsString(l:value)
     return maktaba#error#NotAuthorized(
         \ 'Tried to (re)define reserved attribute "%s" with value: %s',
-        \ a:attribute, a:value)
+        \ a:attribute, l:value)
   elseif !a:0
     return maktaba#error#NotAuthorized(
         \ 'Tried to (re)define reserved attribute: "%s"', a:attribute)
@@ -267,16 +267,16 @@ endfunction
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
   call typevim#ensure#HasPartials()
-  let a:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
+  let l:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
   let l:new = a:prototype  " technically l:new is just an alias
   call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
 
-  if maktaba#value#IsFuncref(a:CleanUp)
-      \ || maktaba#value#IsNumber(a:CleanUp)
-    call s:AssignReserved(l:new, s:CLN_UP_FUNC, a:CleanUp)
+  if maktaba#value#IsFuncref(l:CleanUp)
+      \ || maktaba#value#IsNumber(l:CleanUp)
+    call s:AssignReserved(l:new, s:CLN_UP_FUNC, l:CleanUp)
   else
     throw maktaba#error#WrongType(
         \ 'CleanUp should be a Funcref, or a number '
@@ -325,8 +325,8 @@ endfunction
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   call typevim#ensure#HasPartials()
   call typevim#ensure#IsValidTypename(a:typename)
-  let a:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
-  let a:clobber_base_vars = typevim#ensure#IsBool(get(a:000, 1, 0))
+  let l:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
+  let l:clobber_base_vars = typevim#ensure#IsBool(get(a:000, 1, 0))
 
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()
@@ -340,7 +340,7 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   endif
   call typevim#ensure#IsValidObject(l:base)
 
-  if maktaba#value#IsFuncref(a:CleanUp)
+  if maktaba#value#IsFuncref(l:CleanUp)
     " only create clean-upper list if actually necessary
     if !has_key(l:base, s:CLN_UP_FUNC)
       " having no clean-upper would only occur if the base class isn't a
@@ -351,9 +351,9 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
     elseif !has_key(l:base, s:CLN_UP_LIST_ATTR)
       let l:OldCleanUp = l:base[s:CLN_UP_FUNC]
       if l:OldCleanUp !=# s:Default_dtor
-        let l:base[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, a:CleanUp]
+        let l:base[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, l:CleanUp]
       else
-        let l:base[s:CLN_UP_FUNC] = a:CleanUp
+        let l:base[s:CLN_UP_FUNC] = l:CleanUp
       endif
     endif
   endif
@@ -368,7 +368,7 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
       continue
     endif
     if has_key(l:base, l:key) && !maktaba#value#IsFuncref(l:base[l:key])
-        \ && !a:clobber_base_vars
+        \ && !l:clobber_base_vars
       throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
           \ . 'class member variable: "%s" (Set [clobber_base_vars] if this '
           \ . 'is intentional.) Would overwrite with value: %s',
@@ -632,11 +632,11 @@ endfunction
 function! typevim#make#Member(funcname, ...) abort
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsString(a:funcname)
-  let a:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  let l:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
   if a:0 ># 1
-    let a:dict = maktaba#ensure#IsDict(a:2)
+    let l:dict = maktaba#ensure#IsDict(a:2)
   else
-    let a:dict = 0
+    let l:dict = 0
   endif
   let l:full_name = typevim#value#GetStackFrame(1)
 
@@ -651,10 +651,10 @@ function! typevim#make#Member(funcname, ...) abort
   endif
 
   " function ignores empty arglists, but will bind to an empty dict
-  if maktaba#value#IsDict(a:dict)
-    return function(l:prefix.'#'.a:funcname, a:arglist, a:dict)
+  if maktaba#value#IsDict(l:dict)
+    return function(l:prefix.'#'.a:funcname, l:arglist, l:dict)
   else
-    return function(l:prefix.'#'.a:funcname, a:arglist)
+    return function(l:prefix.'#'.a:funcname, l:arglist)
   endif
 endfunction
 
