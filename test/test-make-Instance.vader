@@ -1,0 +1,101 @@
+Include: InterfaceHelpers.vader
+
+Execute (typevim#make#Instance: Declare Helpers):
+  ""
+  " Verify that the given default-initialized Funcref was set correctly, and
+  " then remove it from the object.
+  "
+  " Since the *precise* nature of the Funcref is undefined, we can't perform
+  " direct equality comparisons when it's present.
+  function! AssertIsFunc(instance, funcname) abort
+    Assert has_key(a:instance, a:funcname), '"func" not found'
+    call maktaba#ensure#IsFuncref(a:instance[a:funcname])
+    AssertEqual 0, a:instance[a:funcname](), 'Bad return value'
+    AssertEqual 0, a:instance[a:funcname](1, 2, 3, '', 1.23),
+        \ 'Bad return value with multiple arguments'
+    unlet a:instance[a:funcname]
+  endfunction
+
+Execute (typevim#make#Instance: Verify That Instances Aren't Aliases):
+  let g:interface = {
+      \ 'foo': typevim#Number(),
+      \ 'bar': typevim#String(),
+      \ 'dict': typevim#Dict(),
+      \ 'list': typevim#List(),
+      \ 'func': typevim#Func(),
+      \ }
+  call typevim#make#Interface('Simple', g:interface)
+  let g:instance = typevim#make#Instance(g:interface)
+  let g:another = typevim#make#Instance(g:interface)
+  Assert g:instance isnot g:another, 'Instances are aliases of each other'
+  Assert g:instance.dict isnot g:another.dict, 'Dicts are aliases of each other'
+  Assert g:instance.list isnot g:another.list, 'Lists are aliases of each other'
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Instance: All Types):
+  let g:interface = {
+      \ 'bool': typevim#Bool(),
+      \ 'dict': typevim#Dict(),
+      \ 'float': typevim#Float(),
+      \ 'func': typevim#Func(),
+      \ 'list': typevim#List(),
+      \ 'number': typevim#Number(),
+      \ 'string': typevim#String(),
+      \ }
+  call typevim#make#Interface('AllTypes', g:interface)
+Then:
+  let g:instance = typevim#make#Instance(g:interface)
+  call AssertIsFunc(g:instance, 'func')
+  let g:expected = {
+      \ 'bool': 0,
+      \ 'dict': {},
+      \ 'float': 0.0,
+      \ 'list': [],
+      \ 'number': 0,
+      \ 'string': '',
+      \ }
+  call typevim#make#Class('AllTypes', g:expected)
+  AssertEqual g:expected, g:instance
+
+Execute (typevim#make#Instance: First Values in Lists):
+  let g:interface = {
+      \ 'multi': [typevim#Float(), typevim#Number(), typevim#String()],
+      \ 'tag': ['foo', 'bar'],
+      \ 'int': [{'number': typevim#Number()}, typevim#Float()],
+      \ }
+  call typevim#make#Interface('Lists', g:interface)
+Then:
+  let g:instance = typevim#make#Instance(g:interface)
+  let g:expected = {
+      \ 'multi': 0.0,
+      \ 'tag': 'foo',
+      \ 'int': typevim#make#Class('INTERFACE_ANON', {'number': 0}),
+      \ }
+  call typevim#make#Class('Lists', g:expected)
+  AssertEqual g:expected, g:instance
+
+Execute (typevim#make#Instance: Nested Interfaces):
+  let g:interface = {
+      \ 'ecaf': {
+        \ 'face': {
+          \ 'foo': typevim#Number(),
+          \ 'tag': ['1', '2', 'blah-de-blah'],
+          \ },
+        \ },
+      \ }
+  call typevim#make#Interface('Grandparent', g:interface)
+Then:
+  let g:instance = typevim#make#Instance(g:interface)
+  let g:expected = typevim#make#Class('Grandparent', {
+      \ 'ecaf': typevim#make#Class(
+          \ 'INTERFACE_ANON',
+          \ {'face':
+              \ typevim#make#Class(
+                \ 'INTERFACE_ANON',
+                \ {'foo': 0,
+                \ 'tag': '1'}
+              \ )
+          \ }
+        \ )
+      \ })
+  AssertEqual g:expected, g:instance

@@ -337,10 +337,11 @@ typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
     implementations of the interface, i.e. one of the values of |v:t_TYPE| or
     the value returned by |typevim#Any(()|), or,
   Another TypeVim interface object, or,
-  A valid TypeVim interface prototype, or,
-  A nonempty list of type constants values and/or TypeVim interface objects
-    and/or TypeVim interface prototypes, where each value corresponds to an
-    allowable type, or,
+  A valid TypeVim interface prototype (which will have the {typename}
+    `"INTERFACE_ANON"`), or,
+  A nonempty list of type constants and/or TypeVim interface objects and/or
+    TypeVim interface prototypes, where each value corresponds to an allowable
+    type, or,
   A nonempty list of strings ("tags"), where each string is an allowable value
     for the property (inferred to be of type |v:t_string|).
 
@@ -383,6 +384,44 @@ typevim#make#Extension({typename}, {base}, {prototype})
   Throws ERROR(WrongType) if {typename} is not a string, {base} is not a
   TypeVim interface, or if {prototype} does not satisfy the type checks in
   |typevim#make#Interface()|.
+
+typevim#make#Instance({interface})                   *typevim#make#Instance()*
+  Return a mutable object that is an implementation of the given {interface}.
+  The returned object will be a "minimal" implementation, having no properties
+  not originally found in {interface} (aside from standard TypeVim attributes,
+  see |TypeVim-reserved|).
+
+  The instance's typename will be the same as the typename of the interface.
+
+  The value of each object property will be determined from its property
+  constraint. If the property constraint is a single type constant:
+  |v:t_bool| defaults to (the number) 0.
+  |v:t_dict| defaults to `{}`, i.e. an empty dictionary.
+  |v:t_float| defaults to `0.0`.
+  |v:t_func| defaults to an arbitrary function that takes any number of
+    arguments and returns 0.
+  |v:t_list| defaults to `[]`, i.e. an empty list.
+  |v:t_number| defaults to 0.
+  |v:t_string| defaults to ''.
+  |typevim#Any()| defaults to 0.
+
+  If the property constraint is a tag list, the value defaults to the first
+  tag in the list.
+
+  If the property constraint is a TypeVim interface, the default value is a
+  "default" implementation of that interface, as returned by, e.g. a recursive
+  call to this function.
+
+  If the property constraint is a list of type constants and/or TypeVim
+  interfaces, the default value is populated from the first item in the list,
+  e.g. the property:
+>
+    'someProperty': [v:t_float, v:t_number, g:some_interface]
+<
+  will default to `0.0`, because |v:t_float| is the first item in the list.
+
+  Throws ERROR(BadValue) if {interface} is not a dict.
+  Throws ERROR(WrongType) if {interface} is not a TypeVim interface.
 
 typevim#make#Member({funcname}, [arglist], [dict])     *typevim#make#Member()*
   Return a |Funcref| to the function with the name constructed by

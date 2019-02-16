@@ -435,7 +435,8 @@ endfunction
 "   valid implementations of the interface, i.e. one of the values of
 "   |v:t_TYPE| or the value returned by @function(typevim#Any()), or,
 " - Another TypeVim interface object, or,
-" - A valid TypeVim interface prototype, or,
+" - A valid TypeVim interface prototype (which will have the {typename}
+"   `"INTERFACE_ANON"`), or,
 " - A nonempty list of type constants and/or TypeVim interface objects
 "   and/or TypeVim interface prototypes, where each value corresponds to an
 "   allowable type, or,
@@ -489,12 +490,15 @@ function! typevim#make#Interface(typename, prototype) abort
         for l:tag in l:Val
           call add(l:type_list, maktaba#ensure#IsString(l:tag))
         endfor
-      elseif s:IsConstraint(l:Val[0])
+      elseif s:IsConstraint(l:Val[0]) || maktaba#value#IsDict(l:Val[0])
         for l:type in l:Val
-          if !s:IsConstraint(l:type)
+          if maktaba#value#IsDict(l:type)
+            call add(l:type_list, typevim#make#Interface('INTERFACE_ANON', l:type))
+          elseif !s:IsConstraint(l:type)
             call s:ThrowWrongConstraintType(l:type)
+          else
+            call add(l:type_list, l:type)
           endif
-          call add(l:type_list, l:type)
         endfor
       else
         call s:ThrowWrongConstraintType(l:Val)
@@ -503,7 +507,7 @@ function! typevim#make#Interface(typename, prototype) abort
     elseif s:IsConstraint(l:Val)
       let l:constraints['type'] = l:Val
     elseif maktaba#value#IsDict(l:Val)
-      let l:constraints['type'] = typevim#make#Interface('{interface}', l:Val)
+      let l:constraints['type'] = typevim#make#Interface('INTERFACE_ANON', l:Val)
     else
       call s:ThrowWrongConstraintType(l:Val)
     endif
@@ -612,6 +616,8 @@ endfunction
 " not originally found in {interface} (aside from standard TypeVim attributes,
 " see @section(reserved)).
 "
+" The instance's typename will be the same as the typename of the interface.
+"
 " The value of each object property will be determined from its property
 " constraint. If the property constraint is a single type constant:
 " - |v:t_bool| defaults to (the number) 0.
@@ -633,7 +639,10 @@ endfunction
 "
 " If the property constraint is a list of type constants and/or TypeVim
 " interfaces, the default value is populated from the first item in the list,
-" e.g. the property `'someProperty': [v:t_float, v:t_number, g:some_interface]`
+" e.g. the property:
+" >
+"   'someProperty': [v:t_float, v:t_number, g:some_interface]
+" <
 " will default to `0.0`, because |v:t_float| is the first item in the list.
 "
 " @throws BadValue if {interface} is not a dict.
@@ -645,7 +654,7 @@ function! typevim#make#Instance(interface) abort
     if has_key(s:RESERVED_ATTRIBUTES, l:prop) | continue | endif
     let l:new[l:prop] = s:DefaultValueOf(l:Constraints)
   endfor
-  return l:new
+  return typevim#make#Class(a:interface[typevim#attribute#INTERFACE()], l:new)
 endfunction
 
 function! s:DefaultValueOf(Constraints) abort
@@ -657,7 +666,11 @@ function! s:DefaultValueOf(Constraints) abort
   if a:Constraints.is_tag
     return a:Constraints.type[0]
   elseif maktaba#value#IsList(l:type)
-    return s:DefaultValueOf(l:type[0])
+    " construct a sacrificial copy of these constraints, replacing the current
+    " list of types with the very first value, then make a recursive call
+    let l:con_copy = deepcopy(a:Constraints)
+    let l:con_copy.type = l:type[0]
+    return s:DefaultValueOf(l:con_copy)
   elseif maktaba#value#IsDict(l:type)
       \ && typevim#value#IsType(l:type, 'TypeVimInterface')
     return typevim#make#Instance(l:type)
