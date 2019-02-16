@@ -73,7 +73,7 @@ let s:promise_id = 0
 " `Reject`). @dict(Promise) detects this automatically:
 " >
 "   " (pseudocode, not actual implementation)
-"   function! typevim#Promise#NewDoer) abort
+"   function! typevim#Promise#NewDoer() abort
 "     " ...
 "     try
 "       Doer.SetCallbacks(self.Resolve, self.Reject)
