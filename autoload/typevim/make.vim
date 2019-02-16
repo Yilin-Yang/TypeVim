@@ -178,7 +178,14 @@ let s:CLN_UP_FUNC = typevim#attribute#CLEAN_UPPER()
 
 let s:TYPEVIM_INTERFACE = 'TypeVimInterface'
 
-function s:DefaultCleanUpper() abort
+""
+" Function that takes any number of arguments and returns zero.
+function! s:NoOp(...) abort
+  return 0
+endfunction
+let s:No_op = function('<SNR>'.s:SID().'_NoOp')
+
+function! s:DefaultCleanUpper() abort
   return 0
 endfunction
 let s:Default_dtor = function('<SNR>'.s:SID().'_DefaultCleanUpper')
@@ -186,7 +193,7 @@ let s:Default_dtor = function('<SNR>'.s:SID().'_DefaultCleanUpper')
 ""
 " Clean-upper for an interface. Unlock the interface to allow modification or
 " reassignment.
-function s:InterfaceCleanUpper() dict abort
+function! s:InterfaceCleanUpper() dict abort
   unlockvar! l:self
   return 0
 endfunction
@@ -429,7 +436,7 @@ endfunction
 "   |v:t_TYPE| or the value returned by @function(typevim#Any()), or,
 " - Another TypeVim interface object, or,
 " - A valid TypeVim interface prototype, or,
-" - A nonempty list of type constants values and/or TypeVim interface objects
+" - A nonempty list of type constants and/or TypeVim interface objects
 "   and/or TypeVim interface prototypes, where each value corresponds to an
 "   allowable type, or,
 " - A nonempty list of strings ("tags"), where each string is an allowable
@@ -598,6 +605,83 @@ function! typevim#make#Extension(typename, base, prototype) abort
   lockvar! l:extension
   return l:extension
 endfunction
+
+""
+" Return a mutable object that is an implementation of the given {interface}.
+" The returned object will be a "minimal" implementation, having no properties
+" not originally found in {interface} (aside from standard TypeVim attributes,
+" see @section(reserved)).
+"
+" The value of each object property will be determined from its property
+" constraint. If the property constraint is a single type constant:
+" - |v:t_bool| defaults to (the number) 0.
+" - |v:t_dict| defaults to `{}`, i.e. an empty dictionary.
+" - |v:t_float| defaults to `0.0`.
+" - |v:t_func| defaults to an arbitrary function that takes any number of
+"   arguments and returns 0.
+" - |v:t_list| defaults to `[]`, i.e. an empty list.
+" - |v:t_number| defaults to 0.
+" - |v:t_string| defaults to ''.
+" - @function(typevim#Any) defaults to 0.
+"
+" If the property constraint is a tag list, the value defaults to the first
+" tag in the list.
+"
+" If the property constraint is a TypeVim interface, the default value is a
+" "default" implementation of that interface, as returned by, e.g. a recursive
+" call to this function.
+"
+" If the property constraint is a list of type constants and/or TypeVim
+" interfaces, the default value is populated from the first item in the list,
+" e.g. the property `'someProperty': [v:t_float, v:t_number, g:some_interface]`
+" will default to `0.0`, because |v:t_float| is the first item in the list.
+"
+" @throws BadValue if {interface} is not a dict.
+" @throws WrongType if {interface} is not a TypeVim interface.
+function! typevim#make#Instance(interface) abort
+  call typevim#ensure#IsType(a:interface, 'TypeVimInterface')
+  let l:new = {}
+  for [l:prop, l:Constraints] in items(a:interface)
+    if has_key(s:RESERVED_ATTRIBUTES, l:prop) | continue | endif
+    let l:new[l:prop] = s:DefaultValueOf(l:Constraints)
+  endfor
+  return l:new
+endfunction
+
+function! s:DefaultValueOf(Constraints) abort
+  if !maktaba#value#IsDict(a:Constraints)
+    throw maktaba#error#Failure('Given property constraint is not a dict: %s',
+        \ typevim#object#ShallowPrint(a:Constraints))
+  endif
+  let l:type = a:Constraints.type
+  if a:Constraints.is_tag
+    return a:Constraints.type[0]
+  elseif maktaba#value#IsList(l:type)
+    return s:DefaultValueOf(l:type[0])
+  elseif maktaba#value#IsDict(l:type)
+      \ && typevim#value#IsType(l:type, 'TypeVimInterface')
+    return typevim#make#Instance(l:type)
+  elseif typevim#value#IsTypeConstant(l:type)
+    " construct new dicts, lists, to avoid unexpected aliasing
+    if     l:type ==# typevim#Dict() | return {}
+    elseif l:type ==# typevim#List() | return []
+    endif
+    return s:TypeConstantsToDefaults[l:type]
+  else
+    throw maktaba#error#Failure('Could not produce a default value for '
+          \ . 'interface property constraint: %s',
+        \ typevim#object#ShallowPrint(l:type))
+  endif
+endfunction
+
+let s:TypeConstantsToDefaults = {
+    \ typevim#Any(): 0,
+    \ typevim#Bool(): 0,
+    \ typevim#Float(): 0.0,
+    \ typevim#Func(): s:No_op,
+    \ typevim#Number(): 0,
+    \ typevim#String(): '',
+    \ }
 
 ""
 " Return a |Funcref| to the function with the name constructed by concatenating
