@@ -246,3 +246,38 @@ Then:
   let g:instance = {'face': {'foo': 4596, 'tag': '1'}, 'heel': 'turn'}
   AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
       \ 'Failed on valid, larger interface'
+
+  call CleanUp('g:interface')
+
+Execute (typevim#make#Interface: Multilevel Interface):
+  let g:child_interface = {
+      \ 'foo': typevim#Number(),
+      \ 'tag': ['1', '2', 'blah-de-blah'],
+      \ }
+  call typevim#make#Interface('Child', g:child_interface)
+  let g:parent_interface = {
+      \ 'face': g:child_interface,
+      \ }
+  call typevim#make#Interface('Parent', g:parent_interface)
+  let g:interface = {
+      \ 'ecaf': g:parent_interface,
+      \ }
+  call typevim#make#Interface('Grandparent', g:interface)
+Then:
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '1'}}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid interface'
+
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '3'}}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface, two levels deep'
+
+  let g:instance = {'ecaf': {'fac': {'foo': 4596, 'tag': '2'}}}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid interface, one level deep'
+
+  let g:instance = {'ecaf': {'face': {'foo': 4596, 'tag': '1'}, 'heel': 'turn'}}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid, larger interface'
+
+  call CleanUp('g:interface')
