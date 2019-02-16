@@ -43,6 +43,32 @@ Then:
 
   call CleanUp('g:extension')
 
+Execute (typevim#make#Extension: Specialize String with Tags):
+  " name differently to avoid collisions with other tests
+  let g:tag_base = {
+      \ 'foo': typevim#String(),
+      \ }
+  call typevim#make#Interface('Base', g:tag_base)
+  let g:tag_child = {
+      \ 'foo': ['bar', 'goo']
+      \ }
+  call typevim#make#Extension('Extension', g:tag_base, g:tag_child)
+Then:
+  let g:instance = {'foo': 'bar'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:tag_child),
+      \ 'Failed on valid comparison to child'
+
+  let g:instance = {'foo': 'do'}
+  AssertEqual 0, typevim#value#Implements(g:instance, g:tag_child),
+      \ 'Failed on bad comparison to child'
+
+  let g:instance = {'foo': 'do'}
+  AssertEqual 1, typevim#value#Implements(g:instance, g:tag_base),
+      \ 'Failed on good comparison to base'
+
+  call CleanUp('g:tag_base')
+  call CleanUp('g:tag_child')
+
 Execute (typevim#make#Extension: Extend w/ Duplicate):
   let g:extension = copy(g:prototype)
   call typevim#make#Extension('Base', g:base, g:extension)

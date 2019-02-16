@@ -585,8 +585,14 @@ function! typevim#make#Extension(typename, base, prototype) abort
         \ l:BaseProp['type'] : [ l:BaseProp['type'] ]
     let l:this_type = maktaba#value#IsList(l:Constraints['type']) ?
         \ l:Constraints['type'] : [ l:Constraints['type'] ]
-    if len(l:base_type) ==# 1 && len(l:this_type) ==# 1
-      if l:base_type[0] !=# l:this_type[0]
+    if len(l:base_type) ==# 1
+      if maktaba#value#IsString(l:this_type[0])
+        " edge case: constraint is a tag, but the base's constraint is just
+        " 'value has type string'. this is allowed, so skip further checks
+        continue
+      elseif len(l:this_type) ==# 1 && l:base_type[0] !=# l:this_type[0]
+        " base and parent each have only one fixed type constraint, which
+        " are incompatible
         call s:ThrowIncompatible(
             \ 'DIFFERENT_TYPE', l:property, l:this_type[0], l:base_type[0])
       endif
