@@ -310,12 +310,11 @@ function! typevim#value#GetStackFrame(num_levels_down) abort
   call maktaba#ensure#IsNumber(a:num_levels_down)
 
   " strip GetStackFrame from the callstack to get initial_callstack
-  let l:strip_topmost_pat = '\zs.*\ze\.\.[^ .]\{-}$'
-  let l:initial_callstack = matchstr(expand('<sfile>'), l:strip_topmost_pat)
+  let l:initial_callstack = matchstr(expand('<sfile>'), s:strip_topmost_pat)
   let l:callstack = l:initial_callstack
 
   let l:removed = 0 | while l:removed <# a:num_levels_down && !empty(l:callstack)
-    let l:callstack = matchstr(l:callstack, l:strip_topmost_pat)
+    let l:callstack = matchstr(l:callstack, s:strip_topmost_pat)
   let l:removed += 1 | endwhile
 
   if l:removed <# a:num_levels_down || empty(l:callstack)
@@ -328,3 +327,28 @@ function! typevim#value#GetStackFrame(num_levels_down) abort
   let l:to_return = matchstr(l:callstack, '\zs[^ .]*\ze\[[0-9]*\]$')
   return l:to_return
 endfunction
+
+""
+" @private
+function! typevim#value#StackHeightImpl(callstack) abort
+  if empty(a:callstack) | return 0 | endif
+  let l:num_frames = 1
+  let l:i = 0 | while l:i <# len(a:callstack) - 1
+    if a:callstack[l:i] ==# '.' && a:callstack[l:i + 1] ==# '.'
+      let l:num_frames += 1
+      let l:i += 1
+    endif
+  let l:i += 1 | endwhile
+  return l:num_frames
+endfunction
+
+""
+" Returns the height of the callstack, not including the stack frame allocated
+" for this function.
+function! typevim#value#StackHeight() abort
+  let l:callstack = matchstr(expand('<sfile>'), s:strip_topmost_pat)
+  return typevim#value#StackHeightImpl(l:callstack)
+endfunction
+
+" regex used for stripping the topmost stack frame
+let s:strip_topmost_pat = '\zs.*\ze\.\.[^ .]\{-}$'

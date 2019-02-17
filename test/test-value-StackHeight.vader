@@ -1,0 +1,14 @@
+Execute (typevim#value#StackHeight: Empty):
+  AssertEqual 0, typevim#value#StackHeightImpl('')
+
+Execute (typevim#value#StackHeight: One):
+  AssertEqual 1, typevim#value#StackHeightImpl('function Foo[1]')
+
+Execute (typevim#value#StackHeight: Two):
+  AssertEqual 2, typevim#value#StackHeightImpl('function typevim#object#PrettyPrint[7]..<SNR>62_PrettyPrintImpl[7]')
+
+Execute (typevim#value#StackHeight: Lots):
+  AssertEqual 35, typevim#value#StackHeightImpl('function typevim#object#PrettyPrint[7]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]..<SNR>62_PrettyPrintDict[24]..<SNR>62_PrettyPrintImpl[33]..<SNR>62_PrettyPrintImpl[7]..<SNR>62_PrettyPrintObject[1]')
+
+
+

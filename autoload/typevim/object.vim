@@ -325,12 +325,18 @@ endfunction
 " Pretty print {Obj}, given lists of {seen_objects} and known {self_refs}, and
 " (optionally) a [cur_indent_level], used when pretty-printing dicts and
 " objects.
+"
+" Will abort and return if recursing too deeply into a collection.
+"
 " @default cur_indent_level=0
 " @throws MissingFeature if the current version of vim does not support |Partial|s.
 function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsNumber(a:cur_indent_level)
   call maktaba#ensure#IsList(a:seen_objects)
+  if typevim#value#StackHeight() ># 10
+    return '{recursed too deep}'
+  endif
   if maktaba#value#IsDict(a:Obj)
     if typevim#value#IsValidObject(a:Obj)
       return s:PrettyPrintObject(
