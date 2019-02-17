@@ -82,8 +82,8 @@ function! typevim#Buffer#New(...) abort
     let l:bufnr_match = bufnr(l:bufname)
     if l:bufnr_match !=# -1 && l:bufnr_match !=# l:properties['bufnr']
       throw maktaba#error#BadValue(
-          \ 'Given bufname %s collides with buffer #%d',
-          \ l:bufname, l:bufnr_match)
+          \ 'Given bufname %s collides with buffer #%d, with bufname: %s',
+          \ l:bufname, l:bufnr_match, bufname(l:bufnr_match))
     endif
   endif
 
@@ -102,7 +102,10 @@ function! typevim#Buffer#New(...) abort
     let l:cur_buf = bufnr('%')
     execute 'keepalt buffer '.l:bufnr
     execute 'file '.l:bufname
+    " this 'bad' buffer has a name, and it'll be made the alternate buffer
+    let l:bufnr_to_destroy = bufnr('#')
     execute 'keepalt buffer '.l:cur_buf
+    execute 'bwipeout! '.l:bufnr_to_destroy
     call winrestview(l:winview)
   endif
 
