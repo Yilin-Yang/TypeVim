@@ -700,6 +700,10 @@ typevim#value#GetStackFrame({num_levels_down}) *typevim#value#GetStackFrame()*
   Throws ERROR(NotFound) if there is no stack frame {num_levels_down}.
   Throws ERROR(WrongType) if {num_levels_down} is not a number.
 
+typevim#value#StackHeight()                      *typevim#value#StackHeight()*
+  Returns the height of the callstack, not including the stack frame allocated
+  for this function.
+
 ==============================================================================
 DICTIONARIES                                                   *TypeVim-dicts*
 
