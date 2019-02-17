@@ -278,14 +278,14 @@ function! s:PrettyPrintList(Obj, cur_indent, seen_objs, self_refs) abort
 
   if empty(a:Obj) | return '[  ]' | endif
   let l:str = '[ '
-  for l:item in a:Obj
-    let l:seen_and_msg = s:CheckSelfReference(l:item, a:seen_objs, a:self_refs)
+  for l:Item in a:Obj
+    let l:seen_and_msg = s:CheckSelfReference(l:Item, a:seen_objs, a:self_refs)
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     else
       let l:str .= s:StripLeadingSpaces(
           \ s:PrettyPrintImpl(
-            \ l:item, a:cur_indent, a:seen_objs, a:self_refs))
+            \ l:Item, a:cur_indent, a:seen_objs, a:self_refs))
     endif
     let l:str .= ', '
   endfor
