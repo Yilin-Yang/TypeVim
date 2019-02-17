@@ -281,7 +281,8 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
 
   {Parent} is either a Funcref to the base class constructor, or a base class
   prototype. If arguments must be passed to said constructor, in the former
-  case, this should be a Partial.
+  case, this should be a Partial. If {Parent} is a prototype, then it will be
+  left in an undefined state.
 
   {prototype} is a dictionary object containing member variables (with default
   values) and member functions, which might be virtual. If the parent class

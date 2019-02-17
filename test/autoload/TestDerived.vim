@@ -25,9 +25,11 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
     let l:parent = TestBase#New(6.28)
   endif
 
-  return typevim#make#Derived(
+  call typevim#make#Derived(
       \ s:typename, l:parent, l:new,
       \ typevim#make#Member('CleanUp'), a:enable_clobber)
+
+  return l:new
 endfunction
 
 function! TestDerived#CleanUp() dict abort

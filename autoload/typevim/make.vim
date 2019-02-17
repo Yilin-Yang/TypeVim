@@ -303,7 +303,8 @@ endfunction
 "
 " {Parent} is either a Funcref to the base class constructor, or a base class
 " prototype. If arguments must be passed to said constructor, in the former
-" case, this should be a Partial.
+" case, this should be a Partial. If {Parent} is a prototype, then it will be
+" left in an undefined state.
 "
 " {prototype} is a dictionary object containing member variables (with default
 " values) and member functions, which might be virtual. If the parent
@@ -349,6 +350,8 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   endif
   call typevim#ensure#IsValidObject(l:base)
 
+  let l:derived = typevim#make#Class(a:typename, a:prototype)
+
   if maktaba#value#IsFuncref(l:CleanUp)
     " only create clean-upper list if actually necessary
     if !has_key(l:base, s:CLN_UP_FUNC)
@@ -360,33 +363,40 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
     elseif !has_key(l:base, s:CLN_UP_LIST_ATTR)
       let l:OldCleanUp = l:base[s:CLN_UP_FUNC]
       if l:OldCleanUp !=# s:Default_dtor
-        let l:base[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, l:CleanUp]
+        let l:derived[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, l:CleanUp]
       else
-        let l:base[s:CLN_UP_FUNC] = l:CleanUp
+        let l:derived[s:CLN_UP_FUNC] = l:CleanUp
       endif
     endif
+  else
+    let l:derived[s:CLN_UP_FUNC] = l:CleanUp
   endif
 
-  let l:new = l:base  " declare alias; we'll be assigning into the base
-  let l:derived = typevim#make#Class(a:typename, a:prototype)
 
-  call add(l:new[s:TYPE_ATTR], a:typename)
+  call add(l:base[s:TYPE_ATTR], a:typename)
+  let l:derived[s:TYPE_ATTR] = l:base[s:TYPE_ATTR]
 
-  for [l:key, l:Value] in items(l:derived)
+  for [l:key, l:Value] in items(l:base)
     if has_key(s:RESERVED_ATTRIBUTES, l:key)
       continue
     endif
-    if has_key(l:base, l:key) && !maktaba#value#IsFuncref(l:base[l:key])
-        \ && !l:clobber_base_vars
-      throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
-          \ . 'class member variable: "%s" (Set [clobber_base_vars] if this '
-          \ . 'is intentional.) Would overwrite with value: %s',
-          \ l:key, typevim#object#ShallowPrint(l:Value))
+    if has_key(l:derived, l:key)
+      if !maktaba#value#IsFuncref(l:Value) && !l:clobber_base_vars
+        throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
+            \ . 'class member variable: "%s" (Set [clobber_base_vars] if this '
+            \ . 'is intentional.) Would overwrite with value: %s',
+            \ l:key, typevim#object#ShallowPrint(l:Value))
+      else
+        " if l:Value is a Funcref, preserve l:derived's Funcref, implementing
+        " function overriding
+      endif
+    else
+      " there's a base class member not in the derived class, so pop it in
+      let l:derived[l:key] = l:Value
     endif
-    let l:new[l:key] = l:Value
   endfor
 
-  return l:new
+  return l:derived
 endfunction
 
 ""

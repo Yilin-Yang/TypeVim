@@ -6,6 +6,10 @@ Execute (typevim#make#Derived: Derived Class, No Base Dtor):
       \ printf('Had a clean-upper list when it should not have: %s',
       \ typevim#object#ShallowPrint(g:der, 2))
 
+Execute (typevim#make#Derived: Test Function Overriding):
+  let g:der = TestDerived#New(0, 0, 0)
+  AssertEqual 'overridden', g:der.GetVal()
+
 Execute (typevim#make#Derived: Derived Class, With Base Dtor):
   let g:der = TestDerived#New(1, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
