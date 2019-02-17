@@ -838,10 +838,11 @@ Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
 Buffer.NumLines()                                          *Buffer.NumLines()*
   Return the total number of lines in this buffer.
 
-Buffer.GetLines({startline}, [endline], [strict_indexing]) *Buffer.GetLines()*
+Buffer.GetLines({startline}, [endline])                    *Buffer.GetLines()*
   Return lines {startline} to [endline], end-inclusive, from this buffer as a
-  list of strings. If [strict_indexing] is 1, throw exceptions when requesting
-  a line from "out of range."
+  list of strings. Uses the same indexing rules as |Buffer.ReplaceLines()|.
+
+  [endline] is {startline} if omitted.
 
 Buffer.ReplaceLines({startline}, {endline}, {replacement})
                                                        *Buffer.ReplaceLines()*

@@ -147,6 +147,22 @@ endfunction
 
 ""
 " @private
+" Validate that the given line numbers comply with the indexing rules of
+" @function(Buffer.ReplaceLines).
+function! s:ValidateLineNumbers(startline, endline, num_lines) abort
+  if !(a:startline && a:endline)
+    throw maktaba#error#BadValue(
+        \ 'Gave invalid line no. 0 in line range: [%d, %d]',
+        \ a:startline, a:endline)
+  elseif a:startline ># a:num_lines || a:endline ># a:num_lines
+    throw maktaba#error#BadValue(
+        \ 'Given line nos. are out of range (num_lines: %d): [%d, %d]',
+        \ a:num_lines, a:startline, a:endline)
+  endif
+endfunction
+
+""
+" @private
 " "Normalize" the given {line} and into a non-negative integer; leave positive
 " line numbers untouched, but "wrap around" negative line numbers to the
 " appropriate "true" line number using the number of lines in the buffer,
@@ -365,14 +381,24 @@ endfunction
 ""
 " @dict Buffer
 " Return lines {startline} to [endline], end-inclusive, from this buffer as a
-" list of strings. If [strict_indexing] is 1, throw exceptions when requesting
-" a line from "out of range."
+" list of strings. Uses the same indexing rules as @function(Buffer.ReplaceLines).
+"
+" @default endline={startline}
 function! typevim#Buffer#GetLines(startline, ...) dict abort
   call s:CheckType(l:self)
   call maktaba#ensure#IsNumber(a:startline)
   let l:endline = maktaba#ensure#IsNumber(get(a:000, 0, a:startline))
-  let l:strict_indexing = typevim#ensure#IsBool(get(a:000, 1, 0))
-  return nvim_buf_get_lines(l:self['__bufnr'], a:startline, l:endline, l:strict_indexing)
+  let l:num_lines = l:self.NumLines()
+  call s:ValidateLineNumbers(a:startline, l:endline, l:num_lines)
+  let l:lnum = s:NormalizeLineNo(a:startline, l:num_lines)
+  let l:end  = s:NormalizeLineNo(l:endline,   l:num_lines)
+  if has('nvim')
+    let l:after   = l:lnum - 1
+    let l:through = l:end
+    return nvim_buf_get_lines(l:self.__bufnr, l:after, l:through, 1)
+  else  " getbufline is supported in pre-7.4
+    return getbufline(l:self.__bufnr, l:lnum, l:end)
+  endif
 endfunction
 
 ""
@@ -400,15 +426,7 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
   call maktaba#ensure#IsList(a:replacement)
 
   let l:num_lines = l:self.NumLines()
-  if !(a:startline && a:endline)
-    throw maktaba#error#BadValue(
-        \ 'Gave invalid line no. 0 in line range: [%d, %d]',
-        \ a:startline, a:endline)
-  elseif a:startline ># l:num_lines || a:endline ># l:num_lines
-    throw maktaba#error#BadValue(
-        \ 'Given line nos. are out of range (num_lines: %d): [%d, %d]',
-        \ l:num_lines, a:startline, a:endline)
-  endif
+  call s:ValidateLineNumbers(a:startline, a:endline, l:num_lines)
   let l:lnum = s:NormalizeLineNo(a:startline, l:num_lines)
   let l:end  = s:NormalizeLineNo(a:endline,   l:num_lines)
   if !(l:lnum ># 0 && l:end ># 0)

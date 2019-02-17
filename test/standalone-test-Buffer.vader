@@ -52,6 +52,33 @@ Given (Ten Lines of Text):
   ninth line
   tenth line
 
+Execute (Buffer: Get Single Line):
+  AssertEqual ['first line'], g:buffer.GetLines(1)
+
+Execute (Buffer: Get All Lines):
+  let g:expected = [
+      \ 'first line',
+      \ 'second line',
+      \ 'third line',
+      \ 'fourth line',
+      \ 'fifth line',
+      \ 'sixth line',
+      \ 'seventh line',
+      \ 'eighth line',
+      \ 'ninth line',
+      \ 'tenth line',
+      \ ]
+  AssertEqual g:expected, g:buffer.GetLines(1, -1)
+
+Execute (Buffer: Get Range of Lines):
+  let g:expected = [
+      \ 'fourth line',
+      \ 'fifth line',
+      \ 'sixth line',
+      \ 'seventh line',
+      \ ]
+  AssertEqual g:expected, g:buffer.GetLines(4, 7)
+
 Execute (Buffer: Delete Buffer Contents):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.DeleteLines(1, 5)
