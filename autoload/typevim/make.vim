@@ -202,24 +202,26 @@ let s:Interface_dtor = function('<SNR>'.s:SID().'_InterfaceCleanUpper')
 ""
 " Returns a string containing an error message complaining that the user tried
 " to illegally assign to the "reserved attribute" {property}. Optionally
-" prints the (stringified) value they tried to assign, [value].
+" prints the (stringified) value they would have replaced, [existing], and the
+" value they tried to assign, [value].
 "
-" @throws InvalidArguments if more than one optional argument is given.
-" @throws WrongType if either {property} or [value] are not strings.
+" @throws InvalidArguments if more than two optional arguments are given.
+" @throws WrongType if either {property}, [existing], or [value] are not strings.
 function! s:IllegalRedefinition(attribute, ...) abort
   call maktaba#ensure#IsString(a:attribute)
-  if a:0 ==# 1
-    let l:value = a:1
-    call maktaba#ensure#IsString(l:value)
+  if a:0 ==# 2
+    let l:existing = maktaba#ensure#IsString(a:1)
+    let l:value = maktaba#ensure#IsString(a:2)
     return maktaba#error#NotAuthorized(
-        \ 'Tried to (re)define reserved attribute "%s" with value: %s',
-        \ a:attribute, l:value)
+        \ 'Tried to (re)define reserved attribute "%s" (having preexisting '
+          \ . 'value: %s) with value: %s',
+        \ a:attribute, l:existing, l:value)
   elseif !a:0
     return maktaba#error#NotAuthorized(
         \ 'Tried to (re)define reserved attribute: "%s"', a:attribute)
   else
     throw maktaba#error#InvalidArguments(
-        \ 'Gave wrong number of optional arguments (should be 0 or 1): %d', a:0)
+        \ 'Gave wrong number of optional arguments (should be 0, 2): %d', a:0)
   endif
 endfunction
 
@@ -235,7 +237,8 @@ function! s:AssignReserved(dict, attribute, Value) abort
   call maktaba#ensure#IsString(a:attribute)
   if has_key(a:dict, a:attribute)
     throw s:IllegalRedefinition(
-        \ a:attribute, typevim#object#ShallowPrint(a:Value))
+        \ a:attribute, typevim#object#ShallowPrint(a:dict[a:attribute]),
+        \ typevim#object#ShallowPrint(a:Value))
   endif
   let a:dict[a:attribute] = a:Value
 endfunction
@@ -282,7 +285,6 @@ function! typevim#make#Class(typename, prototype, ...) abort
   call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
 
   if maktaba#value#IsFuncref(l:CleanUp)
-      \ || maktaba#value#IsNumber(l:CleanUp)
     call s:AssignReserved(l:new, s:CLN_UP_FUNC, l:CleanUp)
   else
     throw maktaba#error#WrongType(
