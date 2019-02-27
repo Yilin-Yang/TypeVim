@@ -116,7 +116,6 @@ while [[ $# -gt 0 ]]; do
     '--vim_exe='*)
       EXE_PATH="${ARG#*=}"
       GAVE_PATH=1
-      shift
       ;;
     '-e')
       EXE_PATH="$2"
