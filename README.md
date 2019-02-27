@@ -6,7 +6,7 @@ types, define polymorphic types, and preserve class invariants within instances
 of those types.
 
 It also includes some goodies, like a `bind` function; a pretty-printer for
-lists,, dictionaries, and Partials (even when these objects are
+lists, dictionaries, and Partials (even when these objects are
 self-referencing); an [object-oriented wrapper](autoload/typevim/Buffer.vim)
 around vim buffers; and a *roughly* [A+ compliant](https://promisesaplus.com/)
 implementation of [Promises](autoload/typevim/Promise.vim), all in pure VimL.
