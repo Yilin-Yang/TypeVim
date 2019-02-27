@@ -381,6 +381,12 @@ endfunction
 " If it's already a string, encloses the string in quotes (useful when a
 " string is purely whitespace). If it's a TypeVim object or a dictionary, adds
 " newlines and tabs to make the resulting string human-readable.
+"
+" While the returned string can be |echo|ed to the screen as-is, it cannot be
+" used directly in functions like |append()| or @function(Buffer.InsertLines),
+" as these expect lists of strings where each list element is a single line.
+" Use @function(typevim#string#Listify) to convert this function's return
+" value into such a list.
 function! typevim#object#PrettyPrint(Obj) abort
   " TODO support maktaba enums?
   let l:seen_objs = []

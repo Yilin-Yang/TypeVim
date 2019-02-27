@@ -1,0 +1,47 @@
+Execute (typevim#string#Listify: Agnostic):
+  let g:string = "\nfoobar\r\nbar\r\rfoo\n\rfoo\nbar\r"
+  let g:expected = [
+      \ '',
+      \ 'foobar',
+      \ 'bar',
+      \ '',
+      \ 'foo',
+      \ 'foo',
+      \ 'bar',
+      \ ''
+      \ ]
+  AssertEqual g:expected, typevim#string#Listify(g:string)
+
+Execute (typevim#string#Listify: Unix):
+  let g:string = "\nfoobar\r\nbar\r\rfoo\n\rfoo\nbar\r"
+  let g:expected = [
+      \ '',
+      \ "foobar\r",
+      \ "bar\r\rfoo",
+      \ "\rfoo",
+      \ "bar\r",
+      \ ]
+  AssertEqual g:expected, typevim#string#Listify(g:string, 'unix')
+
+Execute (typevim#string#Listify: DOS):
+  let g:string = "\nfoobar\r\nbar\r\rfoo\n\rfoo\nbar\r"
+  let g:expected = [
+      \ '',
+      \ "foobar",
+      \ "bar\r\rfoo",
+      \ "\rfoo",
+      \ "bar\r",
+      \ ]
+  AssertEqual g:expected, typevim#string#Listify(g:string, 'dos')
+
+Execute (typevim#string#Listify: Mac):
+  let g:string = "\nfoobar\r\nbar\r\rfoo\n\rfoo\nbar\r"
+  let g:expected = [
+      \ "\nfoobar",
+      \ "\nbar",
+      \ '',
+      \ "foo\n",
+      \ "foo\nbar",
+      \ ''
+      \ ]
+  AssertEqual g:expected, typevim#string#Listify(g:string, 'mac')

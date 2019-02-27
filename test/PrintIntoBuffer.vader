@@ -1,15 +1,7 @@
 Execute (PrintIntoBuffer: Declare Helpers):
   ""
-  " Split a multiline string on newlines/carriage returns, returning a list
-  " of lines formatted like *getbufline*.
-  function! ListifyString(str) abort
-    call maktaba#ensure#IsString(a:str)
-    return split(a:str, '\n\(\r\)\{0,1}', 1)
-  endfunction
-
-  ""
   " Take a multiline string, e.g. from function(typevim#object#PrettyPrint),
   " and add it to the current buffer, below the cursor's position.
   function! PrintIntoBuffer(str) abort
-    call append(line('.'), ListifyString(a:str))
+    call append(line('.'), typevim#string#Listify(a:str))
   endfunction

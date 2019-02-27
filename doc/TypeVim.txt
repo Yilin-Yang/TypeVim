@@ -559,6 +559,12 @@ typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
   string is purely whitespace). If it's a TypeVim object or a dictionary, adds
   newlines and tabs to make the resulting string human-readable.
 
+  While the returned string can be |echo|ed to the screen as-is, it cannot be
+  used directly in functions like |append()| or |Buffer.InsertLines()|, as
+  these expect lists of strings where each list element is a single line. Use
+  |typevim#string#Listify()| to convert this function's return value into such
+  a list.
+
 typevim#object#ShallowPrint({Obj}, [max_depth])
                                                *typevim#object#ShallowPrint()*
   Like |typevim#object#PrettyPrint()|, but will recurse at most [max_depth]
@@ -567,6 +573,33 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   [max_depth] is 1 if omitted.
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
+
+typevim#string#Listify({string}, [fileformat])      *typevim#string#Listify()*
+  Split the given {string} on newlines (or on carriage-returns and newlines)
+  into a list of separate lines, usable in a call to a function like
+  |append()| or |Buffer.InsertLines()|. Useful for formatting the output of
+  |typevim#object#PrettyPrint()|.
+
+  [fileformat] controls the line endings on which this function will split.
+  Acceptable values include:
+
+  "agnostic", which splits on an isolated <NL>, an isolated <CR>, the
+    substring <CR><NL>, or the substring <NL><CR>,
+  "unix", which splits only on <NL>,
+  "dos", which splits on either an isolated <NL> OR the substring <CR><NL>,
+  "mac", which splits only on <CR>,
+
+  If this function does not split on a line ending character in {string} (e.g.
+  if {string} contains a <CR>, but [fileformat] is "unix") then that character
+  will be left unmodified in the returned list.
+
+  If the string ends with a line ending character (e.g. {string} ends with an
+  explicit <NL> and [fileformat] is "unix"), then the returned list will
+  include an empty string at its end. If it ends with three such characters,
+  then the returned list will include three empty strings, and so on.
+
+  [fileformat] is "agnostic" if omitted.
+  Throws ERROR(WrongType) if {string} is not a string.
 
 typevim#value#HasPartials()                      *typevim#value#HasPartials()*
   Returns 1 if this version of vim supports |Partial| function references AND
