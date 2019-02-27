@@ -44,3 +44,23 @@ function! typevim#string#Listify(string, ...) abort
   return l:split
 endfunction
 let s:listify_fileformats = ['agnostic', 'unix', 'dos', 'mac']
+
+""
+" Prepend the given [indent_block] onto each line in {listified}, a list of
+" strings usable in functions like |append()| and @function(Buffer.InsertLines).
+" Returns the same list, for convenience.
+"
+" @default indent_block="  "
+" @throws WrongType if {listified} is not a list of strings, or if [indent_block] is not a string.
+function! typevim#string#IndentList(listified, ...) abort
+  call maktaba#ensure#IsList(a:listified)
+  let l:indent_block = maktaba#ensure#IsString(get(a:000, 0, '  '))
+  if empty(l:indent_block) | return a:listified | endif
+
+  let l:i = 0 | while l:i <# len(a:listified)
+    let l:str = maktaba#ensure#IsString(a:listified[l:i])
+    let a:listified[l:i] = l:indent_block.l:str
+  let l:i += 1 | endwhile
+
+  return a:listified
+endfunction

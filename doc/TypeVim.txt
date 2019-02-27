@@ -601,6 +601,16 @@ typevim#string#Listify({string}, [fileformat])      *typevim#string#Listify()*
   [fileformat] is "agnostic" if omitted.
   Throws ERROR(WrongType) if {string} is not a string.
 
+typevim#string#IndentList({listified}, [indent_block])
+                                                 *typevim#string#IndentList()*
+  Prepend the given [indent_block] onto each line in {listified}, a list of
+  strings usable in functions like |append()| and |Buffer.InsertLines()|.
+  Returns the same list, for convenience.
+
+  [indent_block] is "  " if omitted.
+  Throws ERROR(WrongType) if {listified} is not a list of strings, or if
+  [indent_block] is not a string.
+
 typevim#value#HasPartials()                      *typevim#value#HasPartials()*
   Returns 1 if this version of vim supports |Partial| function references AND
   the ability to |get()| the components of a |Partial| or |Funcref| object,

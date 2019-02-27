@@ -45,3 +45,42 @@ Execute (typevim#string#Listify: Mac):
       \ ''
       \ ]
   AssertEqual g:expected, typevim#string#Listify(g:string, 'mac')
+
+Execute (typevim#string#IndentList: Default Indent):
+  let g:listified = [
+      \ 'foobar',
+      \ '  barfoo',
+      \ 'gooqoz',
+      \ ]
+  let g:expected = [
+      \ '  foobar',
+      \ '    barfoo',
+      \ '  gooqoz',
+      \ ]
+  AssertEqual g:expected, typevim#string#IndentList(g:listified)
+
+Execute (typevim#string#IndentList: Tab Character):
+  let g:listified = [
+      \ 'foobar',
+      \ '  barfoo',
+      \ 'gooqoz',
+      \ ]
+  let g:expected = [
+      \ "\tfoobar",
+      \ "\t  barfoo",
+      \ "\tgooqoz",
+      \ ]
+  AssertEqual g:expected, typevim#string#IndentList(g:listified, "\t")
+
+Execute (typevim#string#IndentList: No Indentation):
+  let g:listified = [
+      \ 'foobar',
+      \ '  barfoo',
+      \ 'gooqoz',
+      \ ]
+  let g:expected = [
+      \ 'foobar',
+      \ '  barfoo',
+      \ 'gooqoz',
+      \ ]
+  AssertEqual g:expected, typevim#string#IndentList(g:listified, '')
