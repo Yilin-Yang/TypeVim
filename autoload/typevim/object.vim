@@ -334,9 +334,9 @@ function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abor
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsNumber(a:cur_indent_level)
   call maktaba#ensure#IsList(a:seen_objects)
-  if typevim#value#StackHeight() ># 10
-    return '{recursed too deep}'
-  endif
+  " if typevim#value#StackHeight() ># 10
+  "   return '{recursed too deep}'
+  " endif
   if maktaba#value#IsDict(a:Obj)
     if typevim#value#IsValidObject(a:Obj)
       return s:PrettyPrintObject(
@@ -358,15 +358,25 @@ function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abor
     let l:str .= "'"
 
     if !empty(l:bound_args)
-      call add(a:seen_objects, l:bound_args)
-      let l:str .= ', ' . s:PrettyPrintList(
-          \ l:bound_args, a:cur_indent_level, a:seen_objects, a:self_refs)
+      let l:seen_and_msg =
+          \ s:CheckSelfReference(l:bound_args, a:seen_objects, a:self_refs)
+      if !empty(l:seen_and_msg)
+        let l:str .= ', ' . l:seen_and_msg[1]
+      else
+        let l:str .= ', ' . s:PrettyPrintList(
+            \ l:bound_args, a:cur_indent_level, a:seen_objects, a:self_refs)
+      endif
     endif
     if !empty(l:bound_dict)
+      let l:seen_and_msg =
+          \ s:CheckSelfReference(l:bound_dict, a:seen_objects, a:self_refs)
       " delegate 'is this a dict or object?' to the recursive call
-      call add(a:seen_objects, l:bound_dict)
-      let l:str .= ', '.  s:PrettyPrintImpl(
-          \ l:bound_dict, a:cur_indent_level, a:seen_objects, a:self_refs)
+      if !empty(l:seen_and_msg)
+        let l:str .= ', '.  l:seen_and_msg[1]
+      else
+        let l:str .= ', ' . s:PrettyPrintImpl(
+            \ l:bound_dict, a:cur_indent_level, a:seen_objects, a:self_refs)
+      endif
     endif
     return l:str.')'
   else
