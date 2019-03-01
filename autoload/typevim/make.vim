@@ -598,7 +598,10 @@ function! typevim#make#Extension(typename, base, prototype) abort
     let l:this_type = maktaba#value#IsList(l:Constraints['type']) ?
         \ l:Constraints['type'] : [ l:Constraints['type'] ]
     if len(l:base_type) ==# 1
-      if maktaba#value#IsString(l:this_type[0])
+      if l:base_type[0] ==# typevim#Any()
+        " edge case: the base type is 'any', so any specialization is allowed
+        continue
+      elseif maktaba#value#IsString(l:this_type[0])
         " edge case: constraint is a tag, but the base's constraint is just
         " 'value has type string'. this is allowed, so skip further checks
         continue

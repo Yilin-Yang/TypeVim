@@ -176,6 +176,47 @@ Execute (typevim#make#Extension: Specialization of Base's Tags):
   AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
       \ 'Failed when using tag allowable in both'
 
+Execute (typevim#make#Extension: Specialization of "Any" Type):
+  let g:base_any = typevim#make#Interface('BaseAny', {
+      \ 'any': typevim#Any(),
+      \ })
+
+  " specialize with single type
+  let g:extension = {
+      \ 'any': typevim#Number()
+      \ }
+  call typevim#make#Extension('Extension', g:base_any, g:extension)
+  let g:instance = {
+      \ 'any': 2,
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when specializing with concrete value'
+  call CleanUp('g:extension')
+
+  " specialize with type list
+  let g:extension = {
+      \ 'any': [ typevim#Number(), typevim#String() ]
+      \ }
+  call typevim#make#Extension('Extension', g:base_any, g:extension)
+  let g:instance = {
+      \ 'any': 'zyx',
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when specializing with type list'
+  call CleanUp('g:extension')
+
+  " specialize with tags
+  let g:extension = {
+      \ 'any': ['abc', 'def']
+      \ }
+  call typevim#make#Extension('Extension', g:base_any, g:extension)
+  let g:instance = {
+      \ 'any': 'abc',
+      \ }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:extension),
+      \ 'Failed when specializing with tags'
+  call CleanUp('g:extension')
+
 Execute (typevim#make#Extension: Shared Type Lists):
   " edge case: user is sharing a separate list of types between multiple
   " interface declarations
