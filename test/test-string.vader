@@ -1,3 +1,10 @@
+Execute (typevim#string#Listify: Agnostic, Empty List):
+  let g:string = ''
+  let g:expected = [
+      \ '',
+      \ ]
+  AssertEqual g:expected, typevim#string#Listify(g:string)
+
 Execute (typevim#string#Listify: Agnostic):
   let g:string = "\nfoobar\r\nbar\r\rfoo\n\rfoo\nbar\r"
   let g:expected = [
