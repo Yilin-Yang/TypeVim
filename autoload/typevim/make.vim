@@ -505,12 +505,12 @@ function! typevim#make#Interface(typename, prototype) abort
         endfor
       elseif s:IsConstraint(l:Val[0]) || maktaba#value#IsDict(l:Val[0])
         for l:type in l:Val
-          if maktaba#value#IsDict(l:type)
-            call add(l:type_list, typevim#make#Interface('INTERFACE_ANON', l:type))
-          elseif !s:IsConstraint(l:type)
-            call s:ThrowWrongConstraintType(l:type)
-          else
+          if s:IsConstraint(l:type)  " handle type constants, nested interfaces
             call add(l:type_list, l:type)
+          elseif maktaba#value#IsDict(l:type)
+            call add(l:type_list, typevim#make#Interface('INTERFACE_ANON', l:type))
+          else
+            call s:ThrowWrongConstraintType(l:type)
           endif
         endfor
       else
@@ -534,7 +534,7 @@ endfunction
 
 ""
 " Throw an ERROR(BadValue) complaining of a mutually exclusive constraints.
-function s:ThrowIncompatible(type, ...) abort
+function! s:ThrowIncompatible(type, ...) abort
   call maktaba#ensure#IsString(a:type)
   if !has_key(s:incompats_to_errs, a:type)
     throw maktaba#error#Failure(
