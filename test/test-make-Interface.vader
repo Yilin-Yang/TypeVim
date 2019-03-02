@@ -346,6 +346,30 @@ Then:
 
   call CleanUp('g:interface')
 
+Execute (typevim#make#Interface: Multiple Allowed Interfaces in List):
+  let g:interface = {
+      \ 'foo': [g:parent_interface, g:child_interface]
+      \ }
+  call typevim#make#Interface('Grandparent', g:interface)
+Then:
+  let g:instance = {'foo': {'face': {'foo': 1, 'tag': 'blah-de-blah'} } }
+  AssertEqual 1, typevim#value#Implements(g:instance.foo.face, g:child_interface),
+      \ 'warg'
+  " only fails when it's all put together...?
+
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on parent, child value'
+
+  let g:instance = {'foo': {'faced': {'foo': 1, 'tag': 'blah-de-blah'} } }
+  AssertEqual 0, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on invalid parent value'
+
+  let g:instance = {'foo': {'foo': 1, 'tag': 'blah-de-blah'} }
+  AssertEqual 1, typevim#value#Implements(g:instance, g:interface),
+      \ 'Failed on valid child value'
+
+  call CleanUp('g:interface')
+
 Execute (typevim#make#Interface: Multilevel Literal Interface):
   let g:interface = {
       \ 'ecaf': {
