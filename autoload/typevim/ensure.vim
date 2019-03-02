@@ -177,13 +177,13 @@ function! typevim#ensure#IsValidInterfaceProp(id) abort
       throw maktaba#error#BadValue(
           \ 'Expected a non-empty string for an interface property.')
     endif
-    if match(a:id[0], '[A-Za-z]') ==# -1
+    if match(a:id[0], '[A-Za-z_$]') ==# -1
       throw maktaba#error#BadValue(
-          \ 'Interface property must start with letter: '.a:id)
+          \ 'Interface property must start with letter, _, or $: '.a:id)
     endif
     let l:idx = 1 | while l:idx <# len(a:id)
       let l:char = a:id[l:idx]
-      if match(l:char, '[A-Za-z0-9_]') ==# -1
+      if match(l:char, '[A-Za-z0-9_$]') ==# -1
           \ && !(l:idx ==# len(a:id) - 1 && l:char ==# '?')
       throw maktaba#error#BadValue(
           \ 'Given interface property has illegal character ''%s'' at index: %d',

@@ -48,6 +48,12 @@ Execute (typevim#ensure#IsValidInterfaceProp: Valid, Lowercase First):
 Execute (typevim#ensure#IsValidInterfaceProp: Valid, Uppercase First):
   AssertEqual 'Abcdefg', typevim#ensure#IsValidInterfaceProp('Abcdefg')
 
+Execute (typevim#ensure#IsValidInterfaceProp: Valid, Underscore First):
+  AssertEqual '_Abcdefg', typevim#ensure#IsValidInterfaceProp('_Abcdefg')
+
+Execute (typevim#ensure#IsValidInterfaceProp: Valid, Underscores and Dollar Signs):
+  AssertEqual '_Abc$$def_g', typevim#ensure#IsValidInterfaceProp('_Abc$$def_g')
+
 Execute (typevim#ensure#IsValidInterfaceProp: Valid, Ends w/ Question Mark):
   AssertEqual 'Abcdefg?', typevim#ensure#IsValidInterfaceProp('Abcdefg?')
 
@@ -58,7 +64,7 @@ Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Multiple Question Marks):
 
 Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Only a Question Mark):
   AssertThrows call typevim#ensure#IsValidInterfaceProp('?')
-  AssertEqual 'ERROR(BadValue): Interface property must start with letter: ?',
+  AssertEqual 'ERROR(BadValue): Interface property must start with letter, _, or $: ?',
       \ g:vader_exception
 
 Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Question Mark Partway Through):
@@ -66,13 +72,9 @@ Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Question Mark Partway Thr
   AssertEqual 'ERROR(BadValue): Given interface property has illegal character ''?'' at index: 4',
       \ g:vader_exception
 
-Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Underscore First):
-  AssertThrows call typevim#ensure#IsValidInterfaceProp('_Abcdefg')
-  AssertEqual 'ERROR(BadValue): Interface property must start with letter: _Abcdefg', g:vader_exception
-
 Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Number First):
   AssertThrows call typevim#ensure#IsValidInterfaceProp('1Abcdefg')
-  AssertEqual 'ERROR(BadValue): Interface property must start with letter: 1Abcdefg', g:vader_exception
+  AssertEqual 'ERROR(BadValue): Interface property must start with letter, _, or $: 1Abcdefg', g:vader_exception
 
 Execute (typevim#ensure#IsValidInterfaceProp: Invalid, Illegal Character):
   AssertThrows call typevim#ensure#IsValidInterfaceProp('Abcdefg-')

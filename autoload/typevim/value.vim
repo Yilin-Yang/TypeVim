@@ -94,15 +94,18 @@ endfunction
 ""
 " Returns 1 when the given {Id} is a a valid interface property, 0 otherwise.
 "
-" A valid interface property must meet the same requirements as a valid
-" identifier (see @function(typevim#value#IsValidTypename)), but can end with
-" a question mark.
+" Valid interface properties must start with a letter (uppercase or
+" lowercase), underscore, or dollar sign; the remaining characters may be
+" letters (uppercase or lowercase), numbers, underscores, or dollar signs. The
+" identifier may end with a question mark, to signifiy that the property is
+" optional, though this question mark won't exist in "actual" interface
+" implementations.
 function! typevim#value#IsValidInterfaceProp(Id) abort
   if !maktaba#value#IsString(a:Id) || empty(a:Id)
       \ || has_key(s:RESERVED_ATTRIBUTES, a:Id)
     return 0
   endif
-  return match(a:Id, '^[A-Za-z]\{1}[A-Za-z0-9_]*[?]\{0,1}$') ==# 0
+  return match(a:Id, '^[A-Za-z_$]\{1}[A-Za-z0-9_$]*[?]\{0,1}$') ==# 0
 endfunction
 
 ""

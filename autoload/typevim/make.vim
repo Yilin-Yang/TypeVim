@@ -437,9 +437,10 @@ endfunction
 "
 " The structure of {prototype} is similar to that of TypeScript interfaces:
 "
-" Each key is the name of a property, and should be a valid identifier (see
-" @function(typescript#value#IsValidIdentifier)), though each may end with a
-" `"?"` to indicate that the property is optional.
+" Each key is the name of a property, and should comply with the rules laid
+" out by @function(typevim#value#IsValidInterfaceProp). These are essentially
+" the same rules that define legal TypeScript interface properties, though
+" arbitrary unicode characters are disallowed.
 "
 " The value associated with that key is called a property constraint, and may
 " be a:
