@@ -399,28 +399,90 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   return l:derived
 endfunction
 
+function! s:ThrowWrongConstraintType(Gave) abort
+  throw maktaba#error#WrongType(
+      \ 'Values in interface prototype should be v:t_TYPE values, '
+      \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
+      \ typevim#object#ShallowPrint(a:Gave))
+endfunction
+
 ""
-" Returns 1 when the given {Val} is a valid non-tag interface constraint, i.e.
-" a |v:t_TYPE| or another interface, but not a list thereof, and not a tag.
+" Returns 1 when the given {Val} is a valid non-tag interface constraint,
+" i.e.  a |v:t_TYPE| or another interface, but not a list thereof, and
+" not a tag.
 function! s:IsConstraint(Val) abort
   if typevim#value#IsTypeConstant(a:Val)
     return 1
   endif
   try
-    if typevim#value#IsType(a:Val, 'TypeVimInterface')
-      return 1
-    endif
+    if typevim#value#IsType(a:Val, 'TypeVimInterface') | return 1 | endif
   catch /ERROR(BadValue)/
     " ...
   endtry
   return 0
 endfunction
 
-function! s:ThrowWrongConstraintType(Gave) abort
-  throw maktaba#error#WrongType(
-      \ 'Values in interface prototype should be v:t_TYPE values, '
-      \ . 'or lists thereof, or lists of allowable strings. Gave: %s',
-      \ typevim#object#ShallowPrint(a:Gave))
+function! s:MakeConstraintFromItem(Val) abort
+  if maktaba#value#IsList(a:Val)
+    throw maktaba#error#WrongType(
+        \ 'Gave a list, but expected a single constraint: %s',
+        \ typevim#object#ShallowPrint(a:Val))
+  elseif s:IsConstraint(a:Val)
+    return a:Val
+  elseif maktaba#value#IsDict(a:Val)  " but not a 'concrete' interface yet,
+    return typevim#make#Interface('INTERFACE_ANON', a:Val)
+  else
+    call s:ThrowWrongConstraintType(a:Val)
+  endif
+endfunction
+
+function! s:MakeTypeList(constraint, type_list) abort
+  call maktaba#ensure#IsDict(a:constraint)
+  let l:constraint_list = maktaba#ensure#IsList(a:type_list)
+  let l:to_return = []
+  let l:i = 0 | while l:i <# len(l:constraint_list)
+    let l:Item = l:constraint_list[l:i]
+    call add(l:to_return, s:MakeConstraintFromItem(l:Item))
+  let l:i += 1 | endwhile
+  let a:constraint.type = l:to_return
+  return a:constraint
+endfunction
+
+function! s:MakeTagList(constraint, tag_list) abort
+  call maktaba#ensure#IsDict(a:constraint)
+  call maktaba#ensure#IsList(a:tag_list)
+  " just walk over the list, make sure it doesn't mix tag strings with
+  " normal constraints
+  let l:i = 0 | while l:i <# len(a:tag_list)
+    let l:tag = a:tag_list[l:i]
+    if !maktaba#value#IsString(l:tag)
+      throw maktaba#error#WrongType(
+          \ 'Give a non-string value in a tag list: %s',
+          \ typevim#object#ShallowPrint(l:tag))
+    endif
+  let l:i += 1 | endwhile
+  let a:constraint.type = a:tag_list
+  let a:constraint.is_tag = 1
+  return a:constraint
+endfunction
+
+""
+" Given {Val}, return a 'refined' constraint (individual, or a list of) that
+" that can be stored in a TypeVim interface object.
+function! s:MakeConstraintFrom(constraint, Val) abort
+  call maktaba#ensure#IsDict(a:constraint)
+  if maktaba#value#IsList(a:Val)
+    if empty(a:Val)
+      throw maktaba#error#WrongType('Gave empty list in interface constraint')
+    elseif maktaba#value#IsString(a:Val[0])
+      return s:MakeTagList(a:constraint, a:Val)
+    else
+      return s:MakeTypeList(a:constraint, a:Val)
+    endif
+  else
+    let a:constraint.type = s:MakeConstraintFromItem(a:Val)
+    return a:constraint
+  endif
 endfunction
 
 ""
@@ -485,45 +547,17 @@ function! typevim#make#Interface(typename, prototype) abort
   "   may have
   for [l:key, l:Val] in items(a:prototype)
     call typevim#ensure#IsValidInterfaceProp(l:key)
+    " construct a 'constraint' representation, store it into the prototype
     let l:constraints = {}
-
-    let l:constraints['is_tag'] = 0
-    let l:constraints['is_optional'] = 0
+    let l:constraints.is_tag = 0
+    let l:constraints.is_optional = 0
     if l:key[-1:-1] ==# '?'
-      let l:constraints['is_optional'] = 1
+      let l:constraints.is_optional = 1
       unlet a:prototype[l:key]
       let l:key = l:key[:-2]  " trim question mark
       let a:prototype[l:key] = l:Val
     endif
-
-    if maktaba#value#IsList(l:Val) && !empty(l:Val)
-      let l:type_list = []
-      if maktaba#value#IsString(l:Val[0])
-        let l:constraints['is_tag'] = 1
-        for l:tag in l:Val
-          call add(l:type_list, maktaba#ensure#IsString(l:tag))
-        endfor
-      elseif s:IsConstraint(l:Val[0]) || maktaba#value#IsDict(l:Val[0])
-        for l:type in l:Val
-          if s:IsConstraint(l:type)  " handle type constants, nested interfaces
-            call add(l:type_list, l:type)
-          elseif maktaba#value#IsDict(l:type)
-            call add(l:type_list, typevim#make#Interface('INTERFACE_ANON', l:type))
-          else
-            call s:ThrowWrongConstraintType(l:type)
-          endif
-        endfor
-      else
-        call s:ThrowWrongConstraintType(l:Val)
-      endif
-      let l:constraints['type'] = l:type_list
-    elseif s:IsConstraint(l:Val)
-      let l:constraints['type'] = l:Val
-    elseif maktaba#value#IsDict(l:Val)
-      let l:constraints['type'] = typevim#make#Interface('INTERFACE_ANON', l:Val)
-    else
-      call s:ThrowWrongConstraintType(l:Val)
-    endif
+    let l:constraints = s:MakeConstraintFrom(l:constraints, l:Val)
     let a:prototype[l:key] = l:constraints
   endfor
   let a:prototype[typevim#attribute#INTERFACE()] = a:typename

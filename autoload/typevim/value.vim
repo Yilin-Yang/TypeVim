@@ -191,56 +191,88 @@ function! typevim#value#IsType(Obj, typename) abort
 endfunction
 
 ""
+" Returns 1 when {Val} satisfies {constraint}, and 0 otherwise.
+" @throws WrongType when {constraint} is not a dict.
+function! s:SatisfiesConstraint(Val, constraint, property) abort
+  call maktaba#ensure#IsDict(a:constraint)
+  let l:type = a:constraint.type
+  let l:is_list = maktaba#value#IsList(l:type)
+
+  if a:constraint.is_tag
+    if !l:is_list
+      throw maktaba#error#Failure(
+          \ 'Interface property "%s" is a tag, but the tag list is not a '
+            \ . 'list of strings: %s',
+          \ a:property,
+          \ typevim#object#ShallowPrint(l:type))
+    endif
+    if !maktaba#value#IsString(a:Val) | return 0 | endif
+    return index(l:type, a:Val) !=# -1
+  elseif l:is_list
+    if index(l:type, typevim#Any()) !=# -1
+      return 1  " if the type list allows 'any', for some reason, return 1
+    endif
+    if maktaba#value#IsDict(a:Val)
+      if index(l:type, typevim#Dict()) !=# -1 | return 1 | endif
+      " it's a dict, but 'dict' isn't a specified type
+      " check if it implements an interface
+      let l:i = 0 | while l:i <# len(l:type)
+        let l:allowed_type = l:type[l:i]
+        if !typevim#value#IsType(l:allowed_type, 'TypeVimInterface')
+          let l:i += 1
+          continue
+        endif
+        if typevim#value#Implements(a:Val, l:allowed_type)
+          return 1
+        endif
+      let l:i += 1 | endwhile
+      return 0  " does not implement an interface, nor is dict an allowed type
+    else
+      if index(l:type, type(a:Val)) ==# -1
+        " edge case: check if it's a bool
+        if typevim#value#IsBool(a:Val)
+          return index(l:type, typevim#Bool()) !=# -1  " was bool allowed?
+        endif
+        return 0  " type of Val not found in list
+      endif
+      return 1
+    endif
+  else " it's a singular object
+    if typevim#value#IsType(l:type, 'TypeVimInterface')
+      return typevim#value#Implements(a:Val, l:type)
+    elseif l:type ==# typevim#Any()
+      return 1
+    elseif l:type ==# typevim#Bool()
+      return typevim#value#IsBool(a:Val)
+    endif
+    return type(a:Val) ==# l:type
+  endif
+endfunction
+
+""
 " Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.
 "
-" @throws WrongType if {Obj} is not a dictionary, or if {Interface} is not a TypeVim interface (i.e. an object constructed through a call to @function(typevim#make#Interface).)
+" @throws WrongType if {Interface} is not a TypeVim interface (i.e. an object constructed through a call to @function(typevim#make#Interface).)
 function! typevim#value#Implements(Obj, Interface) abort
-  call maktaba#ensure#IsDict(a:Obj)
+  if !maktaba#value#IsDict(a:Obj)
+    return 0
+  endif
   call typevim#ensure#IsType(a:Interface, 'TypeVimInterface')
   for [l:property, l:Constraints] in items(a:Interface)
+    " don't consider TypeVim reserved attributes
     if has_key(s:RESERVED_ATTRIBUTES, l:property) | continue | endif
-    if !l:Constraints['is_optional'] && !has_key(a:Obj, l:property)
+
+    " if it's non-optional and the object doesn't have it, reject;
+    " or, if it's optional and the object doesn't have it, skip this property
+    if !l:Constraints.is_optional && !has_key(a:Obj, l:property)
       return 0
-    elseif l:Constraints['is_optional'] && !has_key(a:Obj, l:property)
+    elseif l:Constraints.is_optional && !has_key(a:Obj, l:property)
       continue
     endif
 
-    let l:type = l:Constraints['type']
     let l:Val = a:Obj[l:property]
-    if l:Constraints['is_tag']  " l:type is a list of allowable strings
-      if !maktaba#value#IsString(l:Val) | return 0 | endif
-      if !maktaba#value#IsList(l:type)
-        throw maktaba#error#Failure(
-            \ 'Interface property "%s" is a tag, but the tag list is not a '
-              \ . 'list of strings: %s',
-            \ l:property,
-            \ typevim#object#ShallowPrint(l:type))
-      endif
-      if index(l:type, l:Val) ==# -1 | return 0 | endif
-    elseif maktaba#value#IsList(l:type)  " l:type is a list of allowable types
-      if index(l:type, type(l:Val)) ==# -1
-        if typevim#value#IsBool(l:Val) && index(l:type, typevim#Bool()) !=# -1
-          continue
-        endif
-        return 0
-      endif
-    elseif maktaba#value#IsNumber(l:type)  " l:type is a single allowable type
-      if l:type ==# typevim#Bool()
-        if !typevim#value#IsBool(l:Val) | return 0 | endif
-      elseif l:type ==# typevim#Any()
-        " pass
-      elseif l:type !=# type(l:Val)
-        return 0
-      endif
-    elseif typevim#value#IsType(l:type, 'TypeVimInterface')
-      if !typevim#value#Implements(l:Val, l:type)
-        return 0
-      endif
-    else
-      throw maktaba#error#Failure(
-          \ 'Interface object contains non-parsable constraint for '
-            \ . 'property "%s": %s',
-          \ l:property, typevim#object#ShallowPrint(l:Constraints))
+    if !s:SatisfiesConstraint(l:Val, l:Constraints, l:property)
+      return 0
     endif
   endfor
   return 1
