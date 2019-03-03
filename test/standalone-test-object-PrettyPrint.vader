@@ -120,6 +120,12 @@ Execute (typevim#object#PrettyPrint: Primitive Dict):
   let g:val = { "a": "bcd" }
   AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#object#PrettyPrint(g:val)
 
+Execute (typevim#object#PrettyPrint: Empty Dict):
+  call PrintIntoBuffer(typevim#object#PrettyPrint({}))
+Expect:
+  
+  {  }
+
 Execute (typevim#object#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
   let g:val = { "a": { "foo": "bar", "goo": "bar" }, "b": "bcd" }
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))

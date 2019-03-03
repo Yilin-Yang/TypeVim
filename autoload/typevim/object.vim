@@ -225,6 +225,11 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
   call maktaba#ensure#IsList(a:self_refs)
 
   let l:starting_block = s:GetIndentBlock(a:starting_indent)
+
+  if empty(a:Obj)
+    return l:starting_block.'{  }'
+  endif
+
   let l:str = l:starting_block."{\n"
   let l:indent_level = a:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
