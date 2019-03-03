@@ -1,6 +1,17 @@
 " Note that the actual use of AbstractFunc is primarily tested in
-" `test-make.vader`, through invocation of abstract functions on a class
-" instance.
+" `test-make-Derived.vader`, through invocation of abstract functions on a
+" class instance.
+
+Execute (typevim#make#AbstractFunc: Type-Checking, Error-Checking Funcname):
+  let g:params = []
+  AssertThrows call typevim#make#AbstractFunc('Typename', 0, g:params)
+  AssertEqual 0, match(g:vader_exception, 'ERROR(WrongType)'),
+      \ 'Threw wrong exception, should be WrongType: '.g:vader_exception
+
+  let g:Func = typevim#make#AbstractFunc('Typename', '__Foo', g:params)
+  AssertThrows call g:Func()
+  AssertEqual 0, match(g:vader_exception, 'ERROR(NotImplemented)'),
+      \ 'Threw wrong exception, should be NotImplemented: '.g:vader_exception
 
 Execute (typevim#make#AbstractFunc: Empty String Argname):
   let g:params = ['']

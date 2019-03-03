@@ -854,11 +854,11 @@ endfunction
 "
 " If the number of arguments is correct, the returned function will throw an
 " exception saying that it is an unimplemented virtual function
-" @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename; or if {funcname} is not a valid identifier.
+" @throws BadValue if {parameters} does not adhere to the requirements above; or if {typename} s not a valid typename.
 " @throws WrongType if {typename} isn't a string or {parameters} isn't a list of strings.
 function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
   call typevim#ensure#IsValidTypename(a:typename)
-  call typevim#ensure#IsValidIdentifier(a:funcname)
+  call maktaba#ensure#IsString(a:funcname)
   call maktaba#ensure#IsList(a:parameters)
   let l:named = []
   let l:opt_named = []
