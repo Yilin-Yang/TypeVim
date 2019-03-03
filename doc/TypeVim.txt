@@ -328,9 +328,10 @@ typevim#make#Interface({typename}, {prototype})     *typevim#make#Interface()*
 
   The structure of {prototype} is similar to that of TypeScript interfaces:
 
-  Each key is the name of a property, and should be a valid identifier (see
-  |typescript#value#IsValidIdentifier()|), though each may end with a `"?"` to
-  indicate that the property is optional.
+  Each key is the name of a property, and should comply with the rules laid
+  out by |typevim#value#IsValidInterfaceProp()|. These are essentially the
+  same rules that define legal TypeScript interface properties, though
+  arbitrary unicode characters are disallowed.
 
   The value associated with that key is called a property constraint, and may
   be a:
@@ -664,9 +665,12 @@ typevim#value#IsValidInterfaceProp({Id})
                                         *typevim#value#IsValidInterfaceProp()*
   Returns 1 when the given {Id} is a a valid interface property, 0 otherwise.
 
-  A valid interface property must meet the same requirements as a valid
-  identifier (see |typevim#value#IsValidTypename()|), but can end with a
-  question mark.
+  Valid interface properties must start with a letter (uppercase or
+  lowercase), underscore, or dollar sign; the remaining characters may be
+  letters (uppercase or lowercase), numbers, underscores, or dollar signs. The
+  identifier may end with a question mark, to signifiy that the property is
+  optional, though this question mark won't exist in "actual" interface
+  implementations.
 
 typevim#value#IsTypeConstant({Val})           *typevim#value#IsTypeConstant()*
   Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
@@ -697,9 +701,8 @@ typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
 typevim#value#Implements({Obj}, {Interface})      *typevim#value#Implements()*
   Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.
 
-  Throws ERROR(WrongType) if {Obj} is not a dictionary, or if {Interface} is
-  not a TypeVim interface (i.e. an object constructed through a call to
-  |typevim#make#Interface()|.)
+  Throws ERROR(WrongType) if {Interface} is not a TypeVim interface (i.e. an
+  object constructed through a call to |typevim#make#Interface()|.)
 
 typevim#value#IsPartial({Obj})                     *typevim#value#IsPartial()*
   Returns 1 when the given object is a Partial (see `:help Partial`) and 0
