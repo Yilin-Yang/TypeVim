@@ -409,3 +409,19 @@ Execute (typevim#Promise: "Interception" of Unhandled Rejection):
   AssertNotEqual 'reject', GetValAndReset()
   AssertEqual 'reject', GetVal2AndReset()
   AssertNotEqual 'reject', GetOther2AndReset()
+
+Execute (typevim#Promise: Resolve with a Dict That's Not a TypeVim Object):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('SetVal'))
+  call g:promise.Resolve({})
+Then:
+  AssertEqual {}, GetValAndReset()
+
+Execute (typevim#Promise: Reject with a Dict That's Not a TypeVim Object):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  call g:promise.Reject({})
+Then:
+  AssertEqual {}, GetOtherAndReset()

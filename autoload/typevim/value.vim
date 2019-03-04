@@ -166,13 +166,13 @@ function! typevim#value#IsType(Obj, typename) abort
   endif
   call maktaba#ensure#IsString(a:typename)
   call typevim#ensure#IsValidTypename(a:typename)
-  if !has_key(a:Obj, s:TYPE_ATTR)
-    throw s:NotTypeVimObject(a:Obj)
+  if !has_key(a:Obj, s:TYPE_ATTR)  " no type attribute
+    return 0
   endif
 
   let l:type_list = a:Obj[s:TYPE_ATTR]
-  if !maktaba#value#IsList(l:type_list)
-    throw s:NotTypeVimObject(a:Obj)
+  if !maktaba#value#IsList(l:type_list)  " type attribute is malformed
+    return 0
   endif
   for l:type in l:type_list
     if !typevim#value#IsValidTypename(l:type)
