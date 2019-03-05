@@ -582,6 +582,10 @@ endfunction
 " -2 is the second-to-last line, and so on. 0 and `"$"` are not accepted
 " values.
 "
+" This function still works even if the wrapped buffer is set as
+" |nomodifiable|; it will set the buffer as |modifiable|, replace the given
+" line range, and set the buffer back to |nomodifiable|.
+"
 " @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} or {endline} are 0.
 " @throws WrongType if {startline} or {endline} are not numbers, or if {replacement} is not a list of strings.
 function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
@@ -648,6 +652,10 @@ endfunction
 "   the buffer. (Note that you can also specify -1, or just explicitly specify
 "   the line number of the last line in the buffer.)
 "
+" This function still works even if the wrapped buffer is set as
+" |nomodifiable|; it will set the buffer as |modifiable|, insert the given
+" {lines}, and set the buffer back to |nomodifiable|.
+"
 " @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
 function! typevim#Buffer#InsertLines(after, lines) dict abort
   call s:CheckType(l:self)
@@ -660,6 +668,10 @@ endfunction
 ""
 " @dict Buffer
 " Delete lines {startline} through {endline}, end-inclusive.
+"
+" This function still works even if the wrapped buffer is set as
+" |nomodifiable|; it will set the buffer as |modifiable|, delete the given
+" line range, and set the buffer back to |nomodifiable|.
 "
 " See @function(Buffer.ReplaceLines) for details on exceptions and indexing.
 function! typevim#Buffer#DeleteLines(startline, endline) dict abort
