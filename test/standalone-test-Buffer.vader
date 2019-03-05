@@ -382,6 +382,80 @@ Execute (Buffer: Negative Values are Out of Range):
   AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
       \ 'Threw wrong exception: '.g:vader_exception
 
+Execute (Buffer: Make Buffer Nonmodifiable (Setup)):
+  call g:buffer.setbufvar('&modifiable', 0)
+Then:
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+
+Execute (Buffer: Nonmodifiable, Delete Buffer Contents):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.setbufvar('&modifiable', 0)
+  call g:buffer.DeleteLines(1, 5)
+Expect:
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+Then:
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+
+Execute (Buffer: Nonmodifiable, Delete Everything):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.setbufvar('&modifiable', 0)
+  call g:buffer.DeleteLines(1, -1)
+Expect:
+  
+Then:
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+
+Execute (Buffer: Nonmodifiable, Replace Buffer Contents):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.setbufvar('&modifiable', 0)
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.ReplaceLines(1, 5, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+Then:
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+
+Execute (Buffer: Nonmodifiable, Prepend Lines):
+  call g:buffer.SetBuffer(bufnr('%'))
+  call g:buffer.setbufvar('&modifiable', 0)
+  let g:lines = [
+    \ 'foo1',
+    \ 'foo2',
+    \ 'foo3',
+  \ ]
+  call g:buffer.InsertLines(0, g:lines)
+Expect:
+  foo1
+  foo2
+  foo3
+  first line
+  second line
+  third line
+  fourth line
+  fifth line
+  sixth line
+  seventh line
+  eighth line
+  ninth line
+  tenth line
+Then:
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+
 Execute (Buffer: Is Open in this Tab, Yes):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))

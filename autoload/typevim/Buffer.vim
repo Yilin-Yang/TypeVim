@@ -3,6 +3,19 @@
 " An encapsulation of a vim buffer; allows for manipulation of vim buffers as
 " if they were objects.
 
+""
+" Returns the script number of this file. Taken from vim's docs.
+function! s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
+endfun
+
+""
+" Returns a Funcref to the script-local function with the given {funcname}.
+function! s:GetScriptFuncref(funcname) abort
+  call maktaba#ensure#IsString(a:funcname)
+  return function('<SNR>'.s:SID().'_'.a:funcname)
+endfunction
+
 " Used for creating unique 'filenames' for newly spawned buffers.
 let s:bufname_mangle_ctr = 0
 
@@ -117,6 +130,7 @@ function! typevim#Buffer#New(...) abort
   let l:new = {
     \ '__bufnr': l:bufnr,
     \ 'ExchangeBufVars': typevim#make#Member('ExchangeBufVars'),
+    \ 'SetDoRestore': typevim#make#Member('SetDoRestore'),
     \ 'getbufvar': typevim#make#Member('getbufvar'),
     \ 'setbufvar': typevim#make#Member('setbufvar'),
     \ 'bufnr': typevim#make#Member('bufnr'),
@@ -257,6 +271,37 @@ function! typevim#Buffer#ExchangeBufVars(vars_and_vals) dict abort
     endtry
   endfor
   return l:prev_vals
+endfunction
+
+""
+" @dict Buffer
+" Set the given {temp_vars_and_vals} through a call to
+" @function(Buffer.ExchangeBufVars), call {Action}, and then restore the old
+" values from before setting {temp_vars_and_vals}. Returns the return value of
+" {Action}.
+"
+" {Action} should be a Funcref (or a |Partial|) that takes no arguments.
+"
+" @throws BadValue if {Action} needs arguments.
+" @throws WrongType if {temp_vars_and_vals} is not a dict, or if {Action} is not a Funcref.
+"
+" This function throws the same exceptions as @function(Buffer.ExchangeBufVars).
+function! typevim#Buffer#SetDoRestore(temp_vars_and_vals, Action) dict abort
+  call s:CheckType(l:self)
+  call maktaba#ensure#IsDict(a:temp_vars_and_vals)
+  call maktaba#ensure#IsFuncref(a:Action)
+  let l:old_vals = l:self.ExchangeBufVars(a:temp_vars_and_vals)
+  try
+    let l:to_return = a:Action()
+  catch /\(E116\)\|\(E118\)\|\(E119\)/
+    " Invalid arguments | Too many arguments | Not enough arguments
+    call l:self.ExchangeBufVars(l:old_vals)
+    throw maktaba#error#BadValue(
+        \ 'Funcref isn''it invocable with no arguments: %s',
+        \ typevim#object#ShallowPrint(a:Action, 2))
+  endtry
+  call l:self.ExchangeBufVars(l:old_vals)
+  return l:to_return
 endfunction
 
 ""
@@ -461,26 +506,7 @@ function! typevim#Buffer#GetLines(startline, ...) dict abort
   endif
 endfunction
 
-""
-" @dict Buffer
-" Change, add, or remove lines from this buffer, replacing lines {startline}
-" through {endline}, end-inclusive, with the given {replacement}, a list of
-" strings (one string per line).
-"
-" The number of lines in {replacement} can be does not need to be equal to
-" `endline - startline + 1`, i.e. this function can replace part of a buffer
-" with more lines than were originally there, or with fewer. For instance, if
-" {replacement} is an empty list, the given line range will be deleted.
-"
-" Indexing is one-based: line 1 is the first line of the buffer. {startline}
-" and {endline} can assume negative values; -1 is the last line of the buffer,
-" -2 is the second-to-last line, and so on. 0 and `"$"` are not accepted
-" values.
-"
-" @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} or {endline} are 0.
-" @throws WrongType if {startline} or {endline} are not numbers, or if {replacement} is not a list of strings.
-function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
-  call s:CheckType(l:self)
+function! s:ReplaceLines(startline, endline, replacement) dict abort
   call maktaba#ensure#IsNumber(a:startline)
   call maktaba#ensure#IsNumber(a:endline)
   call maktaba#ensure#IsList(a:replacement)
@@ -542,24 +568,31 @@ endfunction
 
 ""
 " @dict Buffer
-" Insert the given {lines} just below line {after}. Similar to
-" @function(Buffer.ReplaceLines), except that it does not overwrite any of the
-" lines in the buffer.
+" Change, add, or remove lines from this buffer, replacing lines {startline}
+" through {endline}, end-inclusive, with the given {replacement}, a list of
+" strings (one string per line).
 "
-" This function uses the same indexing scheme @function(Buffer.ReplaceLines),
-" with the following additions:
+" The number of lines in {replacement} can be does not need to be equal to
+" `endline - startline + 1`, i.e. this function can replace part of a buffer
+" with more lines than were originally there, or with fewer. For instance, if
+" {replacement} is an empty list, the given line range will be deleted.
 "
-" - {after} may be 0, which is the "line before-the-start" of the buffer.
-"   If {after} is 0, then the given {lines} will be prepended to the start of
-"   the buffer, i.e. above line 1.
-" - {after} may be `"$"`, which is the "line after-the-end" of the buffer. If
-"   {after} is `"$"`, then the given {lines} will be appended to the end of
-"   the buffer. (Note that you can also specify -1, or just explicitly specify
-"   the line number of the last line in the buffer.)
+" Indexing is one-based: line 1 is the first line of the buffer. {startline}
+" and {endline} can assume negative values; -1 is the last line of the buffer,
+" -2 is the second-to-last line, and so on. 0 and `"$"` are not accepted
+" values.
 "
-" @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
-function! typevim#Buffer#InsertLines(after, lines) dict abort
+" @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} or {endline} are 0.
+" @throws WrongType if {startline} or {endline} are not numbers, or if {replacement} is not a list of strings.
+function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
   call s:CheckType(l:self)
+  call l:self.SetDoRestore(
+      \ {'&modifiable': 1},
+      \ function(s:GetScriptFuncref('ReplaceLines'),
+        \ [a:startline, a:endline, a:replacement], l:self))
+endfunction
+
+function! s:InsertLines(after, lines) dict abort
   let l:num_lines = l:self.NumLines()
   let l:lnum = s:NormalizeLineNo(a:after, l:num_lines)
   if has('nvim')
@@ -596,6 +629,32 @@ function! typevim#Buffer#InsertLines(after, lines) dict abort
     execute 'keepalt buffer '.l:cur_buf
     call winrestview(l:winview)
   endif
+endfunction
+
+""
+" @dict Buffer
+" Insert the given {lines} just below line {after}. Similar to
+" @function(Buffer.ReplaceLines), except that it does not overwrite any of the
+" lines in the buffer.
+"
+" This function uses the same indexing scheme @function(Buffer.ReplaceLines),
+" with the following additions:
+"
+" - {after} may be 0, which is the "line before-the-start" of the buffer.
+"   If {after} is 0, then the given {lines} will be prepended to the start of
+"   the buffer, i.e. above line 1.
+" - {after} may be `"$"`, which is the "line after-the-end" of the buffer. If
+"   {after} is `"$"`, then the given {lines} will be appended to the end of
+"   the buffer. (Note that you can also specify -1, or just explicitly specify
+"   the line number of the last line in the buffer.)
+"
+" @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
+function! typevim#Buffer#InsertLines(after, lines) dict abort
+  call s:CheckType(l:self)
+  call l:self.SetDoRestore(
+      \ {'&modifiable': 1},
+      \ function(s:GetScriptFuncref('InsertLines'),
+        \ [a:after, a:lines], l:self))
 endfunction
 
 ""
