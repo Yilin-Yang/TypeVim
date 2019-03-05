@@ -32,6 +32,13 @@ Execute (Buffer: Exchange):
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 1,        g:buffer.getbufvar('test_var')
 
+Execute (Buffer: SetDoRestore Returns Value of Given Funcref):
+  function! Foo() abort
+    return 42
+  endfunction
+  AssertEqual 42, g:buffer.SetDoRestore({'&buftype': ''}, function('Foo'))
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+
 " Since split moves the cursor to the new split, check relative position by
 " moving *back* to the original window and checking that it *isn't* the owned
 " buffer.

@@ -774,6 +774,10 @@ typevim#Buffer#New([properties])                                *Buffer.New()*
     give this |TypeVim.Buffer| ownership of an existing vim buffer with that
     |bufnr|. Defaults to 0.
   `buftype`: A string. The buffer's |buftype| setting. Defaults to `nofile`.
+  `modifiable`: A boolean. Whether or not the user can edit the buffer. When
+    true, the wrapped buffer is set to |nomodifiable|, but calls to functions
+    like |Buffer.InsertLines()| will still be able to change the buffer's
+    contents.
   `swapfile`: A boolean. The buffer's |swapfile| setting. Defaults to 0.
 
   All of these are optional and will have default values if not specified.
@@ -796,6 +800,38 @@ typevim#Buffer#New([properties])                                *Buffer.New()*
 
 Buffer.CleanUp()                                            *Buffer.CleanUp()*
   Perform cleanup for this Buffer object.
+
+Buffer.ExchangeBufVars({vars_and_vals})             *Buffer.ExchangeBufVars()*
+  For each buffer variable/setting and value in {vars_and_vals}:
+  Replace the current value of "var" with "val",
+  Save the previous value of "var", and,
+  Return a dictionary of each modified variable, as well as its previous
+    value.
+
+  The returned dictionary may be provided to this function to restore the
+  original values of each variable or setting. Note that, if a "var" did not
+  previously exit before the first call to this function, then the second call
+  will simply set the value of that "var" to an empty string: it will not
+  |unlet| it.
+
+  Throws ERROR(BadValue) if a "var" is an empty string, the string "&", or if
+  it is an option that does not exist. No modification of the buffer will take
+  place.
+  Throws ERROR(WrongType) if {vars_and_vals} is not a dict.
+
+Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
+  Set the given {temp_vars_and_vals} through a call to
+  |Buffer.ExchangeBufVars()|, call {Action}, and then restore the old values
+  from before setting {temp_vars_and_vals}. Returns the return value of
+  {Action}.
+
+  {Action} should be a Funcref (or a |Partial|) that takes no arguments.
+
+  Throws ERROR(BadValue) if {Action} needs arguments.
+  Throws ERROR(WrongType) if {temp_vars_and_vals} is not a dict, or if
+  {Action} is not a Funcref.
+
+  This function throws the same exceptions as |Buffer.ExchangeBufVars()|.
 
 Buffer.getbufvar({varname}, [default])                    *Buffer.getbufvar()*
   Invoke `getbufvar` on this Buffer's stored buffer with the given arguments.
