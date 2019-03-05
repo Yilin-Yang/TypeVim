@@ -13,6 +13,7 @@ let s:default_props = {
     \ 'bufname': '',
     \ 'bufnr': 0,
     \ 'buftype': 'nofile',
+    \ 'modifiable': 1,
     \ 'swapfile': 0,
     \ }
 
@@ -36,6 +37,10 @@ let s:default_props = {
 "   give this @dict(Buffer) ownership of an existing vim buffer with that
 "   |bufnr|. Defaults to 0.
 " - `buftype`: A string. The buffer's |buftype| setting. Defaults to `nofile`.
+" - `modifiable`: A boolean. Whether or not the user can edit the buffer. When
+"   true, the wrapped buffer is set to |nomodifiable|, but calls to functions
+"   like @function(Buffer.InsertLines) will still be able to change the
+"   buffer's contents.
 " - `swapfile`: A boolean. The buffer's |swapfile| setting. Defaults to 0.
 "
 " All of these are optional and will have default values if not specified.
@@ -68,7 +73,7 @@ function! typevim#Buffer#New(...) abort
     endfor
   endif
 
-  if empty(l:properties['bufname'])
+  if empty(l:properties.bufname)
     let s:bufname_mangle_ctr += 1
     let l:bufname = 'TypeVim::Buffer_'
     while bufnr('^'.l:bufname.s:bufname_mangle_ctr.'$') !=# -1
@@ -76,19 +81,19 @@ function! typevim#Buffer#New(...) abort
       let s:bufname_mangle_ctr += 1
     endwhile
     let l:bufname .= s:bufname_mangle_ctr
-    let l:properties['bufname'] = l:bufname
+    let l:properties.bufname = l:bufname
   else
-    let l:bufname = l:properties['bufname']
+    let l:bufname = l:properties.bufname
     let l:bufnr_match = bufnr(l:bufname)
-    if l:bufnr_match !=# -1 && l:bufnr_match !=# l:properties['bufnr']
+    if l:bufnr_match !=# -1 && l:bufnr_match !=# l:properties.bufnr
       throw maktaba#error#BadValue(
           \ 'Given bufname %s collides with buffer #%d, with bufname: %s',
           \ l:bufname, l:bufnr_match, bufname(l:bufnr_match))
     endif
   endif
 
-  let l:bufnr = l:properties['bufnr']
-  let l:bufname = l:properties['bufname']
+  let l:bufnr = l:properties.bufnr
+  let l:bufname = l:properties.bufname
   if !l:bufnr
     let l:bufnr = bufnr('^'.l:bufname.'$', 1)
     " bufnr will *first* try to match the given bufname against existing
@@ -111,6 +116,7 @@ function! typevim#Buffer#New(...) abort
 
   let l:new = {
     \ '__bufnr': l:bufnr,
+    \ 'ExchangeBufVars': typevim#make#Member('ExchangeBufVars'),
     \ 'getbufvar': typevim#make#Member('getbufvar'),
     \ 'setbufvar': typevim#make#Member('setbufvar'),
     \ 'bufnr': typevim#make#Member('bufnr'),
@@ -132,7 +138,9 @@ function! typevim#Buffer#New(...) abort
   " set properties on the buffer
   let s:props_to_set =
       \ exists('s:props_to_set') ?
-          \ s:props_to_set : ['bufhidden', 'buflisted', 'buftype', 'swapfile']
+          \ s:props_to_set
+          \ :
+          \ ['bufhidden', 'buflisted', 'buftype', 'modifiable', 'swapfile']
   for l:prop in s:props_to_set
     let l:val = l:properties[l:prop]
     call l:new.setbufvar('&'.l:prop, l:val)
@@ -197,7 +205,58 @@ endfunction
 " Perform cleanup for this Buffer object.
 function! typevim#Buffer#CleanUp() dict abort
   call s:CheckType(l:self)
-  execute 'bwipeout! '.l:self['__bufnr']
+  execute 'bwipeout! '.l:self.__bufnr
+endfunction
+
+""
+" @dict Buffer
+" For each buffer variable/setting and value in {vars_and_vals}:
+" - Replace the current value of "var" with "val",
+" - Save the previous value of "var", and,
+" - Return a dictionary of each modified variable, as well as its previous
+"   value.
+"
+" The returned dictionary may be provided to this function to restore the
+" original values of each variable or setting. Note that, if a "var" did not
+" previously exit before the first call to this function, then the second call
+" will simply set the value of that "var" to an empty string: it will not
+" |unlet| it.
+"
+" @throws BadValue if a "var" is an empty string, the string "&", or if it is an option that does not exist. No modification of the buffer will take place.
+" @throws WrongType if {vars_and_vals} is not a dict.
+function! typevim#Buffer#ExchangeBufVars(vars_and_vals) dict abort
+  call s:CheckType(l:self)
+  call maktaba#ensure#IsDict(a:vars_and_vals)
+
+  let l:prev_vals = {}
+  let l:vars_and_vals = items(a:vars_and_vals)
+  for [l:var, l:Val] in l:vars_and_vals
+    if l:var ==# ''
+      throw maktaba#error#BadValue(
+          \ 'Gave a bufvar that was an empty string: %s',
+          \ typevim#object#ShallowPrint(a:vars_and_vals))
+    elseif l:var ==# '&'
+      throw maktaba#error#BadValue(
+          \ 'Cannot overwrite all buffer-local options at once! '
+            \ . '(Gave "&" as a varname in: %s)',
+          \ typevim#object#ShallowPrint(a:vars_and_vals))
+    elseif l:var[0:0] ==# '&' && !exists(l:var)
+      throw maktaba#error#BadValue('Option does not exist: %s', l:var)
+    endif
+    let l:prev_vals[l:var] = l:self.getbufvar(l:var)
+  endfor
+  for [l:var, l:Val] in l:vars_and_vals
+    try
+      call l:self.setbufvar(l:var, l:Val)
+    catch
+      throw maktaba#error#Failure(
+          \ 'Setting bufvars failed on var: %s, with val: %s, and '
+            \ . 'vars_and_vals dict: %s (threw: %s)',
+          \ l:var, l:Val, typevim#object#ShallowPrint(a:vars_and_vals),
+          \ v:exception)
+    endtry
+  endfor
+  return l:prev_vals
 endfunction
 
 ""
@@ -208,6 +267,7 @@ endfunction
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#getbufvar(varname, ...) dict abort
   call s:CheckType(l:self)
+  call maktaba#ensure#IsString(a:varname)
   let l:default = get(a:000, 0, 0)
   let l:gave_default = a:0
   let l:to_return = 0
@@ -223,7 +283,7 @@ endfunction
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#setbufvar(varname, Val) dict abort
   call s:CheckType(l:self)
-  call setbufvar(l:self['__bufnr'], a:varname, a:Val)
+  call setbufvar(l:self.__bufnr, a:varname, a:Val)
 endfunction
 
 ""
@@ -233,7 +293,7 @@ endfunction
 " @throws NotFound if this @dict(Buffer)'s buffer no longer exists.
 function! typevim#Buffer#bufnr() dict abort
   call s:CheckType(l:self)
-  let l:bufnr = l:self['__bufnr']
+  let l:bufnr = l:self.__bufnr
   if !bufexists(l:bufnr)
     throw maktaba#error#NotFound(
         \ "Buffer object's buffer %d no longer exists.", l:bufnr)
@@ -254,7 +314,7 @@ function! typevim#Buffer#Open(...) dict abort
   let l:keepalt = get(a:000, 1, 0)
   let l:open_cmd = (l:keepalt ? 'keepalt ' : '') . 'buffer '
   if !empty(l:cmd) | let l:open_cmd .= l:cmd.' ' | endif
-  execute l:open_cmd.l:self['__bufnr']
+  execute l:open_cmd.l:self.__bufnr
 endfunction
 
 ""
@@ -327,11 +387,11 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
   let l:action = maktaba#ensure#IsString(get(a:000, 0, ''))
   let l:force  = typevim#ensure#IsBool(get(a:000, 1, 1))
   call maktaba#ensure#IsIn(l:action, ['', 'bunload', 'bdelete', 'bwipeout'])
-  let l:to_return = l:self['__bufnr']
+  let l:to_return = l:self.__bufnr
   if l:action !=# ''
     execute l:action . l:force ? '! ' : ' ' . l:to_return
   endif
-  let l:self['__bufnr'] = a:bufnr
+  let l:self.__bufnr = a:bufnr
   return l:to_return
 endfunction
 
@@ -367,7 +427,7 @@ function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
       \ l:pos, ['leftabove', 'aboveleft', 'rightbelow', 'belowright', 'topleft',
       \ 'botright'])
   execute 'silent '.l:pos.' '.l:orientation.' '.l:size.' split'
-  execute 'buffer! '.l:self['__bufnr']
+  execute 'buffer! '.l:self.__bufnr
 endfunction
 
 ""

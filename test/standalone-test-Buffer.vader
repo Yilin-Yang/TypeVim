@@ -18,6 +18,20 @@ Execute (Buffer: Get Buffer Variable):
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 1, g:buffer.getbufvar('test_var')
 
+Execute (Buffer: Exchange):
+  AssertEqual 1, g:buffer.getbufvar('&modifiable')
+  let g:old_vals = g:buffer.ExchangeBufVars({'&modifiable': 0, '&buftype': '', 'test_var': ''})
+
+  AssertEqual 0, g:buffer.getbufvar('&modifiable')
+  AssertEqual '', g:buffer.getbufvar('&buftype')
+  AssertEqual '', g:buffer.getbufvar('test_var')
+
+  let g:new_vals = g:buffer.ExchangeBufVars(g:old_vals)
+
+  AssertEqual 1,        g:buffer.getbufvar('&modifiable')
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+  AssertEqual 1,        g:buffer.getbufvar('test_var')
+
 " Since split moves the cursor to the new split, check relative position by
 " moving *back* to the original window and checking that it *isn't* the owned
 " buffer.
