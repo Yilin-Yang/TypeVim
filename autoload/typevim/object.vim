@@ -175,15 +175,21 @@ endfunction
 
 ""
 " Comparison function that only compares the zero-indexed element of two
-" two-element lists, {lhs} and {rhs}. Used for sorting the two-element lists
-" returned by a call to |items()| based exclusively on keys, without
-" considering the values associated with those keys.
-function! s:CompareKeys(lhs, rhs)
+" two-element lists, {lhs} and {rhs}. Can be used to sort the two-element
+" lists returned by a call to |items()| based exclusively on keys, without
+" considering the values associated with those keys. This is useful when
+" getting "|E724|: Unable to dump object with self-referencing container"
+" errors on calls like `sort(items(some_dict))`.
+"
+" @throws BadValue if {lhs} or {rhs} don't have length 2.
+" @throws WrongType if {lhs} or {rhs} are not lists.
+function! typevim#object#CompareKeys(lhs, rhs)
   call maktaba#ensure#IsList(a:lhs)
   call maktaba#ensure#IsList(a:rhs)
   if len(a:lhs) !=# 2 || len(a:rhs) !=# 2
-    throw maktaba#error#BadValue('s:CompareKeys only sorts "pairs" '
-        \ . '(2-elem lists), gave: %s, %s',
+    throw maktaba#error#BadValue(
+        \ 'typevim#object#CompareKeys only sorts "pairs" (2-elem lists), '
+            \ . 'gave: %s, %s',
         \ typevim#object#ShallowPrint(a:lhs),
         \ typevim#object#ShallowPrint(a:rhs))
   endif
@@ -236,7 +242,7 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
 
   " only sort on keys, not values, so that sort() doesn't recurse into a
   " self-referencing list
-  let l:items = sort(items(a:Obj), 's:CompareKeys')
+  let l:items = sort(items(a:Obj), 'typevim#object#CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
@@ -432,7 +438,7 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
     return '{  }'
   endif
   let l:str = '{ '
-  let l:items = sort(items(a:Obj), 's:CompareKeys')
+  let l:items = sort(items(a:Obj), 'typevim#object#CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= '"'.l:key.'": '
     if maktaba#value#IsString(l:Val)
