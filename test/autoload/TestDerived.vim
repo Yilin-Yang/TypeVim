@@ -5,6 +5,10 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
   call maktaba#ensure#IsBool(a:try_clobber)
   call maktaba#ensure#IsBool(a:enable_clobber)
 
+  if exists('g:derived_dtor_called')
+    unlet g:derived_dtor_called
+  endif
+
   let l:new = {
       \ 'GetVal': typevim#make#Member('GetVal'),
       \ 'SmallVirtual': typevim#make#AbstractFunc(
@@ -34,6 +38,7 @@ endfunction
 
 function! TestDerived#CleanUp() dict abort
   call typevim#ensure#IsType(l:self, s:typename)
+  let g:derived_dtor_called = 1
   return 1
 endfunction
 

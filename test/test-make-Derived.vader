@@ -2,15 +2,28 @@ Execute (typevim#make#Derived: Derived Class, No Base Dtor):
   let g:der = TestDerived#New(0, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
   call typevim#ensure#IsType(g:der, 'TestDerived')
+  let g:type_list = g:der[typevim#attribute#TYPE()]
+  AssertEqual ['TestBase', 'TestDerived'], g:type_list
   Assert !has_key(g:der, typevim#attribute#CLEAN_UPPER_LIST()),
       \ printf('Had a clean-upper list when it should not have: %s',
       \ typevim#object#ShallowPrint(g:der, 2))
+Then (Run Destructor):
+  call g:der.CleanUp()
+  Assert !exists('g:base_dtor_called')
+  AssertEqual 1, g:derived_dtor_called
 
 Execute (typevim#make#Derived: Test Function Overriding):
   let g:der = TestDerived#New(0, 0, 0)
   AssertEqual 'overridden', g:der.GetVal()
 
-Execute (typevim#make#Derived: Derived Class, With Base Dtor):
+Execute (typevim#make#Derived: Derived Class, Run Clean Uppers in Order):
+  let g:der = TestDerived#New(1, 0, 0)
+  call g:der.CleanUp()
+Then:
+  AssertEqual 1, g:base_dtor_called
+  AssertEqual 1, g:derived_dtor_called
+
+Execute (typevim#make#Derived: Derived Class, With Base Dtor; Run Dtors):
   let g:der = TestDerived#New(1, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
   call typevim#ensure#IsType(g:der, 'TestDerived')

@@ -20,3 +20,5 @@ Execute (typevim#make#Class: Class with Simple Destructor):
   Assert !has_key(g:obj, typevim#attribute#CLEAN_UPPER_LIST()),
       \ printf('Had a clean-upper list when it should not have: %s',
       \ typevim#object#ShallowPrint(g:obj))
+Then (Call Destructor):
+  AssertEqual 1, g:base_dtor_called

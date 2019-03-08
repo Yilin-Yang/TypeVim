@@ -1,6 +1,10 @@
 let s:typename = 'TestBase'
 
 function! TestBase#New(Val, ...) abort
+  if exists('g:base_dtor_called')
+    unlet g:base_dtor_called
+  endif
+
   let l:Dtor = get(a:000, 0, 0)
   let l:new = {
       \ '__val': a:Val,
@@ -13,6 +17,7 @@ endfunction
 
 function! TestBase#CleanUp() dict abort
   call typevim#ensure#IsType(l:self, s:typename)
+  let g:base_dtor_called = 1
   return 1
 endfunction
 
