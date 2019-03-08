@@ -23,6 +23,21 @@ Then:
   AssertEqual 1, g:base_dtor_called
   AssertEqual 1, g:derived_dtor_called
 
+Execute (typevim#make#Derived: Three-Level Derived, Run Parent/GrandParent Clean-Uppers):
+  let g:der = TestThirdLevel#New(3.14)
+  call g:der.CleanUp()
+Then:
+  AssertEqual 1, g:base_dtor_called
+  AssertEqual 1, g:derived_dtor_called
+
+Execute (typevim#make#Derived: Three-Level Derived, Run All Three):
+  let g:der = TestThirdLevel#New(3.14, 1)
+  call g:der.CleanUp()
+Then:
+  AssertEqual 1, g:base_dtor_called
+  AssertEqual 1, g:derived_dtor_called
+  AssertEqual 1, g:third_level_dtor_called
+
 Execute (typevim#make#Derived: Derived Class, With Base Dtor; Run Dtors):
   let g:der = TestDerived#New(1, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
