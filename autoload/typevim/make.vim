@@ -185,10 +185,21 @@ function! s:NoOp(...) abort
 endfunction
 let s:No_op = function('<SNR>'.s:SID().'_NoOp')
 
-function! s:DefaultCleanUpper() abort
+""
+" Execute CleanUppers in order from most- to least-derived.
+function! s:CleanUpper() dict abort
+  let l:dtor_list = l:self[typevim#attribute#CLEAN_UPPER_LIST()]
+  let l:i = len(l:dtor_list) - 1 | while l:i >=# 0
+    " bind to self, to avoid a 'calling dict function without dict' error
+    let l:CleanUp = l:dtor_list[l:i]
+    if maktaba#value#IsFuncref(l:CleanUp)
+      let l:BoundCleanUp = typevim#object#Bind(l:CleanUp, l:self, [], 1)
+      call l:BoundCleanUp()
+    endif
+  let l:i -= 1 | endwhile
   return 0
 endfunction
-let s:Default_dtor = function('<SNR>'.s:SID().'_DefaultCleanUpper')
+let s:CleanUpAll = function('<SNR>'.s:SID().'_CleanUpper')
 
 ""
 " Clean-upper for an interface. Unlock the interface to allow modification or
@@ -244,17 +255,6 @@ function! s:AssignReserved(dict, attribute, Value) abort
 endfunction
 
 ""
-" Checks the given {Arg}. If {Arg} is a |Funcref|, returns it unmodified. If
-" it is the number 0, returns the default "dummy" clean-upper. Else, throw an
-" ERROR(WrongType).
-function! s:ReadCleanUpper(Arg) abort
-  if maktaba#value#IsNumber(a:Arg) && !a:Arg
-    return s:Default_dtor
-  endif
-  return maktaba#ensure#IsFuncref(a:Arg)
-endfunction
-
-""
 " Return a "typevim-configured" instance of a class. Meant to be called from
 " inside a type's constructor, where it will take a {prototype} dictionary
 " (containing member functions and member variables), annotate it with type
@@ -277,20 +277,17 @@ endfunction
 " @throws WrongType if arguments don't have the types named above.
 function! typevim#make#Class(typename, prototype, ...) abort
   call typevim#ensure#HasPartials()
-  let l:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
+  let l:CleanUp = maktaba#ensure#TypeMatchesOneOf(
+      \ get(a:000, 0, 0), [0, function('typevim#make#Class')])
+  " 'normalize' the numerical dummy value to zero
+  if maktaba#value#IsNumber(l:CleanUp) | let l:CleanUp = 0 | endif
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsDict(a:prototype)
 
   let l:new = a:prototype  " technically l:new is just an alias
   call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
-
-  if maktaba#value#IsFuncref(l:CleanUp)
-    call s:AssignReserved(l:new, s:CLN_UP_FUNC, l:CleanUp)
-  else
-    throw maktaba#error#WrongType(
-        \ 'CleanUp should be a Funcref, or a number '
-        \ . '(if not defining a clean-upper)')
-  endif
+  call s:AssignReserved(l:new, s:CLN_UP_LIST_ATTR, [l:CleanUp])
+  call s:AssignReserved(l:new, s:CLN_UP_FUNC, s:CleanUpAll)
 
   return l:new
 endfunction
@@ -335,7 +332,7 @@ endfunction
 function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   call typevim#ensure#HasPartials()
   call typevim#ensure#IsValidTypename(a:typename)
-  let l:CleanUp = s:ReadCleanUpper(get(a:000, 0, 0))
+  let l:CleanUp = get(a:000, 0, 0)
   let l:clobber_base_vars = typevim#ensure#IsBool(get(a:000, 1, 0))
 
   if maktaba#value#IsFuncref(a:Parent)
@@ -350,28 +347,10 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   endif
   call typevim#ensure#IsValidObject(l:base)
 
-  let l:derived = typevim#make#Class(a:typename, a:prototype)
+  let l:derived = typevim#make#Class(a:typename, a:prototype, l:CleanUp)
 
-  if maktaba#value#IsFuncref(l:CleanUp)
-    " only create clean-upper list if actually necessary
-    if !has_key(l:base, s:CLN_UP_FUNC)
-      " having no clean-upper would only occur if the base class isn't a
-      " TypeVim object
-      throw maktaba#error#Failure(
-          \ 'Base class object is not a TypeVim object: %s',
-          \ typevim#object#ShallowPrint(l:base))
-    elseif !has_key(l:base, s:CLN_UP_LIST_ATTR)
-      let l:OldCleanUp = l:base[s:CLN_UP_FUNC]
-      if l:OldCleanUp !=# s:Default_dtor
-        let l:derived[s:CLN_UP_LIST_ATTR] = [l:OldCleanUp, l:CleanUp]
-      else
-        let l:derived[s:CLN_UP_FUNC] = l:CleanUp
-      endif
-    endif
-  else
-    let l:derived[s:CLN_UP_FUNC] = l:CleanUp
-  endif
-
+  let l:derived[s:CLN_UP_LIST_ATTR] =
+      \ extend(l:base[s:CLN_UP_LIST_ATTR], l:derived[s:CLN_UP_LIST_ATTR])
 
   call add(l:base[s:TYPE_ATTR], a:typename)
   let l:derived[s:TYPE_ATTR] = l:base[s:TYPE_ATTR]

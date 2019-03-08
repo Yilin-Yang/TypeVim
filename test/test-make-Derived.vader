@@ -4,9 +4,6 @@ Execute (typevim#make#Derived: Derived Class, No Base Dtor):
   call typevim#ensure#IsType(g:der, 'TestDerived')
   let g:type_list = g:der[typevim#attribute#TYPE()]
   AssertEqual ['TestBase', 'TestDerived'], g:type_list
-  Assert !has_key(g:der, typevim#attribute#CLEAN_UPPER_LIST()),
-      \ printf('Had a clean-upper list when it should not have: %s',
-      \ typevim#object#ShallowPrint(g:der, 2))
 Then (Run Destructor):
   call g:der.CleanUp()
   Assert !exists('g:base_dtor_called')

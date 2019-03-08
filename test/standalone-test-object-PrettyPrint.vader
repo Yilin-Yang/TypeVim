@@ -217,6 +217,7 @@ Expect:
     "GetVal": function('TestBase#GetVal'),
     "SetVal": function('TestBase#SetVal'),
     "StringifyVals": function('TestBase#StringifyVals'),
+    "___CLEAN_UPPERS___": [ 0 ],
     "___TYPE___": [ 'TestBase' ],
     "__val": 3.14
   }
@@ -248,6 +249,7 @@ Expect:
 
   OBJECT: {
     "GetVal": function('TestSelfRef#GetVal', {self-reference}),
+    "___CLEAN_UPPERS___": [ 0 ],
     "___TYPE___": [ 'TestSelfRef' ],
     "__val": 3.14
   }
