@@ -4,12 +4,6 @@
 " meant to be invoked from within an object's constructor.
 
 ""
-" Returns the script number of this file. Taken from vim's docs.
-function! s:SID()
-  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
-endfun
-
-""
 " @section Declaring a Class, basic_decl
 " @parentsection make
 " In general, to declare a new class, one should:
@@ -183,7 +177,7 @@ let s:TYPEVIM_INTERFACE = 'TypeVimInterface'
 function! s:NoOp(...) abort
   return 0
 endfunction
-let s:No_op = function('<SNR>'.s:SID().'_NoOp')
+let s:No_op = function('s:NoOp')
 
 ""
 " Execute CleanUppers in order from most- to least-derived.
@@ -199,7 +193,7 @@ function! s:CleanUpper() dict abort
   let l:i -= 1 | endwhile
   return 0
 endfunction
-let s:CleanUpAll = function('<SNR>'.s:SID().'_CleanUpper')
+let s:CleanUpAll = function('s:CleanUpper')
 
 ""
 " Clean-upper for an interface. Unlock the interface to allow modification or
@@ -208,7 +202,7 @@ function! s:InterfaceCleanUpper() dict abort
   unlockvar! l:self
   return 0
 endfunction
-let s:Interface_dtor = function('<SNR>'.s:SID().'_InterfaceCleanUpper')
+let s:Interface_dtor = function('s:InterfaceCleanUpper')
 
 ""
 " Returns a string containing an error message complaining that the user tried
@@ -913,5 +907,5 @@ function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
       \ . 'endfunction'
   " echoerr l:decl
   execute l:decl
-  return function('<SNR>'.s:SID().'_'.l:script_funcname)
+  return function('s:'.l:script_funcname)
 endfunction

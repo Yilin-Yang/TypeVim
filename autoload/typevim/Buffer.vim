@@ -3,19 +3,6 @@
 " An encapsulation of a vim buffer; allows for manipulation of vim buffers as
 " if they were objects.
 
-""
-" Returns the script number of this file. Taken from vim's docs.
-function! s:SID()
-  return matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$')
-endfun
-
-""
-" Returns a Funcref to the script-local function with the given {funcname}.
-function! s:GetScriptFuncref(funcname) abort
-  call maktaba#ensure#IsString(a:funcname)
-  return function('<SNR>'.s:SID().'_'.a:funcname)
-endfunction
-
 " Used for creating unique 'filenames' for newly spawned buffers.
 let s:bufname_mangle_ctr = 0
 
@@ -592,7 +579,7 @@ function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abor
   call s:CheckType(l:self)
   call l:self.SetDoRestore(
       \ {'&modifiable': 1},
-      \ function(s:GetScriptFuncref('ReplaceLines'),
+      \ function('s:ReplaceLines',
         \ [a:startline, a:endline, a:replacement], l:self))
 endfunction
 
@@ -661,7 +648,7 @@ function! typevim#Buffer#InsertLines(after, lines) dict abort
   call s:CheckType(l:self)
   call l:self.SetDoRestore(
       \ {'&modifiable': 1},
-      \ function(s:GetScriptFuncref('InsertLines'),
+      \ function('s:InsertLines',
         \ [a:after, a:lines], l:self))
 endfunction
 
