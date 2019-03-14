@@ -548,8 +548,8 @@ typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
 
   Throws ERROR(NotAuthorized) if {Funcref} is already bound to a dict that is
   not {obj} and [force_rebind] is 0.
-  Throws ERROR(WrongType) if {obj} is not a TypeVim object, or if {Funcref} is
-  not a Funcref, or if [arglist] is not a list.
+  Throws ERROR(WrongType) if {obj} is not a dict, or if {Funcref} is not a
+  Funcref, or if [arglist] is not a list.
 
 typevim#object#CompareKeys({lhs}, {rhs})        *typevim#object#CompareKeys()*
   Comparison function that only compares the zero-indexed element of two

@@ -66,10 +66,10 @@ endfunction
 " <
 "
 " @throws NotAuthorized if {Funcref} is already bound to a dict that is not {obj} and [force_rebind] is 0.
-" @throws WrongType if {obj} is not a TypeVim object, or if {Funcref} is not a Funcref, or if [arglist] is not a list.
+" @throws WrongType if {obj} is not a dict, or if {Funcref} is not a Funcref, or if [arglist] is not a list.
 function! typevim#object#Bind(Funcref, obj, ...) abort
   call maktaba#ensure#IsFuncref(a:Funcref)
-  call typevim#ensure#IsValidObject(a:obj)
+  call maktaba#ensure#IsDict(a:obj)
   let l:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
   let l:force_rebind = maktaba#ensure#IsBool(get(a:000, 1, 0))
   let [l:_, l:Funcref, l:bound_args, l:bound_dict] =
