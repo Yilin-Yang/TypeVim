@@ -33,8 +33,8 @@ endfunction
 " particular {obj} and to [arglist], i.e. return `function(a:Funcref,
 " a:arglist, a:obj)`.
 "
-" If the member function is already bound to an argslist, then [argslist] will
-" be appended to the function's current argslist.
+" If the member function is already bound to an arglist, then [arglist] will
+" be appended to the function's current arglist.
 "
 " If the {Funcref} function is already bound to a dict, throws an
 " ERROR(NotAuthorized) exception unless the dict and {obj} are the same

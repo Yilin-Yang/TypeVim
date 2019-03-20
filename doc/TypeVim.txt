@@ -508,14 +508,14 @@ typevim#make#AbstractFunc({typename}, {funcname}, {parameters})
   Throws ERROR(WrongType) if {typename} isn't a string or {parameters} isn't a
   list of strings.
 
-typevim#object#Bind({Funcref}, {obj}, [arglist], [argslist], [force_rebind])
+typevim#object#Bind({Funcref}, {obj}, [arglist], [force_rebind])
                                                        *typevim#object#Bind()*
   Returns a Partial consisting of the given {Funcref} that is bound to this
   particular {obj} and to [arglist], i.e. return `function(a:Funcref,
   a:arglist, a:obj)`.
 
-  If the member function is already bound to an argslist, then [argslist] will
-  be appended to the function's current argslist.
+  If the member function is already bound to an arglist, then [arglist] will
+  be appended to the function's current arglist.
 
   If the {Funcref} function is already bound to a dict, throws an
   ERROR(NotAuthorized) exception unless the dict and {obj} are the same
