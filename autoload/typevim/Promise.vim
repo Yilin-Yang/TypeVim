@@ -232,7 +232,7 @@ function! typevim#Promise#Resolve(Val) dict abort
     " resolve/reject immediately if Val is resolved/rejected, or just adopt
     " its same value when it does resolve
     call a:Val.Then(l:self.Resolve, l:self.Reject)
-    return
+    return a:Val
   else
     let l:self['__value'] = a:Val
     let l:self['__state'] = s:FULFILLED

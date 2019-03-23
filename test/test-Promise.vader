@@ -121,6 +121,22 @@ Then (Test Error Handling, Post Rejection Resolve/Reject):
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetOtherAndReset()
 
+Execute (typevim#Promise: Return Given Value from Resolve):
+  let g:promise = typevim#Promise#New()
+  AssertEqual 3.14, g:promise.Resolve(3.14)
+
+Execute (typevim#Promise: Return Given Value from Reject):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('SetVal'), function('SetOther'))
+  AssertEqual 3.14, g:promise.Reject(3.14)
+  AssertEqual 3.14, GetOtherAndReset()
+
+Execute (typevim#Promise: Return Given Promise from Resolve):
+  let g:promise = typevim#Promise#New()
+  let g:another_promise = typevim#Promise#New()
+  Assert g:another_promise is g:promise.Resolve(g:another_promise),
+      \ 'Resolution with Promise did not return that Promise'
+
 Execute (typevim#Promise: Attach Handlers to Already Resolved):
   let g:promise = typevim#Promise#New()
   call g:promise.Resolve('resolve')
