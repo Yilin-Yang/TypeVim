@@ -95,7 +95,8 @@ function! typevim#HandlerAttachment#HandleReject(Val) dict abort
       let l:Returned = l:Handler(a:Val)
       call l:self.Resolve(l:Returned)
     catch  " error handler failed somehow; propagate the error
-      call l:self.Reject(v:exception)
+      let l:err_msg = 'Exception from '.v:throwpoint.' with text: '.v:exception
+      call l:self.Reject(l:err_msg)
     endtry
   endif
   let l:backref = l:self.GetNextLink()

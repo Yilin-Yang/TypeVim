@@ -69,14 +69,14 @@ Execute (typevim#Promise: Immediate Fulfillment):
 Then (Test Error Handling, Post Resolution Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to resolve an already fulfilled Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to resolve an already fulfilled Promise'),
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetValAndReset()
   AssertEqual 'fulfilled', g:promise.State()
 
   AssertThrows call g:promise.Reject('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise'),
       \ 'Threw wrong exception: '.g:vader_exception
   AssertEqual 'fulfilled', g:promise.State()
 
@@ -111,13 +111,13 @@ Execute (typevim#Promise: Immediate Rejection):
 Then (Test Error Handling, Post Rejection Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to resolve an already rejected Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to resolve an already rejected Promise'),
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetValAndReset()
 
   AssertThrows call g:promise.Reject('another')
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to reject an already rejected Promise: '),
+      \ 'ERROR(NotAuthorized): Tried to reject an already rejected Promise'),
       \ 'Threw wrong exception: '.g:vader_exception
   AssertNotEqual 'another', GetOtherAndReset()
 
@@ -256,7 +256,7 @@ Execute (typevim#Promise: Resolve Promise with Itself):
   let g:promise = typevim#Promise#New()
   AssertThrows call g:promise.Resolve(g:promise)
   AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(BadValue): Tried to resolve a Promise with itself: '),
+      \ 'ERROR(BadValue): Tried to resolve a Promise with itself'),
       \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (typevim#Promise: Rejection w/ Catch Handler):
@@ -296,7 +296,8 @@ Execute (typevim#Promise: Throw Exception from Error Handler):
 
   " g:last_link is also rejected, since g:promise's error handler threw an
   " exception
-  AssertEqual "except: 'foo'", g:last_link.Get()
+  " fuzzy-match, since thrown exceptions have weird numbers of quotes, sometimes
+  AssertNotEqual -1, match(g:last_link.Get(), "except: [']*foo[']*")
   AssertEqual 'rejected', g:last_link.State()
 
 Execute (typevim#Promise: Unhandled Promise Rejection):

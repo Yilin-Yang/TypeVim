@@ -214,13 +214,14 @@ function! typevim#Promise#Resolve(Val) dict abort
   call s:TypeCheck(l:self)
   if a:Val is l:self
     throw maktaba#error#BadValue(
-        \ 'Tried to resolve a Promise with itself: %s',
-        \ typevim#object#ShallowPrint(a:Val))
+        \ 'Tried to resolve a Promise with itself in callstack %s: %s',
+        \ expand('<sfile>'), typevim#object#ShallowPrint(a:Val))
   endif
   if l:self.State() !=# s:PENDING
     throw maktaba#error#NotAuthorized(
-        \ 'Tried to resolve an already %s Promise: %s',
-        \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
+        \ 'Tried to resolve an already %s Promise in callstack %s: %s',
+        \ l:self.State(), expand('<sfile>'),
+        \ typevim#object#ShallowPrint(l:self, 2))
   endif
   if maktaba#value#IsDict(a:Val) && typevim#value#IsType(a:Val, s:typename)
     " 'disable' the current Doer, if one exists
@@ -273,8 +274,9 @@ function! typevim#Promise#Reject(Val) dict abort
   call s:TypeCheck(l:self)
   if l:self.State() !=# s:PENDING
     throw maktaba#error#NotAuthorized(
-        \ 'Tried to reject an already %s Promise: %s',
-        \ l:self.State(), typevim#object#ShallowPrint(l:self, 2))
+        \ 'Tried to reject an already %s Promise in callstack %s: %s',
+        \ l:self.State(), expand('<sfile>'),
+        \ typevim#object#ShallowPrint(l:self, 2))
   endif
   let l:self['__value'] = a:Val
   let l:self['__state'] = s:BROKEN
