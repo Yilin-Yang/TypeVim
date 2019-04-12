@@ -115,6 +115,20 @@
 " TypeVim is provided under the terms of the MIT license.
 
 ""
+" Wrapper around @function(typevim#object#ShallowPrint), provided because it's
+" shorter and easier to type.
+function! typevim#PrintShallow(...) abort
+  return call('typevim#object#ShallowPrint', a:000)
+endfunction
+
+""
+" Wrapper around @function(typevim#object#PrettyPrint), provided because it's
+" shorter and easier to type.
+function! typevim#Print(...) abort
+  return call('typevim#object#PrettyPrint', a:000)
+endfunction
+
+""
 " Return a numerical constant representing "any type". As of the time of
 " writing, this is the numerical value returned by `type(v:null)` (see
 " |type()|), but this may change in the future.

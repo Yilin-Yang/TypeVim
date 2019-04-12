@@ -254,6 +254,26 @@ Expect:
     "__val": 3.14
   }
 
+Execute (typevim#Print: Primitive Object w/ Self-Referencing Funcrefs):
+  let g:val = TestSelfRef#New(3.14)
+  call PrintIntoBuffer(typevim#Print(g:val))
+Then (Check for Destructor):
+  call CheckAndWipeCleanUpper()
+Expect:
+
+  OBJECT: {
+    "GetVal": function('TestSelfRef#GetVal', {self-reference}),
+    "___CLEAN_UPPERS___": [ 0 ],
+    "___TYPE___": [ 'TestSelfRef' ],
+    "__val": 3.14
+  }
+
+Execute (typevim#PrintShallow: List of Numbers):
+  let g:val = [0, 1, 2, 3]
+  call PrintIntoBuffer(typevim#PrintShallow(g:val, 2))
+Expect:
+
+  [ 0, 1, 2, 3 ]
 " Execute (typevim#object#PrettyPrint: Compound Object):
 
 " Execute (typevim#object#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
