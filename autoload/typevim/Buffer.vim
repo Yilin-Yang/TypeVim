@@ -124,6 +124,7 @@ function! typevim#Buffer#New(...) abort
     \ 'Open': typevim#make#Member('Open'),
     \ 'Switch': typevim#make#Member('Switch'),
     \ 'SetBuffer': typevim#make#Member('SetBuffer'),
+    \ 'search': typevim#make#Member('search'),
     \ 'split': typevim#make#Member('OpenSplit', [0]),
     \ 'vsplit': typevim#make#Member('OpenSplit', [1]),
     \ 'NumLines': typevim#make#Member('NumLines'),
@@ -426,6 +427,135 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
   let l:self.__bufnr = a:bufnr
   return l:to_return
 endfunction
+
+""
+" @dict Buffer
+" @usage {regexp} [flags] [startpos] [stopline] [timeout] [ignore_badflags]
+" Perform a |search()| in the given buffer and return the result.
+"
+" Finds a line number matching the given {regexp} and returns it. A string of
+" additional [flags] may be provided to modify the behavior of the search,
+" which starts from the given [startpos].
+"
+" This function is a wrapper around the |search()| function. The wrapped
+" buffer is silently (with |lazyredraw| enabled) opened in a new tabpage,
+" where the search is performed. Prior to the search, the cursor position is
+" set to the given [startpos]. After the search, the previous cursor position
+" is restored, the new tab is closed, and |lazyredraw| is reset to its previous
+" value. This will have side effects; for instance, any applicable buffer
+" events (e.g. |BufEnter|) will fire.
+"
+" The following [flags] are supported. Matching is always done as if the 'n'
+" flag is set, and other flags that affect movement of the cursor are ignored.
+"   - 'b'   search Backward instead of forward
+"   - 'c'   accept a match at the Cursor position
+"   - 'p'   return number of matching sub-Pattern (see below)
+"   - 'w'   Wrap around the end of the file
+"   - 'W'   don't Wrap around the end of the file
+"   - 'z'   start searching at the cursor column instead of Zero
+"
+" Providing flags not in the above list will cause an ERROR(BadValue) to be
+" thrown, unless [ignore_badflags] is set to 1, in which case, the "bad" flags
+" are silently ignored. The 'n' flag, if provided, is always ignored.
+"
+" [startpos] may be a number or a list. If it's a number, the search will
+" start from the start of that line. If it's a list, it must use one of the
+" following structures:
+"   - [ lineno, colno ]
+"   - [ ..., lineno, colno, ... ]
+"   - [ ..., lineno, colno, ..., ... ]
+"
+" lineno must be a positive number. colno must be non-negative. The latter
+" two are provided so that a list returned by |getpos()| or |getcurpos()| may
+" be used as a [startpos] value.
+"
+" [stopline] and [timeout] are used like in |search()|, albeit with stricter
+" input validation. While |search()| will perform type coercion if necessary
+" and possible, this function will reject values that aren't numbers. A value
+" of zero is like not giving the argument.
+"
+" @default flags=""
+" @default startpos=1
+" @default stopline=0
+" @default timeout=0
+" @default ignore_badflags=0
+"
+" @throws WrongType if {regexp} is not a string, [flags] is not a string, [startpos] is not a number or a list, or [ignore_badflags] is not a bool.
+"
+" @throws BadValue if [flags] contains unsupported flags and [ignore_badflags] is 0, or if [startpos] is a list without 2, 4, or 5 elements, or otherwise does not adhere to the requirements listed above, or if |setpos()| returns -1 when given (a "normalized") [startpos].
+function! typevim#Buffer#search(regexp, ...) dict abort
+  call s:CheckType(l:self)
+  call maktaba#ensure#IsString(a:regexp)
+  let l:flags = maktaba#ensure#IsString(get(a:000, 0, ''))
+  let l:startpos = maktaba#ensure#TypeMatchesOneOf(get(a:000, 1, 1), [1, []])
+  let l:stopline = maktaba#ensure#IsNumber(get(a:000, 2, 0))
+  let l:timeout = maktaba#ensure#IsNumber(get(a:000, 3, 0))
+  let l:ignore_badflags = typevim#ensure#IsBool(get(a:000, 4, 0))
+
+  " set l:lineno and l:colno with appropriate values
+  if maktaba#value#IsList(l:startpos)
+    let l:normalized = []  " 'normalize' to [lineno, colno]
+    let l:len = len(l:startpos)
+    if l:len ==# 2
+      let l:normalized = l:startpos
+    elseif l:len ==# 4 || l:len ==# 5
+      let l:normalized = l:startpos[1:2]
+    else
+      throw maktaba#error#BadValue(
+          \ 'Gave an invalid startpos list (wrong length): '.
+          \ typevim#object#ShallowPrint(l:startpos))
+    endif
+    let l:lineno = maktaba#ensure#IsNumber(l:normalized[0])
+    let l:colno = maktaba#ensure#IsNumber(l:normalized[1])
+  else  " is number
+    let l:lineno = l:startpos
+    let l:colno = 0
+  endif
+  if l:lineno <=# 0
+    throw maktaba#error#BadValue(
+        \ 'Gave bad line number: %d', l:lineno)
+  endif
+  if l:colno <# 0
+    throw maktaba#error#BadValue(
+        \ 'Gave bad column number: %d', l:colno)
+  endif
+
+  " check the given flags
+  let l:flags_to_use = 'n'
+  let l:i = 0 | while l:i <# len(l:flags)
+    let l:f = l:flags[l:i]
+    if match(s:valid_search_flags, l:f) ==# -1
+      if !l:ignore_badflags
+        throw maktaba#error#BadValue('Unsupported flag in search: %s', l:f)
+      endif
+    else
+      let l:flags_to_use .= l:f
+    endif
+  let l:i += 1 | endwhile
+
+  let l:old_tabpage = tabpagenr()
+  let l:old_redraw = &lazyredraw
+  let &lazyredraw = 1
+    tabnew
+    execute 'buffer '.l:self.__bufnr
+    let l:old_curpos = getcurpos()
+    if setpos('.', [0, l:lineno, l:colno, 0]) ==# -1
+      " setpos failed, user gave bad startpos
+      let &lazyredraw = l:old_redraw
+      tabclose
+      execute 'tabnext '.l:old_tabpage
+      throw maktaba#error#BadValue(
+          \ 'Given startpos not valid in buffer: %s', string(l:startpos))
+    endif
+    let l:to_return = search(a:regexp, l:flags_to_use, l:stopline, l:timeout)
+    call setpos('.', l:old_curpos)
+    tabclose
+    execute 'tabnext '.l:old_tabpage
+  let &lazyredraw = l:old_redraw
+
+  return l:to_return
+endfunction
+let s:valid_search_flags = 'bcnpwWz'
 
 ""
 " @dict Buffer

@@ -463,6 +463,142 @@ Expect:
 Then:
   AssertEqual 0, g:buffer.getbufvar('&modifiable')
 
+Given (Searchable Text):
+  the quick brown fox
+  jumps over the lazy
+  dog
+
+Execute (Buffer: Search Setup, Disable Lazyredraw, Wraparound):
+  set nowrapscan
+  " so that we can test that lazyredraw value is being restored properly
+  set nolazyredraw
+
+Execute (Buffer: Search from w/in Buffer):
+  " the position of the cursor should not affect the search, the cursor
+  " position should be restored afterward, total number of tabs shouldn't
+  " change
+  call g:buffer.SetBuffer(bufnr('%'))
+  normal! 3G
+  let g:num_tabs = tabpagenr('$')
+  let g:curpos = getcurpos()
+
+  AssertEqual 2, g:buffer.search('the')
+
+  AssertEqual 0, &lazyredraw
+  AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
+  AssertEqual g:curpos, getcurpos()
+
+Execute (Buffer: Search from Another Buffer):
+  call g:buffer.SetBuffer(bufnr('%'))
+  tabnew
+  let g:bufnr = bufnr('%')
+
+  AssertEqual 2, g:buffer.search('the')
+
+  AssertEqual 0, &lazyredraw
+  " tabnew'd buffer should be open
+  AssertEqual g:bufnr, bufnr('%')
+
+Execute (Buffer: Search from Good Line Number):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 2, g:buffer.search('the', '', 2)
+  AssertEqual 0, &lazyredraw
+
+Execute (Buffer: Search from Bad Line Number):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:num_tabs = tabpagenr('$')
+  let g:curpos = getcurpos()
+  AssertThrows call g:buffer.search('the', '', -10)
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 0, &lazyredraw
+  AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
+  AssertEqual g:curpos, getcurpos()
+
+Execute (Buffer: Search Unreachable with Stopline):
+  call g:buffer.SetBuffer(bufnr('%'))
+  let g:curpos = getcurpos()
+  AssertEqual 0, g:buffer.search('dog', '', 1, 1)
+  AssertEqual 0, &lazyredraw
+
+" explicitly calling g:buffer.search() from the command line doesn't
+" always return to the old tabpage without an explicit :tabnext <TABNR> call
+" **THIS TEST DOES NOT EXPOSE THAT BUGGY BEHAVIOR** but is included for
+" thoroughness, and in case we can get the test working in the future
+Do (Buffer: Return to Old Tab After Cmdline Search):
+  :-tabnew\<cr>
+  iI am the man who arranges the blocks that descend upon\<cr>
+  me from up above, they come down and I spin them around\<esc>
+  :call g:buffer.SetBuffer(bufnr('%'))\<cr>
+  :tabclose\<cr>
+  :let g:curpos = getcurpos()\<cr>
+  :let g:result = g:buffer.search('the')\<cr>
+Then:
+  call g:buffer.CleanUp()
+  AssertEqual 1, g:result
+  AssertEqual g:curpos, getcurpos()
+
+Execute (Buffer: Search with Wraparound):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 1, g:buffer.search('the', 'w', 3)
+  AssertEqual 0, &lazyredraw
+
+Execute (Buffer: Search without Wraparound):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 0, g:buffer.search('the', 'W', 3)
+  AssertEqual 0, &lazyredraw
+
+Execute (Buffer: Search from curpos w/out 'c'):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 2, g:buffer.search('the', '', [1, 1])
+  AssertEqual 0, g:buffer.search('the', '', [2, 12])
+  AssertEqual 0, &lazyredraw
+
+Execute (Buffer: Search from curpos w/ 'c'):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 1, g:buffer.search('the', 'c', [1, 1])
+  AssertEqual 0, &lazyredraw
+
+  AssertEqual 2, g:buffer.search('the', 'c', [2, 12])
+  AssertEqual 0, &lazyredraw
+
+Execute (Buffer: Search w/ Bad Flags):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertThrows call g:buffer.search('the', 'D')
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+  AssertEqual 0, &lazyredraw
+
+  AssertThrows call g:buffer.search('the', 's')
+  AssertThrows call g:buffer.search('the', 'cez')
+
+Execute (Buffer: Search w/ Bad Flags, but Ignore Bad Flags):
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 2, g:buffer.search('the', 'D', 1, 0, 0, 1)
+
+Execute (Buffer: Bad curpos, Wrong List Size):
+  call g:buffer.SetBuffer(bufnr('%'))
+
+  " empty
+  AssertThrows call g:buffer.search('the', '', [])
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+  
+  " one elt
+  AssertThrows call g:buffer.search('the', '', [2])
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+   
+  " three elts
+  AssertThrows call g:buffer.search('the', '', [2, 1, 5])
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
+  " six elts
+  AssertThrows call g:buffer.search('the', '', [2, 1, 5, 10, 10, 3])
+  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
+      \ 'Threw wrong exception: '.g:vader_exception
+
 Execute (Buffer: Is Open in this Tab, Yes):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
