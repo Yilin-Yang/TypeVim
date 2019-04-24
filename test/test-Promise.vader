@@ -442,3 +442,68 @@ Execute (typevim#Promise: Reject with a Dict That's Not a TypeVim Object):
   call g:promise.Reject({})
 Then:
   AssertEqual {}, GetOtherAndReset()
+
+Execute (typevim#Promise: Setup, Declare SetIfNoDict Function):
+  let g:__failure = 0
+  function! SetIfNoDict(...) dict abort
+    " l:self should be undefined, so invocation of this function should
+    " throw E725 before g:failure can be set
+    let g:__failure = 1
+  endfunction
+
+  function! AssertNotInvoked()
+    let l:failed = g:__failure !=# 0
+    let g:__failure = 0
+    Assert !l:failed, 'Unbound dict-function callback was '
+        \ . '(incorrectly) supplied with an l:self!'
+  endfunction
+
+Execute (typevim#Promise: Call to onFulfilled Supplies No "this"):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('SetIfNoDict'))
+
+  try
+    call g:promise.Resolve('foo')
+  catch /E725/  " Calling dict function without Dictionary
+  endtry
+
+Then:
+  call AssertNotInvoked()
+
+Execute (typevim#Promise: Call to onRejected Supplies No "this"):
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
+
+  try
+    call g:promise.Reject('foo')
+  catch /E725/  " Calling dict function without Dictionary
+  endtry
+
+Then:
+  call AssertNotInvoked()
+
+Execute (typevim#Promise: Delayed Call to onFulfilled Supplies No "this"):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('SetIfNoDict'))
+
+  try
+    call g:doer.Resolve('foo')
+  catch /E725/  " Calling dict function without Dictionary
+  endtry
+
+Then:
+  call AssertNotInvoked()
+
+Execute (typevim#Promise: Delayed Call to onRejected Supplies No "this"):
+  let g:doer = MockDoer#New()
+  let g:promise = typevim#Promise#New(g:doer)
+  call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
+
+  try
+    call g:doer.Reject('foo')
+  catch /E725/  " Calling dict function without Dictionary
+  endtry
+
+Then:
+  call AssertNotInvoked()
