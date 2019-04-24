@@ -47,7 +47,7 @@ endfunction
 function! typevim#HandlerAttachment#StartDoing() dict abort
   call s:CheckType(l:self)
   let l:promise_backref = get(l:self.Resolve, 'dict')
-  let l:self['__next_link'] = l:promise_backref
+  let l:self.__next_link = l:promise_backref
 endfunction
 
 ""
@@ -119,10 +119,10 @@ function! typevim#HandlerAttachment#ClearReferences() dict abort
   call s:CheckType(l:self)
   unlet l:self.Resolve
   unlet l:self.Reject
-  unlet l:self['__next_link']
+  unlet l:self.__next_link
   let l:self.Resolve = s:default_handler
   let l:self.Reject = s:default_handler
-  let l:self['__next_link'] = {}
+  let l:self.__next_link = {}
 endfunction
 
 ""
@@ -130,12 +130,12 @@ endfunction
 " Returns a backreference to the "next link" Promise. Throws
 function! typevim#HandlerAttachment#GetNextLink() dict abort
   call s:CheckType(l:self)
-  if empty(l:self['__next_link'])
+  if empty(l:self.__next_link)
     throw maktaba#error#NotFound(
         \ 'No backreference set on this HandlerAttachment: %s',
         \ typevim#object#ShallowPrint(l:self))
   endif
-  return l:self['__next_link']
+  return l:self.__next_link
 endfunction
 
 ""

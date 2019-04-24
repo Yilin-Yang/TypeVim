@@ -190,7 +190,7 @@ endfunction
 " aren't being used anywhere.
 function! typevim#Promise#_HadHandlers() dict abort
   call s:TypeCheck(l:self)
-  return l:self['__had_handlers']
+  return l:self.__had_handlers
 endfunction
 
 ""
@@ -228,16 +228,16 @@ function! typevim#Promise#Resolve(Val) dict abort
     " when a Promise is resolved with another Promise, it *must* match that
     " other Promise's state (without resolving 'early', etc.) (A+ Spec, 2.3.2)
     call typevim#Promise#__SetDoerCallbacks(
-        \ s:default_handler, s:default_handler, l:self['__doer'])
+        \ s:default_handler, s:default_handler, l:self.__doer)
 
     " resolve/reject immediately if Val is resolved/rejected, or just adopt
     " its same value when it does resolve
     call a:Val.Then(l:self.Resolve, l:self.Reject)
     return a:Val
   else
-    let l:self['__value'] = a:Val
-    let l:self['__state'] = s:FULFILLED
-    for l:handlers in l:self['__handler_attachments']
+    let l:self.__value = a:Val
+    let l:self.__state = s:FULFILLED
+    for l:handlers in l:self.__handler_attachments
       try
         call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
       catch /ERROR(WrongType)/
@@ -278,9 +278,9 @@ function! typevim#Promise#Reject(Val) dict abort
         \ l:self.State(), expand('<sfile>'),
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
-  let l:self['__value'] = a:Val
-  let l:self['__state'] = s:BROKEN
-  let l:handler_list = l:self['__handler_attachments']
+  let l:self.__value = a:Val
+  let l:self.__state = s:BROKEN
+  let l:handler_list = l:self.__handler_attachments
 
   let l:live_children_exist = 0
   let l:error_handler_exists = 0
@@ -361,9 +361,9 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   endif
   let l:next_link = typevim#Promise#New(l:handlers)
 
-  let l:self['__had_handlers'] = 1
-  let l:cur_state = l:self['__state']
-  let l:Val = l:self['__value']
+  let l:self.__had_handlers = 1
+  let l:cur_state = l:self.__state
+  let l:Val = l:self.__value
 
   " resolve/reject immediately, if necessary
   if l:cur_state ==# s:FULFILLED
@@ -373,11 +373,11 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
     try
       call l:handlers.HandleReject(l:Val)
     catch /ERROR(NotFound)/  " no error handler
-      call s:ThrowUnhandledReject(l:self['__value'], l:self)
+      call s:ThrowUnhandledReject(l:self.__value, l:self)
     endtry
     return
   else
-    call add(l:self['__handler_attachments'], l:handlers)
+    call add(l:self.__handler_attachments, l:handlers)
   endif
 
   return l:chain ? l:next_link : 0
@@ -407,7 +407,7 @@ endfunction
 " `"rejected"`.
 function! typevim#Promise#State() dict abort
   call s:TypeCheck(l:self)
-  return l:self['__state']
+  return l:self.__state
 endfunction
 
 ""
@@ -417,10 +417,10 @@ endfunction
 " @throws NotFound if this Promise has not been resolved or rejected.
 function! typevim#Promise#Get() dict abort
   call s:TypeCheck(l:self)
-  if l:self['__state'] ==# s:PENDING
+  if l:self.__state ==# s:PENDING
     throw maktaba#error#NotFound(
         \ 'Promise has not resolved/rejected and stores no value: %s',
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
-  return l:self['__value']
+  return l:self.__value
 endfunction
