@@ -559,16 +559,13 @@ typevim#object#Bind({Funcref}, {obj}, [arglist], [force_rebind])
   Throws ERROR(WrongType) if {obj} is not a dict, or if {Funcref} is not a
   Funcref, or if [arglist] is not a list.
 
-typevim#object#CompareKeys({lhs}, {rhs})        *typevim#object#CompareKeys()*
-  Comparison function that only compares the zero-indexed element of two
-  two-element lists, {lhs} and {rhs}. Can be used to sort the two-element
-  lists returned by a call to |items()| based exclusively on keys, without
-  considering the values associated with those keys. This is useful when
-  getting "|E724|: Unable to dump object with self-referencing container"
-  errors on calls like `sort(items(some_dict))`.
+typevim#object#GetIndentBlock({level})       *typevim#object#GetIndentBlock()*
+  Return the string of spaces that would be used to indent a line to {level},
+  assuming that indents are two-spaces wide. A {level} of 0 returns an empty
+  string, while a {level} of 2 returns: `'    '`
 
-  Throws ERROR(BadValue) if {lhs} or {rhs} don't have length 2.
-  Throws ERROR(WrongType) if {lhs} or {rhs} are not lists.
+  Throws ERROR(BadValue) if {level} is negative.
+  Throws ERROR(WrongType) if {level} is not a number.
 
 typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
   Converts the given {object} into a string, suitable for error messages and
@@ -734,6 +731,17 @@ typevim#value#DecomposePartial({Func})      *typevim#value#DecomposePartial()*
   respectively.
 
   Throws ERROR(WrongType) if {Func} is not a Funcref.
+
+typevim#value#CompareKeys({lhs}, {rhs})          *typevim#value#CompareKeys()*
+  Comparison function that only compares the zero-indexed element of two
+  two-element lists, {lhs} and {rhs}. Can be used to sort the two-element
+  lists returned by a call to |items()| based exclusively on keys, without
+  considering the values associated with those keys. This is useful when
+  getting "|E724|: Unable to dump object with self-referencing container"
+  errors on calls like `sort(items(some_dict))`.
+
+  Throws ERROR(BadValue) if {lhs} or {rhs} don't have length 2.
+  Throws ERROR(WrongType) if {lhs} or {rhs} are not lists.
 
 typevim#value#GetStackFrame({num_levels_down}) *typevim#value#GetStackFrame()*
   When invoked from a namespaced autoload function, return the name of the

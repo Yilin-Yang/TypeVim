@@ -314,6 +314,37 @@ function! typevim#value#DecomposePartial(Func) abort
 endfunction
 
 ""
+" Comparison function that only compares the zero-indexed element of two
+" two-element lists, {lhs} and {rhs}. Can be used to sort the two-element
+" lists returned by a call to |items()| based exclusively on keys, without
+" considering the values associated with those keys. This is useful when
+" getting "|E724|: Unable to dump object with self-referencing container"
+" errors on calls like `sort(items(some_dict))`.
+"
+" @throws BadValue if {lhs} or {rhs} don't have length 2.
+" @throws WrongType if {lhs} or {rhs} are not lists.
+function! typevim#value#CompareKeys(lhs, rhs)
+  call maktaba#ensure#IsList(a:lhs)
+  call maktaba#ensure#IsList(a:rhs)
+  if len(a:lhs) !=# 2 || len(a:rhs) !=# 2
+    throw maktaba#error#BadValue(
+        \ 'typevim#value#CompareKeys only sorts "pairs" (2-elem lists), '
+            \ . 'gave: %s, %s',
+        \ typevim#object#ShallowPrint(a:lhs),
+        \ typevim#object#ShallowPrint(a:rhs))
+  endif
+  let l:lkey = string(a:lhs[0])
+  let l:rkey = string(a:rhs[0])
+  if l:lkey ># l:rkey
+    return 1
+  elseif l:lkey ==# l:rkey
+    return 0
+  else  " l:lkey <# l:rkey
+    return -1
+  endif
+endfunction
+
+""
 " When invoked from a namespaced autoload function, return the name of the
 " function {num_levels_down} the callstack, e.g. if called with
 " {num_levels_down} = 2, get the callstack (as as string), strip this function

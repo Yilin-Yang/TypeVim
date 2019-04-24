@@ -122,8 +122,17 @@ let s:indent_blocks = [
     \ '                  ',
     \ ]
 ""
-" @private
+" Return the string of spaces that would be used to indent a line to {level},
+" assuming that indents are two-spaces wide. A {level} of 0 returns an empty
+" string, while a {level} of 2 returns: `'    '`
+"
+" @throws BadValue if {level} is negative.
+" @throws WrongType if {level} is not a number.
 function! typevim#object#GetIndentBlock(level) abort  " expose for tests
+  if maktaba#ensure#IsNumber(a:level) <# 0
+    throw maktaba#error#BadValue(
+        \ 'Gave negative indent level to GetIndentBlock: %d', a:level)
+  endif
   return s:GetIndentBlock(a:level)
 endfunction
 
@@ -174,37 +183,6 @@ function! s:PrettyPrintObject(...) abort
 endfunction
 
 ""
-" Comparison function that only compares the zero-indexed element of two
-" two-element lists, {lhs} and {rhs}. Can be used to sort the two-element
-" lists returned by a call to |items()| based exclusively on keys, without
-" considering the values associated with those keys. This is useful when
-" getting "|E724|: Unable to dump object with self-referencing container"
-" errors on calls like `sort(items(some_dict))`.
-"
-" @throws BadValue if {lhs} or {rhs} don't have length 2.
-" @throws WrongType if {lhs} or {rhs} are not lists.
-function! typevim#object#CompareKeys(lhs, rhs)
-  call maktaba#ensure#IsList(a:lhs)
-  call maktaba#ensure#IsList(a:rhs)
-  if len(a:lhs) !=# 2 || len(a:rhs) !=# 2
-    throw maktaba#error#BadValue(
-        \ 'typevim#object#CompareKeys only sorts "pairs" (2-elem lists), '
-            \ . 'gave: %s, %s',
-        \ typevim#object#ShallowPrint(a:lhs),
-        \ typevim#object#ShallowPrint(a:rhs))
-  endif
-  let l:lkey = string(a:lhs[0])
-  let l:rkey = string(a:rhs[0])
-  if l:lkey ># l:rkey
-    return 1
-  elseif l:lkey ==# l:rkey
-    return 0
-  else  " l:lkey <# l:rkey
-    return -1
-  endif
-endfunction
-
-""
 " Returns a "human-readable" string representation of the given dictionary
 " {Obj}, splitting keys and values across multiple lines using newline
 " characters (`"\n"`). Values that are themselves dictionaries are printed in
@@ -242,7 +220,7 @@ function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
 
   " only sort on keys, not values, so that sort() doesn't recurse into a
   " self-referencing list
-  let l:items = sort(items(a:Obj), 'typevim#object#CompareKeys')
+  let l:items = sort(items(a:Obj), 'typevim#value#CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
@@ -438,7 +416,7 @@ function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
     return '{  }'
   endif
   let l:str = '{ '
-  let l:items = sort(items(a:Obj), 'typevim#object#CompareKeys')
+  let l:items = sort(items(a:Obj), 'typevim#value#CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= '"'.l:key.'": '
     if maktaba#value#IsString(l:Val)
