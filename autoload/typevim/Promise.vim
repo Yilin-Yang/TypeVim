@@ -371,7 +371,7 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
     return
   elseif l:cur_state ==# s:BROKEN
     try
-    call l:handlers.HandleReject(l:Val)
+      call l:handlers.HandleReject(l:Val)
     catch /ERROR(NotFound)/  " no error handler
       call s:ThrowUnhandledReject(l:self['__value'], l:self)
     endtry

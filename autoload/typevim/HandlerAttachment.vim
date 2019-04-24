@@ -21,9 +21,13 @@ let s:default_handler = function('s:DefaultHandler')
 function! typevim#HandlerAttachment#New(Success_handler, ...) abort
   call maktaba#ensure#IsFuncref(a:Success_handler)
   let l:Error_handler = maktaba#ensure#IsFuncref(get(a:000, 0, s:default_handler))
+
+  " Store given callback functions in a list, NOT in the l:new dict directly.
+  " This way, if the callbacks are unbound [dict] functions, l:self is not
+  " implicitly set equal to the wrapping HandlerAttachment object, and calling
+  " the function will throw E725.
   let l:new = {
-      \ '__Success_handler': a:Success_handler,
-      \ '__Error_handler': l:Error_handler,
+      \ '__success_and_err': [a:Success_handler, l:Error_handler],
       \ '__next_link': {},
       \ 'StartDoing': typevim#make#Member('StartDoing'),
       \ 'HandleResolve': typevim#make#Member('HandleResolve'),
@@ -60,8 +64,13 @@ endfunction
 function! typevim#HandlerAttachment#HandleResolve(Val) dict abort
   call s:CheckType(l:self)
   try
-    let l:Returned = l:self['__Success_handler'](a:Val)
+    let l:Returned = l:self.__success_and_err[0](a:Val)
     call l:self.Resolve(l:Returned)
+  catch /E725/
+    call l:self.Reject(
+        \ 'PROVIDED AN UNBOUND DICT FUNCTION AS CALLBACK, '
+        \ . 'USE typevim#object#Bind IN CALL TO Then()! '
+        \ . v:exception)
   catch  " success handler failed somehow; propagate the error
     call l:self.Reject(v:exception)
   endtry
@@ -85,7 +94,7 @@ endfunction
 " @throws NotFound if no error handler was attached, or if no "next link" Promise backreference is set.
 function! typevim#HandlerAttachment#HandleReject(Val) dict abort
   call s:CheckType(l:self)
-  let l:Handler = l:self['__Error_handler']
+  let l:Handler = l:self.__success_and_err[1]
   if l:Handler ==# s:default_handler
     call l:self.Reject(a:Val)
     throw maktaba#error#NotFound(
@@ -135,5 +144,5 @@ endfunction
 " construction.
 function! typevim#HandlerAttachment#HasErrorHandler() dict abort
   call s:CheckType(l:self)
-  return l:self['__Error_handler'] !=# s:default_handler
+  return l:self.__success_and_err[1] !=# s:default_handler
 endfunction
