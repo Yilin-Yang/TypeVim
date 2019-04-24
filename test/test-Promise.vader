@@ -507,3 +507,57 @@ Execute (typevim#Promise: Delayed Call to onRejected Supplies No "this"):
 
 Then:
   call AssertNotInvoked()
+
+Execute (typevim#Promise: Asynchronous Resolution Setup):
+  let g:__stack_cleared = 0
+  let g:__failure = 0
+
+  function! SucceedIffAsync(...) abort
+    let g:__failure = !g:__stack_cleared
+  endfunction
+
+  function! ClearStackAndWait() abort
+    sleep 50m
+    let g:__stack_cleared = 1
+  endfunction
+
+  function! AssertCallbackWasAsync() abort
+    if !g:__stack_cleared
+      throw 'TEST PRECONDITION FAILURE: stack was not cleared before assertion!'
+    endif
+    let l:succeeded = !g:__failure
+    let g:__failure = 0
+    let g:__stack_cleared = 0
+    Assert l:succeeded, 'Promise resolution/rejection was not asynchronous!'
+  endfunction
+
+Execute (typevim#Promise: Resolution Occurs Asynchronously, "On Next Loop"):
+  " Invocation of a Promise's Then() callbacks should not occur *immediately*,
+  " even if the Promise had already resolved; it should always occur
+  " asynchronously, after the function setting the Then() callbacks and its
+  " stack have run to completion, in order to avoid race conditions.
+  "
+  " See Promises/A+ 2.2.4.
+  let g:promise = typevim#Promise#New()
+  call g:promise.Resolve('___')
+  call g:promise.Then(function('SucceedIffAsync'))
+
+  call ClearStackAndWait()
+Then:
+  call AssertCallbackWasAsync()
+
+Execute (typevim#Promise: Rejection Occurs Asynchronously, "On Next Loop"):
+  " Invocation of a Promise's Then() callbacks should not occur *immediately*,
+  " even if the Promise had already resolved; it should always occur
+  " asynchronously, after the function setting the Then() callbacks and its
+  " stack have run to completion, in order to avoid race conditions.
+  "
+  " See Promises/A+ 2.2.4.
+  let g:promise = typevim#Promise#New()
+  call g:promise.Then(function('ReturnZero'), function('ReturnZero'))
+  call g:promise.Reject('___')
+  call g:promise.Then(function('ReturnZero'), function('SucceedIffAsync'))
+
+  call ClearStackAndWait()
+Then:
+  call AssertCallbackWasAsync()
