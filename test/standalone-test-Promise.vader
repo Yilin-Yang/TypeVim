@@ -1,5 +1,9 @@
 Include: PromiseHelpers.vader
 
+" **WHEN RUNNING THESE TESTS VISIBLY IN VIM,** it is necessary to skip
+" the wall of error messages by *first* pressing Space (to go to the end of the
+" messages), and then pressing Enter.
+
 " NOTE: The nature of the Promise implementation's async callbacks makes
 " it very difficult to test exception behavior. Since the 'Unhandled Promise
 " rejection' occurs inside the timer'd callback, it is not possible (in
