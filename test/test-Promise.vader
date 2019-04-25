@@ -1,5 +1,14 @@
 Include: PromiseHelpers.vader
 
+" NOTE: The nature of the Promise implementation's async callbacks makes
+" it very difficult to test exception behavior. Since the 'Unhandled Promise
+" rejection' occurs inside the timer'd callback, it is not possible (in
+" standard vim, not neovim) to catch the thrown exception.
+"
+" This clutters the screen with error messages (-- More --, Press ENTER or type
+" command to continue) that stop vader from fully executing this test suite in
+" vim. Some tests are wrapped in an `if has('nvim')` for this reason.
+
 Execute (typevim#Promise: Immediate Fulfillment):
   let g:promise = typevim#Promise#New()
   call g:promise.Then(function('SetVal'))
@@ -56,7 +65,7 @@ Execute (typevim#Promise: State Progression, Rejection):
   AssertEqual 'pending', g:promise.State()
   AssertThrows call g:promise.Get()
 
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
 
   AssertEqual 'rejected', g:promise.State()
 
@@ -159,12 +168,7 @@ Execute (typevim#Promise: Resolve/Reject Next-in-Chain, Non Funcref Arguments):
   call g:to_resolve.Resolve('foo')
   call g:to_reject.Reject('foo')
 
-  try
-    call YieldAndWait()
-  catch /ERROR(NotFound)
-    " the above will throw an 'unhandled promise rejection during
-    " YieldAndWait's sleep, but it may not be caught by Vader
-  endtry
+  call YieldAndCatchUnhandledReject()
 
   AssertEqual 'foo', g:rejected.Get()
   AssertEqual 'rejected', g:rejected.State()
@@ -195,12 +199,7 @@ Execute (typevim#Promise: Reject with Pending Promise):
   AssertEqual 'pending', g:promise.State()
   call g:doer.Reject('no')
   AssertEqual 'pending', g:x.State()
-  try
-    call YieldAndWait()
-  catch /ERROR(NotFound)/
-    " whether exception is caught by vader, e.g. by AssertThrows,
-    " seems nondeterministic, even when an exception is thrown
-  endtry
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'rejected', g:x.State()
 
   AssertEqual 'rejected', g:promise.State()
@@ -243,11 +242,11 @@ Execute (typevim#Promise: Resolve with Rejected Promise):
   " silently 'pre-reject' this Promise
   call g:x.Catch(function('ReturnZero'))
   call g:doer.Reject('no')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
 
   let g:promise =  typevim#Promise#New()
+  call g:promise.Resolve(g:x)
   try
-    call g:promise.Resolve(g:x)
     call YieldAndWait()
   catch /ERROR(NotFound)/
     AssertNotEqual -1, match(v:exception,
@@ -268,7 +267,7 @@ Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()
   let g:result = g:promise.Catch(function('SetOther'))
   call g:promise.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'reject', GetOtherAndReset()
   AssertEqual 'reject', g:promise.Get()
   AssertEqual 'rejected', g:promise.State()
@@ -298,11 +297,8 @@ Execute (typevim#Promise: Throw Exception from Success Handler):
 Execute (typevim#Promise: Throw Exception from Error Handler):
   let g:promise = typevim#Promise#New()
   let g:last_link = g:promise.Catch(function('ThrowAsException'))
-  try
-    call g:promise.Reject('foo')
-    call YieldAndWait()
-  catch /ERROR(NotFound)/
-  endtry
+  call g:promise.Reject('foo')
+  call YieldAndCatchUnhandledReject()
 
   " g:promise is rejected by the call to Reject, with 'foo' as its reason
   AssertEqual 'foo', g:promise.Get()
@@ -315,18 +311,14 @@ Execute (typevim#Promise: Throw Exception from Error Handler):
   AssertEqual 'rejected', g:last_link.State()
 
 Execute (typevim#Promise: Unhandled Promise Rejection):
-  let g:promise = typevim#Promise#New()
-  call g:promise.Then(function('SetVal'))
-  try
+  if has('nvim')
+    let g:promise = typevim#Promise#New()
+    call g:promise.Then(function('SetVal'))
     call g:promise.Reject('reject')
-    call YieldAndWait()
-  catch /ERROR(NotFound)/
-    AssertNotEqual -1, match(v:exception,
-        \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'reject'"),
-        \ 'Threw wrong exception: '.v:exception
-  endtry
-  AssertEqual 'reject', g:promise.Get()
-  AssertEqual 'rejected', g:promise.State()
+    call YieldAndCatchUnhandledReject()
+    AssertEqual 'reject', g:promise.Get()
+    AssertEqual 'rejected', g:promise.State()
+  endif
 
 Execute (typevim#Promise: Resolution by Doer):
   let g:doer = MockDoer#New()
@@ -344,7 +336,7 @@ Execute (typevim#Promise: Rejection by Doer):
   let g:promise = typevim#Promise#New(g:doer)
   call g:promise.Then(function('SetVal'), function('SetOther'))
   call g:doer.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertNotEqual 'reject', GetValAndReset()
   AssertEqual    'reject', GetOtherAndReset()
   AssertEqual 'reject', g:promise.Get()
@@ -370,23 +362,19 @@ Execute (typevim#Promise: Test Deep Promise Chaining):
   AssertEqual 'fulfilled', g:last_link.State()
 
 Execute (typevim#Promise: Unhandled Rejection at End of Chain):
-  let g:doer = MockDoer#New()
-  let g:promise = typevim#Promise#New(g:doer)
-  let g:last_link =
-      \ g:promise.Then(function('ValPlusOne'))
-      \.Then(function('ValPlusOne'))
-      \.Then(function('SetVal'))
-  try
+  if has('nvim')
+    let g:doer = MockDoer#New()
+    let g:promise = typevim#Promise#New(g:doer)
+    let g:last_link =
+        \ g:promise.Then(function('ValPlusOne'))
+        \.Then(function('ValPlusOne'))
+        \.Then(function('SetVal'))
     call g:doer.Reject('rejected')
-    call YieldAndWait()
-  catch /ERROR(NotFound)/
-    AssertNotEqual -1, match(g:vader_exception,
-        \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'rejected'"),
-        \ 'Threw wrong exception: '.g:vader_exception
-  endtry
-  AssertEqual 'rejected', g:last_link.Get()
-  AssertEqual 'rejected', g:last_link.State()
-  AssertNotEqual 'rejected', GetValAndReset()
+    call YieldAndCatchUnhandledReject()
+    AssertEqual 'rejected', g:last_link.Get()
+    AssertEqual 'rejected', g:last_link.State()
+    AssertNotEqual 'rejected', GetValAndReset()
+  endif
 
 Execute (typevim#Promise: Storage of Final Rejected Value in Chain):
   let g:doer = MockDoer#New()
@@ -397,7 +385,7 @@ Execute (typevim#Promise: Storage of Final Rejected Value in Chain):
       \.Then(function('SetVal'), function('SetOther'))
 
   call g:doer.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'reject', g:last_link.Get()
   AssertEqual 'fulfilled', g:last_link.State()
 
@@ -410,7 +398,7 @@ Execute (typevim#Promise: Rejection Handling w/ Chain of Then):
       \.Then(function('SetVal'), function('SetOther'))
 
   call g:doer.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'fulfilled', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
@@ -426,7 +414,7 @@ Execute (typevim#Promise: Rejection Handling w/ Then, Terminate with Catch):
       \.Catch(function('SetOther'))
 
   call g:doer.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'fulfilled', g:last_link.State()
 
   AssertEqual 'reject', GetOtherAndReset()
@@ -447,7 +435,7 @@ Execute (typevim#Promise: "Interception" of Unhandled Rejection):
       \.Then(function('SetVal2'), function('SetOther2'))
 
   call g:doer.Reject('reject')
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
   AssertEqual 'rejected', g:promise.State()
   AssertEqual 'rejected', g:last_rejected.State()
   AssertEqual 'fulfilled', g:last_link.State()
@@ -471,7 +459,7 @@ Execute (typevim#Promise: Reject with a Dict That's Not a TypeVim Object):
   let g:promise = typevim#Promise#New(g:doer)
   call g:promise.Then(function('SetVal'), function('SetOther'))
   call g:promise.Reject({})
-  call YieldAndWait()
+  call YieldAndCatchUnhandledReject()
 Then:
   AssertEqual {}, GetOtherAndReset()
 
@@ -488,42 +476,45 @@ Then:
   call AssertNotInvoked()
 
 Execute (typevim#Promise: Call to onRejected Supplies No "this"):
-  let g:promise = typevim#Promise#New()
-  call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
+  if has('nvim')
+    let g:promise = typevim#Promise#New()
+    call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
 
-  try
     call g:promise.Reject('foo')
-  catch /E725/  " Calling dict function without Dictionary
-  endtry
-
-Then:
-  call AssertNotInvoked()
+    try
+      call YieldAndWait()
+    catch /E725/  " Calling dict function without Dictionary
+    endtry
+    call AssertNotInvoked()
+  endif
 
 Execute (typevim#Promise: Delayed Call to onFulfilled Supplies No "this"):
-  let g:doer = MockDoer#New()
-  let g:promise = typevim#Promise#New(g:doer)
-  call g:promise.Then(function('SetIfNoDict'))
+  if has('nvim')
+    let g:doer = MockDoer#New()
+    let g:promise = typevim#Promise#New(g:doer)
+    call g:promise.Then(function('SetIfNoDict'))
 
-  try
     call g:doer.Resolve('foo')
-  catch /E725/  " Calling dict function without Dictionary
-  endtry
-
-Then:
-  call AssertNotInvoked()
+    try
+      call YieldAndWait()
+    catch /E725/  " Calling dict function without Dictionary
+    endtry
+    call AssertNotInvoked()
+  endif
 
 Execute (typevim#Promise: Delayed Call to onRejected Supplies No "this"):
-  let g:doer = MockDoer#New()
-  let g:promise = typevim#Promise#New(g:doer)
-  call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
+  if has('nvim')
+    let g:doer = MockDoer#New()
+    let g:promise = typevim#Promise#New(g:doer)
+    call g:promise.Then(function('ReturnZero'), function('SetIfNoDict'))
 
-  try
     call g:doer.Reject('foo')
-  catch /E725/  " Calling dict function without Dictionary
-  endtry
-
-Then:
-  call AssertNotInvoked()
+    try
+      call YieldAndWait()
+    catch /E725/  " Calling dict function without Dictionary
+    endtry
+    call AssertNotInvoked()
+  endif
 
 Execute (typevim#Promise: Resolution Occurs Asynchronously, "On Next Loop"):
   " Invocation of a Promise's Then() callbacks should not occur *immediately*,
@@ -537,7 +528,6 @@ Execute (typevim#Promise: Resolution Occurs Asynchronously, "On Next Loop"):
   call g:promise.Then(function('SucceedIffAsync'))
 
   call ClearExecContextAndWait()
-Then:
   call AssertCallbackWasAsync()
 
 Execute (typevim#Promise: Rejection Occurs Asynchronously, "On Next Loop"):

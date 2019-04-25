@@ -4,8 +4,24 @@ Execute (Declare Promise Test Helpers):
   function! YieldAndWait(...) abort
     " sleep time needs to be long enough to allow a slower
     " vim to process callbacks
-    let l:sleep_time = maktaba#ensure#IsNumber(get(a:000, 0, 100))
+    " current value is mostly arbitrary
+    let l:sleep_time = maktaba#ensure#IsNumber(get(a:000, 0, 50))
     execute 'sleep '.l:sleep_time.'m'
+  endfunction
+
+  function! YieldAndCatchUnhandledReject(...) abort
+    try
+      call call('YieldAndWait', a:000)
+    catch /ERROR(NotFound)/
+      " whether exception is caught by vader, e.g. by AssertThrows,
+      " seems nondeterministic, even when an exception is thrown
+      " NOTE: this 'trick' of wrapping a sleep statement in a try-catch ONLY
+      " works on neovim; in regular vim, the exception will bubble past the
+      " try-catch
+      AssertNotEqual -1, match(v:exception,
+          \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason"),
+          \ 'Threw wrong exception: '.v:exception
+    endtry
   endfunction
 
 Execute (typevim#Promise: Setup, Declare SetIfNoDict Function):
