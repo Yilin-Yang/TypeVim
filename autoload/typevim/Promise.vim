@@ -194,6 +194,73 @@ function! typevim#Promise#_HadHandlers() dict abort
 endfunction
 
 ""
+" @private
+" Call back the given success handlers with the given resolution value.
+"
+" Meant to be invoked asynchronously, in this case, from a timer with delay
+" 0ms. Timers do not "fire" until vim is no longer busy, like during a sleep
+" statement, or when vim is waiting for user input. Because executing a
+" callstack counts as being "busy," this guarantees that the callback does not
+" occur synchronously from inside the stackframe responsible for the
+" resolution/rejection.
+"
+" This is for compliance with Promises/A+ 2.2.4.
+function! s:CallbackSuccessHandlers(promise, handler_attachments, Val, timernum) abort
+  call s:TypeCheck(a:promise)
+  let a:promise.__value = a:Val
+  let a:promise.__state = s:FULFILLED
+  for l:handlers in a:handler_attachments
+    try
+      call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
+    catch /ERROR(WrongType)/
+      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
+          \ typevim#object#ShallowPrint(l:handlers))
+    endtry
+    call l:handlers.HandleResolve(a:Val)
+  endfor
+  call a:promise.__Clear()
+endfunction
+
+""
+" @private
+" Call back the given error handlers with the given rejection value.
+"
+" See @function(s:CallbackSuccessHandlers).
+function! s:CallbackErrorHandlers(promise, handler_attachments, Val, timernum) abort
+  call s:TypeCheck(a:promise)
+  let a:promise.__value = a:Val
+  let a:promise.__state = s:BROKEN
+  let l:handler_list = a:handler_attachments
+
+  let l:live_children_exist = 0
+  let l:error_handler_exists = 0
+  for l:handlers in l:handler_list
+    try
+      call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
+    catch /ERROR(WrongType)/
+      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
+          \ typevim#object#ShallowPrint(l:handlers))
+    endtry
+    try
+      let l:live_promise = l:handlers.HandleReject(a:Val)
+      let l:was_handled = 1
+    catch /ERROR(NotFound): Rejection without an error handler/
+      let l:live_promise = l:handlers.GetNextLink()._HadHandlers()
+      let l:was_handled = 0
+    endtry
+    if l:live_promise | let l:live_children_exist  = 1 | endif
+    if l:was_handled  | let l:error_handler_exists = 1 | endif
+  endfor
+
+  if !l:live_children_exist && !l:error_handler_exists
+    call a:promise.__Clear()
+    call s:ThrowUnhandledReject(a:Val, a:promise)
+  endif
+
+  call a:promise.__Clear()
+endfunction
+
+""
 " @dict Promise
 " Fulfill ("resolve") this Promise. Calls back all attached success handlers
 " with the given {Val}, and updates the @function(Promise.State) of this
@@ -235,18 +302,9 @@ function! typevim#Promise#Resolve(Val) dict abort
     call a:Val.Then(l:self.Resolve, l:self.Reject)
     return a:Val
   else
-    let l:self.__value = a:Val
-    let l:self.__state = s:FULFILLED
-    for l:handlers in l:self.__handler_attachments
-      try
-        call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
-      catch /ERROR(WrongType)/
-        throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
-            \ typevim#object#ShallowPrint(l:handlers))
-      endtry
-      call l:handlers.HandleResolve(a:Val)
-    endfor
-    call l:self.__Clear()
+    call timer_start(0, function(
+        \ 's:CallbackSuccessHandlers',
+        \ [l:self, l:self.__handler_attachments, a:Val]))
   endif
   return a:Val
 endfunction
@@ -278,36 +336,11 @@ function! typevim#Promise#Reject(Val) dict abort
         \ l:self.State(), expand('<sfile>'),
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
-  let l:self.__value = a:Val
-  let l:self.__state = s:BROKEN
-  let l:handler_list = l:self.__handler_attachments
 
-  let l:live_children_exist = 0
-  let l:error_handler_exists = 0
-  for l:handlers in l:handler_list
-    try
-      call typevim#ensure#IsType(l:handlers, 'HandlerAttachment')
-    catch /ERROR(WrongType)/
-      throw maktaba#error#Failure('Malformed handlers found in Promise: %s ',
-          \ typevim#object#ShallowPrint(l:handlers))
-    endtry
-    try
-      let l:live_promise = l:handlers.HandleReject(a:Val)
-      let l:was_handled = 1
-    catch /ERROR(NotFound): Rejection without an error handler/
-      let l:live_promise = l:handlers.GetNextLink()._HadHandlers()
-      let l:was_handled = 0
-    endtry
-    if l:live_promise | let l:live_children_exist  = 1 | endif
-    if l:was_handled  | let l:error_handler_exists = 1 | endif
-  endfor
+  call timer_start(0, function(
+      \ 's:CallbackErrorHandlers',
+      \ [l:self, l:self.__handler_attachments, a:Val]))
 
-  if !l:live_children_exist && !l:error_handler_exists
-    call l:self.__Clear()
-    call s:ThrowUnhandledReject(a:Val, l:self)
-  endif
-
-  call l:self.__Clear()
   return a:Val
 endfunction
 
@@ -366,16 +399,15 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   let l:Val = l:self.__value
 
   " resolve/reject immediately, if necessary
+  " TODO push these onto resolution/rejection queues
   if l:cur_state ==# s:FULFILLED
-    call l:handlers.HandleResolve(l:Val)
-    return
+    call timer_start(0, function(
+        \ 's:CallbackSuccessHandlers',
+        \ [l:self, [l:handlers], l:self.__value]))
   elseif l:cur_state ==# s:BROKEN
-    try
-      call l:handlers.HandleReject(l:Val)
-    catch /ERROR(NotFound)/  " no error handler
-      call s:ThrowUnhandledReject(l:self.__value, l:self)
-    endtry
-    return
+    call timer_start(0, function(
+        \ 's:CallbackErrorHandlers',
+        \ [l:self, [l:handlers], l:self.__value]))
   else
     call add(l:self.__handler_attachments, l:handlers)
   endif
