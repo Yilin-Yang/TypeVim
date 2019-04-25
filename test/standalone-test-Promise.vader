@@ -12,7 +12,6 @@ Include: PromiseHelpers.vader
 " This clutters the screen with error messages (-- More --, Press ENTER or type
 " command to continue) that stop vader from fully executing this test suite in
 " vim. Some tests are wrapped in an `if has('nvim')` for this reason.
-
 Execute (typevim#Promise: Immediate Fulfillment):
   let g:promise = typevim#Promise#New()
   call g:promise.Then(function('SetVal'))
@@ -163,23 +162,26 @@ Execute (typevim#Promise: Resolve Next-in-Chain w/out Success Handler):
   AssertEqual 'fulfilled', g:last_link.State()
 
 Execute (typevim#Promise: Resolve/Reject Next-in-Chain, Non Funcref Arguments):
-  let g:to_resolve = typevim#Promise#New()
-  let g:resolved = g:to_resolve.Then(0, 1)
+  if typevim#value#HasTimerTryCatchPatch()
+    " This test fails spuriously if this patch is not supported.
+    let g:to_resolve = typevim#Promise#New()
+    let g:resolved = g:to_resolve.Then(0, 1)
 
-  let g:to_reject = typevim#Promise#New()
-  let g:rejected = g:to_reject.Then(0, 1)
+    let g:to_reject = typevim#Promise#New()
+    let g:rejected = g:to_reject.Then(0, 1)
 
-  call g:to_resolve.Resolve('foo')
-  call g:to_reject.Reject('foo')
+    call g:to_resolve.Resolve('foo')
+    call g:to_reject.Reject('foo')
 
-  call YieldAndCatchUnhandledReject()
+    call YieldAndCatchUnhandledReject()
 
-  AssertEqual 'foo', g:rejected.Get()
-  AssertEqual 'rejected', g:rejected.State()
+    AssertEqual 'foo', g:rejected.Get()
+    AssertEqual 'rejected', g:rejected.State()
 
-  " last_link should still resolve with an 'unmodified' value of 'foo'
-  AssertEqual 'foo', g:resolved.Get()
-  AssertEqual 'fulfilled', g:resolved.State()
+    " last_link should still resolve with an 'unmodified' value of 'foo'
+    AssertEqual 'foo', g:resolved.Get()
+    AssertEqual 'fulfilled', g:resolved.State()
+  endif
 
 Execute (typevim#Promise: Resolve with Pending Promise):
   let g:doer = MockDoer#New()
@@ -527,12 +529,14 @@ Execute (typevim#Promise: Resolution Occurs Asynchronously, "On Next Loop"):
   " stack have run to completion, in order to avoid race conditions.
   "
   " See Promises/A+ 2.2.4.
-  let g:promise = typevim#Promise#New()
-  call g:promise.Resolve('___')
-  call g:promise.Then(function('SucceedIffAsync'))
+  if typevim#value#HasTimerTryCatchPatch()
+    let g:promise = typevim#Promise#New()
+    call g:promise.Resolve('___')
+    call g:promise.Then(function('SucceedIffAsync'))
 
-  call ClearExecContextAndWait()
-  call AssertCallbackWasAsync()
+    call ClearExecContextAndWait()
+    call AssertCallbackWasAsync()
+  endif
 
 Execute (typevim#Promise: Rejection Occurs Asynchronously, "On Next Loop"):
   " Invocation of a Promise's Then() callbacks should not occur *immediately*,
@@ -541,11 +545,12 @@ Execute (typevim#Promise: Rejection Occurs Asynchronously, "On Next Loop"):
   " stack have run to completion, in order to avoid race conditions.
   "
   " See Promises/A+ 2.2.4.
-  let g:promise = typevim#Promise#New()
-  call g:promise.Then(function('ReturnZero'), function('ReturnZero'))
-  call g:promise.Reject('___')
-  call g:promise.Then(function('ReturnZero'), function('SucceedIffAsync'))
+  if typevim#value#HasTimerTryCatchPatch()
+    let g:promise = typevim#Promise#New()
+    call g:promise.Then(function('ReturnZero'), function('ReturnZero'))
+    call g:promise.Reject('___')
+    call g:promise.Then(function('ReturnZero'), function('SucceedIffAsync'))
 
-  call ClearExecContextAndWait()
-Then:
-  call AssertCallbackWasAsync()
+    call ClearExecContextAndWait()
+    call AssertCallbackWasAsync()
+  endif

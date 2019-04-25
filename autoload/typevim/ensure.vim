@@ -53,6 +53,20 @@ function! typevim#ensure#HasSetBufline() abort
 endfunction
 
 ""
+" Throws an ERROR(MissingFeature) if the current version of vim will
+" incorrectly terminate a timer if an exception occurs inside of a try-catch
+" statement in the timer's callback function.
+"
+" Returns 1.
+function! typevim#ensure#HasTimerTryCatchPatch() abort
+  if !typevim#value#HasTimerTryCatchPatch()
+    throw maktaba#error#MissingFeature(
+        \ 'This vim version does not have patched timer exception handling.')
+  endif
+  return 1
+endfunction
+
+""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
 " support |appendbufline()|.
 "

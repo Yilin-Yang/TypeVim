@@ -31,6 +31,17 @@ function! typevim#value#HasSetBufline() abort
 endfunction
 
 ""
+" Returns 1 if this version of vim will, correctly, not terminate a timer
+" if an exception occurs inside of a try-catch statement in the timer's
+" callback function.
+"
+" If this is unsupported, @dict(Promise) resolution and rejection are not
+" guaranteed to work correctly.
+function! typevim#value#HasTimerTryCatchPatch() abort
+  return has('patch-8.0.1067')
+endfunction
+
+""
 " Returns 1 if this version of vim supports |appendbufline|, and 0 otherwise.
 function! typevim#value#HasAppendBufline() abort
   return has('patch-8.1.0037')

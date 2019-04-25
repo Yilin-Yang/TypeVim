@@ -186,6 +186,14 @@ typevim#ensure#HasSetBufline()                *typevim#ensure#HasSetBufline()*
 
   Returns 1.
 
+typevim#ensure#HasTimerTryCatchPatch()
+                                      *typevim#ensure#HasTimerTryCatchPatch()*
+  Throws an ERROR(MissingFeature) if the current version of vim will
+  incorrectly terminate a timer if an exception occurs inside of a try-catch
+  statement in the timer's callback function.
+
+  Returns 1.
+
 typevim#ensure#HasAppendBufline()          *typevim#ensure#HasAppendBufline()*
   Throws an ERROR(MissingFeature) if the current version of vim does not
   support |appendbufline()|.
@@ -641,6 +649,14 @@ typevim#value#HasTypeConstants()            *typevim#value#HasTypeConstants()*
 
 typevim#value#HasSetBufline()                  *typevim#value#HasSetBufline()*
   Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
+
+typevim#value#HasTimerTryCatchPatch()  *typevim#value#HasTimerTryCatchPatch()*
+  Returns 1 if this version of vim will, correctly, not terminate a timer if
+  an exception occurs inside of a try-catch statement in the timer's callback
+  function.
+
+  If this is unsupported, |TypeVim.Promise| rejection is not guaranteed to
+  work correctly.
 
 typevim#value#HasAppendBufline()            *typevim#value#HasAppendBufline()*
   Returns 1 if this version of vim supports |appendbufline|, and 0 otherwise.
