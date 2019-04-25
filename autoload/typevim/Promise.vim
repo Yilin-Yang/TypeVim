@@ -89,6 +89,17 @@ let s:promise_id = 0
 " @throws BadValue if [Doer]'s `SetCallbacks` function does not take either one argument or two arguments, or if [Doer] has no `SetCallbacks` function.
 " @throws WrongType if [Doer] is not an object, or if `Doer.SetCallbacks` is not a Funcref.
 function! typevim#Promise#New(...) abort
+  if !typevim#value#HasTimerTryCatchPatch()
+      \ && (!exists('g:typevim_promise_minversion_ignore')
+          \ || !g:typevim_promise_minversion_ignore)
+    call maktaba#error#Warn(
+        \ 'This version of vim does not include the 8.0.1067 timer patch! '
+        \.'TypeVim.Promise resolution or rejection may not work correctly '
+        \.'without this feature. (Set g:typevim_promise_minversion_ignore to '
+        \.'1 in your .vimrc to silence this warning!)')
+    let g:typevim_promise_minversion_ignore = 1
+  endif
+
   let l:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
   if !has_key(l:Doer, 'SetCallbacks')
     throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
