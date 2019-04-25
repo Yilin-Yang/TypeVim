@@ -18,9 +18,13 @@
 "   @function(Promise.Then). `Promise.then()` is an alias of this function,
 "   since Promise/A+ requires that the `then` function be all lowercase.
 "
-" - 2.2.4) @dict(Promise) does not delay `then()` callbacks until the callstack
-"   "contains only platform code." This is mostly for practical reasons, to
-"   avoid having to write a Promise callback "scheduler."
+" - 2.2.4) @dict(Promise) does not strictly guarantee that `then()` callbacks
+"   will be delayed until the callstack "contains only platform code."
+"   Whenever a Promise is resolved or rejected, it passes its attached
+"   callbacks to a zero-millisecond |timer| that won't fire until vim is
+"   idle, i.e. until the current function has returned, the callstack has
+"   cleared, and so on. However, if a function in that callstack |sleep|s,
+"   Promise timer callbacks may fire during that sleep interval.
 "
 " - 2.3.1) When resolving a @dict(Promise) with itself, Promise throws an
 "   ERROR(BadValue) instead of an ERROR(WrongType) (`"TypeError"`). This is
