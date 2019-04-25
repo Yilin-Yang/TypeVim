@@ -1,0 +1,109 @@
+Execute (Declare Promise Test Helpers):
+  ""
+  " Sleep, thereby allowing Promise callbacks to fire.
+  function! YieldAndWait(...) abort
+    " sleep time needs to be long enough to allow a slower
+    " vim to process callbacks
+    let l:sleep_time = maktaba#ensure#IsNumber(get(a:000, 0, 100))
+    execute 'sleep '.l:sleep_time.'m'
+  endfunction
+
+Execute (typevim#Promise: Setup, Declare SetIfNoDict Function):
+  let g:__failure = 0
+  function! SetIfNoDict(...) dict abort
+    " l:self should be undefined, so invocation of this function should
+    " throw E725 before g:failure can be set
+    let g:__failure = 1
+  endfunction
+
+  function! AssertNotInvoked()
+    let l:failed = g:__failure !=# 0
+    let g:__failure = 0
+    Assert !l:failed, 'Unbound dict-function callback was '
+        \ . '(incorrectly) supplied with an l:self!'
+  endfunction
+
+Execute (typevim#Promise: Asynchronous Resolution Setup):
+  let g:__stack_cleared = 0
+  let g:__failure = 0
+
+  function! SucceedIffAsync(...) abort
+    let g:__failure = !g:__stack_cleared
+  endfunction
+
+  function! ClearExecContextAndWait() abort
+    let g:__stack_cleared = 1
+    call YieldAndWait()
+  endfunction
+
+  function! AssertCallbackWasAsync() abort
+    if !g:__stack_cleared
+      throw 'TEST PRECONDITION FAILURE: stack was not cleared before assertion!'
+    endif
+    let l:succeeded = !g:__failure
+    let g:__failure = 0
+    let g:__stack_cleared = 0
+    Assert l:succeeded, 'Promise resolution/rejection was not asynchronous!'
+  endfunction
+
+Execute (typevim#Promise: Set Up):
+  let g:Val = ''
+  function! SetVal(Val) abort
+    let g:Val = a:Val
+    return a:Val
+  endfunction
+
+  function! GetValAndReset() abort
+    let l:to_return = g:Val
+    let g:Val = ''
+    return l:to_return
+  endfunction
+
+  let g:Other = ''
+  function! SetOther(Val) abort
+    let g:Other = a:Val
+    return a:Val
+  endfunction
+
+  function! GetOtherAndReset() abort
+    let l:to_return = g:Other
+    let g:Other = ''
+    return l:to_return
+  endfunction
+
+  let g:Val2 = ''
+  function! SetVal2(Val) abort
+    let g:Val2 = a:Val
+    return a:Val
+  endfunction
+
+  function! GetVal2AndReset() abort
+    let l:to_return = g:Val2
+    let g:Val2 = ''
+    return l:to_return
+  endfunction
+
+  let g:Other2 = ''
+  function! SetOther2(Val) abort
+    let g:Other2 = a:Val
+    return a:Val
+  endfunction
+
+  function! GetOther2AndReset() abort
+    let l:to_return = g:Other2
+    let g:Other2 = ''
+    return l:to_return
+  endfunction
+
+  function! ThrowAsException(Val) abort
+    throw 'except: '.string(a:Val)
+  endfunction
+
+  function! ValPlusOne(Val) abort
+    return a:Val + 1
+  endfunction
+
+  function! ReturnZero(...) abort
+    return 0
+  endfunction
+

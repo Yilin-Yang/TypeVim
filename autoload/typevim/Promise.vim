@@ -399,7 +399,6 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   let l:Val = l:self.__value
 
   " resolve/reject immediately, if necessary
-  " TODO push these onto resolution/rejection queues
   if l:cur_state ==# s:FULFILLED
     call timer_start(0, function(
         \ 's:CallbackSuccessHandlers',
