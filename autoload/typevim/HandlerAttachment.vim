@@ -28,6 +28,8 @@ function! typevim#HandlerAttachment#New(Success_handler, ...) abort
   " the function will throw E725.
   let l:new = {
       \ '__success_and_err': [a:Success_handler, l:Error_handler],
+      \ '__called_success': 0,
+      \ '__called_error': 0,
       \ '__next_link': {},
       \ 'StartDoing': typevim#make#Member('StartDoing'),
       \ 'HandleResolve': typevim#make#Member('HandleResolve'),
@@ -63,7 +65,14 @@ endfunction
 " @throws NotFound if no "next link" Promise backreference is set.
 function! typevim#HandlerAttachment#HandleResolve(Val) dict abort
   call s:CheckType(l:self)
+  let l:backref = l:self.GetNextLink()
+  let l:to_return = l:backref._HadHandlers()
+
+  " call back the success handler exactly once
+  if l:self.__called_success | return l:to_return | endif
+
   try
+    let l:self.__called_success = 1
     let l:Returned = l:self.__success_and_err[0](a:Val)
     call l:self.Resolve(l:Returned)
   catch /E725/
@@ -74,8 +83,7 @@ function! typevim#HandlerAttachment#HandleResolve(Val) dict abort
   catch  " success handler failed somehow; propagate the error
     call l:self.Reject(v:exception)
   endtry
-  let l:backref = l:self.GetNextLink()
-  return l:backref._HadHandlers()
+  return l:to_return
 endfunction
 
 ""
@@ -94,6 +102,12 @@ endfunction
 " @throws NotFound if no error handler was attached, or if no "next link" Promise backreference is set.
 function! typevim#HandlerAttachment#HandleReject(Val) dict abort
   call s:CheckType(l:self)
+  let l:backref = l:self.GetNextLink()
+  let l:to_return = l:backref._HadHandlers()
+
+  " call back the error handler exactly once
+  if l:self.__called_error | return l:to_return | endif
+
   let l:Handler = l:self.__success_and_err[1]
   if l:Handler ==# s:default_handler
     call l:self.Reject(a:Val)
@@ -108,8 +122,8 @@ function! typevim#HandlerAttachment#HandleReject(Val) dict abort
       call l:self.Reject(l:err_msg)
     endtry
   endif
-  let l:backref = l:self.GetNextLink()
-  return l:backref._HadHandlers()
+
+  return l:to_return
 endfunction
 
 ""
