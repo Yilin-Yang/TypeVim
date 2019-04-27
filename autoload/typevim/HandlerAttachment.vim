@@ -81,7 +81,8 @@ function! typevim#HandlerAttachment#HandleResolve(Val) dict abort
         \ . 'USE typevim#object#Bind IN CALL TO Then()! '
         \ . v:exception)
   catch  " success handler failed somehow; propagate the error
-    call l:self.Reject(v:exception)
+    call l:self.Reject(
+        \ printf('throwpoint: %s, exception: %s', v:throwpoint, v:exception))
   endtry
   return l:to_return
 endfunction

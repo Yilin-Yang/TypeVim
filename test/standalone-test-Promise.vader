@@ -287,7 +287,7 @@ Execute (typevim#Promise: Throw Exception from Success Handler):
     call YieldAndWait()
   catch /ERROR(NotFound)/
     AssertNotEqual -1, match(v:exception,
-        \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'except: ''foo'''"),
+        \ 'ERROR(NotFound): Unhandled Promise rejection; rejected with reason:'),
         \ 'Threw wrong exception: '.v:exception
   endtry
 
@@ -297,7 +297,8 @@ Execute (typevim#Promise: Throw Exception from Success Handler):
 
   " but, ThrowAsException throws an exception, which rejects last_link,
   " and last_link throws an exception due to the unhandled rejection
-  AssertEqual "except: 'foo'", g:last_link.Get()
+  AssertNotEqual -1, match(g:last_link.Get(), "except: 'foo'"),
+      \ 'Had wrong exception text in last_link:'.g:last_link.Get()
   AssertEqual 'rejected', g:last_link.State()
 
 Execute (typevim#Promise: Throw Exception from Error Handler):
