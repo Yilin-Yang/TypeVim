@@ -45,11 +45,6 @@ variables into |Dictionaries|.
 ==============================================================================
 DIFFERENCES FROM TRADITIONAL OOP                         *TypeVim-differences*
 
-TypeVim is not a classical (no pun intended) "class-based" OOP system. TypeVim
-is built using VimL's |Dictionary-function|s, which allows for "piecemeal"
-construction of objects by assigning |Funcref|s, |Partial|s, and other
-variables into |Dictionaries|.
-
 "NATIVE" VIMSCRIPT CLASSES
 VimL does not provide for explicit class declarations, like C++ or Java; it is
 much more akin to the type system used in languages like JavaScript. To
@@ -205,6 +200,30 @@ typevim#ensure#HasDeleteBufline()          *typevim#ensure#HasDeleteBufline()*
   support |deletebufline()|.
 
   Returns 1.
+
+typevim#ensure#IsPositive({Val})                 *typevim#ensure#IsPositive()*
+  Returns {Val} if it's positive. Else, throws ERROR(BadValue). Throws
+  ERROR(WrongType) if {Val} is not a number.
+
+typevim#ensure#IsNegative({Val})                 *typevim#ensure#IsNegative()*
+  Returns {Val} if it's negative. Else, throws ERROR(BadValue). Throws
+  ERROR(WrongType) if {Val} is not a number.
+
+typevim#ensure#IsNonNegative({Val})           *typevim#ensure#IsNonNegative()*
+  Returns {Val} if it's non-negative. Else, throws ERROR(BadValue). Throws
+  ERROR(WrongType) if {Val} is not a number.
+
+typevim#ensure#IsNonPositive({Val})           *typevim#ensure#IsNonPositive()*
+  Returns {Val} if it's not positive. Else, throws ERROR(BadValue). Throws
+  ERROR(WrongType) if {Val} is not a number.
+
+typevim#ensure#IsGreaterThan({Val}, {Ref})    *typevim#ensure#IsGreaterThan()*
+  Returns {Val} if it's greater than {Ref}. Else, throws ERROR(BadValue).
+  Throws ERROR(WrongType) if {Val} or {Ref} are not numbers.
+
+typevim#ensure#IsLessThan({Val}, {Ref})          *typevim#ensure#IsLessThan()*
+  Returns {Val} if it's less than {Ref}. Else, throws ERROR(BadValue). Throws
+  ERROR(WrongType) if {Val} or {Ref} are not numbers.
 
 typevim#ensure#IsBool({Val})                         *typevim#ensure#IsBool()*
   Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or

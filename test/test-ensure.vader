@@ -1,0 +1,92 @@
+Execute (typevim#ensure#IsPositive: Declare Helpers):
+  function! AssertFuncCallThrows(Funcref, val, err_msg_fmt, ...) abort
+    let g:F__funcref = a:Funcref
+    let g:__val = a:val
+    let g:__func_args = [a:val] + a:000
+    let g:__fmt_args = [a:err_msg_fmt] + g:__func_args
+    AssertThrows call call(g:F__funcref, g:__func_args)
+    AssertNotEqual -1,
+        \ match(g:vader_exception, call('printf', g:__fmt_args)),
+        \ 'Threw wrong exception: '.g:vader_exception
+  endfunction
+
+  function! AssertThrowsWrongType(Funcref, val, ...) abort
+    let g:__func_args = [a:val] + a:000
+    let g:F__funcref = a:Funcref
+    AssertThrows call call(g:F__funcref, g:__func_args)
+    AssertNotEqual -1,
+        \ match(g:vader_exception, 'ERROR(WrongType)'),
+        \ 'Threw wrong exception: '.g:vader_exception
+  endfunction
+
+Execute (typevim#ensure#IsPositive):
+  AssertEqual 1, typevim#ensure#IsPositive(1)
+
+  let g:err_msg_fmt = 'Given value not a positive integer: %d'
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsPositive'), 0, g:err_msg_fmt)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsPositive'), -1, g:err_msg_fmt)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsPositive'), 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsPositive'), 'abc')
+
+Execute (typevim#ensure#IsNegative):
+  let g:err_msg_fmt = 'Given value not a negative integer: %d'
+
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsNegative'), 1, g:err_msg_fmt)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsNegative'), 0, g:err_msg_fmt)
+  AssertEqual -1, typevim#ensure#IsNegative(-1)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsNegative'), 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsNegative'), 'abc')
+
+Execute (typevim#ensure#IsNonNegative):
+  let g:err_msg_fmt = 'Given value not a non-negative integer: %d'
+
+  AssertEqual 1, typevim#ensure#IsNonNegative(1)
+  AssertEqual 0, typevim#ensure#IsNonNegative(0)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsNonNegative'), -1, g:err_msg_fmt)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsNonNegative'), 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsNonNegative'), 'abc')
+
+Execute (typevim#ensure#IsNonPositive):
+  let g:err_msg_fmt = 'Given value not a non-positive integer: %d'
+
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsNonPositive'), 1, g:err_msg_fmt)
+  AssertEqual 0, typevim#ensure#IsNonPositive(0)
+  AssertEqual -1, typevim#ensure#IsNonPositive(-1)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsNonPositive'), 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsNonPositive'), 'abc')
+
+Execute (typevim#ensure#IsGreaterThan):
+  let g:err_msg_fmt = 'Given value %d not greater than %d'
+
+  AssertEqual 1, typevim#ensure#IsGreaterThan(1, 0)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsGreaterThan'), 0, g:err_msg_fmt, 0)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsGreaterThan'), -1, g:err_msg_fmt, 0)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsGreaterThan'), 0.0, 0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsGreaterThan'), 0, 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsGreaterThan'), 0, '0')
+
+Execute (typevim#ensure#IsLessThan):
+  let g:err_msg_fmt = 'Given value %d not less than %d'
+
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsLessThan'), 1, g:err_msg_fmt, 1)
+  call AssertFuncCallThrows(
+      \ function('typevim#ensure#IsLessThan'), 0, g:err_msg_fmt, 0)
+  AssertEqual -1, typevim#ensure#IsLessThan(-1, 0)
+
+  call AssertThrowsWrongType(function('typevim#ensure#IsLessThan'), 0.0, 0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsLessThan'), 0, 0.0)
+  call AssertThrowsWrongType(function('typevim#ensure#IsLessThan'), 0, '0')

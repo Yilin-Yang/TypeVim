@@ -92,6 +92,78 @@ function! typevim#ensure#HasDeleteBufline() abort
   return 1
 endfunction
 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+""
+" Returns {Val} if it's positive. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} is not a number.
+function! typevim#ensure#IsPositive(Val) abort
+  if maktaba#ensure#IsNumber(a:Val) ># 0
+    return a:Val
+  endif
+  throw maktaba#error#BadValue('Given value not a positive integer: %d', a:Val)
+endfunction
+
+""
+" Returns {Val} if it's negative. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} is not a number.
+function! typevim#ensure#IsNegative(Val) abort
+  if maktaba#ensure#IsNumber(a:Val) <# 0
+    return a:Val
+  endif
+  throw maktaba#error#BadValue('Given value not a negative integer: %d', a:Val)
+endfunction
+
+""
+" Returns {Val} if it's non-negative. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} is not a number.
+function! typevim#ensure#IsNonNegative(Val) abort
+  if maktaba#ensure#IsNumber(a:Val) >=# 0
+    return a:Val
+  endif
+  throw maktaba#error#BadValue(
+      \ 'Given value not a non-negative integer: %d', a:Val)
+endfunction
+
+""
+" Returns {Val} if it's not positive. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} is not a number.
+function! typevim#ensure#IsNonPositive(Val) abort
+  if maktaba#ensure#IsNumber(a:Val) <=# 0
+    return a:Val
+  endif
+  throw maktaba#error#BadValue(
+      \ 'Given value not a non-positive integer: %d', a:Val)
+endfunction
+
+""
+" Returns {Val} if it's greater than {Ref}. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} or {Ref} are not numbers.
+function! typevim#ensure#IsGreaterThan(Val, Ref) abort
+  call maktaba#ensure#IsNumber(a:Val)
+  call maktaba#ensure#IsNumber(a:Ref)
+  if maktaba#ensure#IsNumber(a:Val) ># a:Ref
+    return a:Val
+  endif
+  throw maktaba#error#BadValue(
+      \ 'Given value %d not greater than %d', a:Val, a:Ref)
+endfunction
+
+""
+" Returns {Val} if it's less than {Ref}. Else, throws ERROR(BadValue).
+" Throws ERROR(WrongType) if {Val} or {Ref} are not numbers.
+function! typevim#ensure#IsLessThan(Val, Ref) abort
+  call maktaba#ensure#IsNumber(a:Val)
+  call maktaba#ensure#IsNumber(a:Ref)
+  if maktaba#ensure#IsNumber(a:Val) <# a:Ref
+    return a:Val
+  endif
+  throw maktaba#error#BadValue(
+      \ 'Given value %d not less than %d', a:Val, a:Ref)
+endfunction
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 ""
 " Throws an ERROR(WrongType) if the given {Val} is not 1, 0, |v:true|, or
 " |v:false|. Returns the given {Val} for convenience.

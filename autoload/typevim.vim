@@ -29,11 +29,6 @@
 ""
 " @section Differences from Traditional OOP, differences
 " @parentsection summary
-" TypeVim is not a classical (no pun intended) "class-based" OOP system.
-" TypeVim is built using VimL's |Dictionary-function|s, which allows for
-" "piecemeal" construction of objects by assigning |Funcref|s, |Partial|s, and
-" other variables into |Dictionaries|.
-"
 " @subsection "Native" VimScript Classes
 " VimL does not provide for explicit class declarations, like C++ or Java; it
 " is much more akin to the type system used in languages like JavaScript.
