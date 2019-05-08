@@ -892,6 +892,17 @@ Buffer.ExchangeBufVars({vars_and_vals})             *Buffer.ExchangeBufVars()*
   place.
   Throws ERROR(WrongType) if {vars_and_vals} is not a dict.
 
+Buffer.OpenDoRestore({Action})                        *Buffer.OpenDoRestore()*
+  Silently perform the given {Action} with the buffer open and focused.
+
+  Just like |typevim#Buffer#SetDoRestore()|, but instead of setting variables,
+  this function opens the managed buffer in a new tab, performs the {Action},
+  then closes that tab and returns to the previous view. This is done with
+  |lazyredraw| enabled, and the previous view is restored even if executing
+  {Action} results in an error.
+
+  Throws ERROR(WrongType) if {Action} is not a Funcref or a string.
+
 Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
   Set the given {temp_vars_and_vals} through a call to
   |Buffer.ExchangeBufVars()|, call {Action}, and then restore the old values
@@ -899,7 +910,7 @@ Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
   in an exception being thrown.
 
   {Action} should be a Funcref (or a |Partial|) that can be invoked without
-  this function supplying arguments, or a string that will be passed to an
+  this function supplying arguments, or a string that can be passed to an
   |:execute| statement.
 
   If {Action} is a Funcref, returns its return value. Else, returns 0.

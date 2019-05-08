@@ -34,7 +34,7 @@ Execute (Buffer: Exchange):
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 1,        g:buffer.getbufvar('test_var')
 
-Execute (Buffer: SetDoRestore Returns Value of Given Funcref):
+Execute (Buffer: SetDoRestore Works and Returns Value When Given Funcref):
   function! Foo() abort
     return 42
   endfunction

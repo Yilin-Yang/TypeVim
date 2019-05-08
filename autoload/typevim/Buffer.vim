@@ -117,6 +117,7 @@ function! typevim#Buffer#New(...) abort
   let l:new = {
     \ '__bufnr': l:bufnr,
     \ 'ExchangeBufVars': typevim#make#Member('ExchangeBufVars'),
+    \ 'OpenDoRestore': typevim#make#Member('OpenDoRestore'),
     \ 'SetDoRestore': typevim#make#Member('SetDoRestore'),
     \ 'getbufvar': typevim#make#Member('getbufvar'),
     \ 'setbufvar': typevim#make#Member('setbufvar'),
@@ -263,6 +264,50 @@ endfunction
 
 ""
 " @dict Buffer
+" Silently perform the given {Action} with the buffer open and focused.
+"
+" Just like @function(typevim#Buffer#SetDoRestore), but instead of setting
+" variables, this function opens the managed buffer in a new tab, performs the
+" {Action}, then closes that tab and returns to the previous view. This is
+" done with |lazyredraw| enabled, and the previous view is restored even if
+" executing {Action} results in an error.
+"
+" @throws WrongType if {Action} is not a Funcref or a string.
+function! typevim#Buffer#OpenDoRestore(Action) dict abort
+  call s:CheckType(l:self)
+  call maktaba#ensure#TypeMatchesOneOf(a:Action, [function('s:CheckType'), ''])
+
+  let l:old_tabpage = tabpagenr()
+  let l:old_redraw = &lazyredraw
+
+  try
+    tabnew
+    execute 'buffer '.l:self.__bufnr
+    if maktaba#value#IsFuncref(a:Action)
+      try
+        let l:to_return = a:Action()
+      catch /\(E116\)\|\(E118\)\|\(E119\)/
+        " Invalid arguments | Too many arguments | Not enough arguments
+        throw maktaba#error#BadValue(
+            \ 'Funcref isn''it invocable with no arguments: %s',
+            \ typevim#object#ShallowPrint(a:Action, 2))
+            \ . ', resulted in: '.v:exception
+      endtry
+    else
+      let l:to_return = 0
+      execute a:Action
+    endif
+  finally
+    tabclose
+    execute 'tabnext '.l:old_tabpage
+    let &lazyredraw = l:old_redraw
+  endtry
+
+  return l:to_return
+endfunction
+
+""
+" @dict Buffer
 " Set the given {temp_vars_and_vals} through a call to
 " @function(Buffer.ExchangeBufVars), call {Action}, and then restore the old
 " values from before setting {temp_vars_and_vals}, even if invoking {Action}
@@ -283,31 +328,26 @@ function! typevim#Buffer#SetDoRestore(temp_vars_and_vals, Action) dict abort
   call maktaba#ensure#IsDict(a:temp_vars_and_vals)
   call maktaba#ensure#TypeMatchesOneOf(a:Action, [function('s:CheckType'), ''])
   let l:old_vals = l:self.ExchangeBufVars(a:temp_vars_and_vals)
-  if maktaba#value#IsFuncref(a:Action)
-    try
-      let l:to_return = a:Action()
-    catch /\(E116\)\|\(E118\)\|\(E119\)/
-      " Invalid arguments | Too many arguments | Not enough arguments
-      call l:self.ExchangeBufVars(l:old_vals)
-      throw maktaba#error#BadValue(
-          \ 'Funcref isn''it invocable with no arguments: %s',
-          \ typevim#object#ShallowPrint(a:Action, 2))
-          \ . ', resulted in: '.v:exception
-    catch
-      call l:self.ExchangeBufVars(l:old_vals)
-      call typevim#Rethrow()
-    endtry
-  else  " is string
-    try
+
+  try
+    if maktaba#value#IsFuncref(a:Action)
+      try
+        let l:to_return = a:Action()
+      catch /\(E116\)\|\(E118\)\|\(E119\)/
+        " Invalid arguments | Too many arguments | Not enough arguments
+        throw maktaba#error#BadValue(
+            \ 'Funcref isn''it invocable with no arguments: %s',
+            \ typevim#object#ShallowPrint(a:Action, 2))
+            \ . ', resulted in: '.v:exception
+      endtry
+    else  " is string
       let l:to_return = 0
       execute a:Action
-    catch
-      call l:self.ExchangeBufVars(l:old_vals)
-      call typevim#Rethrow()
-    endtry
-  endif
+    endif
+  finally
+    call l:self.ExchangeBufVars(l:old_vals)
+  endtry
 
-  call l:self.ExchangeBufVars(l:old_vals)
   return l:to_return
 endfunction
 
