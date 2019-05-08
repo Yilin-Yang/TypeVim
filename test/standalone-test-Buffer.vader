@@ -70,6 +70,55 @@ Execute (Buffer: SetDoRestore Restores When Given Command Throws Exception):
   AssertThrew "AAAAAA"
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
 
+Execute (Buffer: Declare Helpers for Checking Before-and-After):
+  function! SaveState() abort
+    set nolazyredraw
+    let l:tabpage = tabpagenr()
+    let l:winview = winsaveview()
+    return [l:tabpage, l:winview]
+  endfunction
+
+  function! AssertSameState(tabp_and_winview) abort
+    call maktaba#ensure#IsList(a:tabp_and_winview)
+    AssertEqual 0, &lazyredraw
+    AssertEqual a:tabp_and_winview[0], tabpagenr()
+    AssertEqual a:tabp_and_winview[1], winsaveview()
+  endfunction
+
+Execute (Buffer: OpenDoRestore Works and Returns Value When Given Funcref):
+  function! Foo() abort
+    let b:foobar = 1
+    return 42
+  endfunction
+
+  let g:state = SaveState()
+  AssertEqual 42, g:buffer.OpenDoRestore(function('Foo'))
+  AssertEqual 1, g:buffer.getbufvar('foobar')
+  call AssertSameState(g:state)
+
+Execute (Buffer: OpenDoRestore Works When Given Evaltext):
+  let g:state = SaveState()
+  AssertEqual 0, g:buffer.OpenDoRestore('let b:barfoo = 2 | let b:goofar = 3')
+  AssertEqual 2, g:buffer.getbufvar('barfoo')
+  AssertEqual 3, g:buffer.getbufvar('goofar')
+  call AssertSameState(g:state)
+
+Execute (Buffer: OpenDoRestore Restores Everything On Funcref BadValue):
+  function! Foo(unused) abort
+    return 42
+  endfunction
+
+  let g:state = SaveState()
+  AssertThrows call g:buffer.OpenDoRestore(function('Foo'))
+  AssertThrew 'ERROR(BadValue)'
+  call AssertSameState(g:state)
+
+Execute (Buffer: OpenDoRestore Restores Everything on Bad Evaltext):
+  let g:state = SaveState()
+  AssertThrows call g:buffer.OpenDoRestore("throw 'BBBBB'")
+  AssertThrew 'BBBBB'
+  call AssertSameState(g:state)
+
 " Since split moves the cursor to the new split, check relative position by
 " moving *back* to the original window and checking that it *isn't* the owned
 " buffer.

@@ -895,11 +895,12 @@ Buffer.ExchangeBufVars({vars_and_vals})             *Buffer.ExchangeBufVars()*
 Buffer.OpenDoRestore({Action})                        *Buffer.OpenDoRestore()*
   Silently perform the given {Action} with the buffer open and focused.
 
-  Just like |typevim#Buffer#SetDoRestore()|, but instead of setting variables,
-  this function opens the managed buffer in a new tab, performs the {Action},
-  then closes that tab and returns to the previous view. This is done with
-  |lazyredraw| enabled, and the previous view is restored even if executing
-  {Action} results in an error.
+  Works just like |typevim#Buffer#SetDoRestore()|, but instead of setting
+  variables, this function opens the managed buffer in a new tab, performs the
+  {Action}, then closes that tab and returns to the previous view. This is
+  done with |lazyredraw| enabled to avoid flickering, and the previous view
+  and previous value of |lazyredraw| are restored even if executing {Action}
+  results in an error.
 
   Throws ERROR(WrongType) if {Action} is not a Funcref or a string.
 
@@ -1063,6 +1064,18 @@ Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
   "rightbelow", "belowright", "topleft", or "botright".
   Throws ERROR(WrongType) if {open_vertical} is not a boolean, if [cmd] is not
   a string, if [pos] is not a string, or if [size] is not a number.
+
+Buffer.Rename({new_name})                                    *Buffer.Rename()*
+  Change the name of this buffer to {new_name} through a call to |:file_f|.
+
+  If {new_name} is an empty string, the name of the buffer will be cleared
+  through a call to |:0file|.
+
+  This will have side effects if this buffer does not have |buftype| `nofile`,
+  since the buffer's name would actually be the name of the file to which the
+  buffer would be saved on write.
+
+  Throws ERROR(WrongType) if {new_name} is not a string.
 
 Buffer.NumLines()                                          *Buffer.NumLines()*
   Return the total number of lines in this buffer.

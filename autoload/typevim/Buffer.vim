@@ -128,6 +128,7 @@ function! typevim#Buffer#New(...) abort
     \ 'search': typevim#make#Member('search'),
     \ 'split': typevim#make#Member('OpenSplit', [0]),
     \ 'vsplit': typevim#make#Member('OpenSplit', [1]),
+    \ 'Rename': typevim#make#Member('Rename'),
     \ 'NumLines': typevim#make#Member('NumLines'),
     \ 'GetLines': typevim#make#Member('GetLines'),
     \ 'ReplaceLines': typevim#make#Member('ReplaceLines'),
@@ -266,10 +267,11 @@ endfunction
 " @dict Buffer
 " Silently perform the given {Action} with the buffer open and focused.
 "
-" Just like @function(typevim#Buffer#SetDoRestore), but instead of setting
-" variables, this function opens the managed buffer in a new tab, performs the
-" {Action}, then closes that tab and returns to the previous view. This is
-" done with |lazyredraw| enabled, and the previous view is restored even if
+" Works just like @function(typevim#Buffer#SetDoRestore), but instead of
+" setting variables, this function opens the managed buffer in a new tab,
+" performs the {Action}, then closes that tab and returns to the previous
+" view. This is done with |lazyredraw| enabled to avoid flickering, and the
+" previous view and previous value of |lazyredraw| are restored even if
 " executing {Action} results in an error.
 "
 " @throws WrongType if {Action} is not a Funcref or a string.
@@ -649,6 +651,25 @@ function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
       \ 'botright'])
   execute 'silent '.l:pos.' '.l:orientation.' '.l:size.' split'
   execute 'buffer! '.l:self.__bufnr
+endfunction
+
+""
+" @dict Buffer
+" Change the name of this buffer to {new_name} through a call to |:file_f|.
+"
+" If {new_name} is an empty string, the name of the buffer will be cleared
+" through a call to |:0file|.
+"
+" This will have side effects if this buffer does not have |buftype| `nofile`,
+" since the buffer's name would actually be the name of the file to which the
+" buffer would be saved on write.
+"
+" @throws WrongType if {new_name} is not a string.
+function! typevim#Buffer#Rename(new_name) dict abort
+  call s:CheckType(l:self)
+  let l:is_clear = empty(maktaba#ensure#IsString(a:new_name))
+  let l:command = (l:is_clear ? '0file' : 'file '.a:new_name) . ' | '
+  call l:self.OpenDoRestore(l:command)
 endfunction
 
 ""
