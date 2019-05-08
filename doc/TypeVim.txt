@@ -131,6 +131,17 @@ typevim#Print()                                              *typevim#Print()*
   Wrapper around |typevim#object#PrettyPrint()|, provided because it's shorter
   and easier to type.
 
+typevim#Rethrow([v_exception])                             *typevim#Rethrow()*
+  Read in the given [v_exception] and |:throw| it. If [v_exception] starts
+  with "Vim", prepend a space to avoid "E608: Cannot :throw exceptions with
+  'Vim' prefix" errors.
+
+  Meant to be used when propagating a |v:exception| trapped by a "catch-all"
+  |catch| statement.
+
+  [v_exception] is |v:exception| if omitted.
+  Throws ERROR(WrongType) if [v_exception] is not a string.
+
 typevim#Any()                                                  *typevim#Any()*
   Return a numerical constant representing "any type". As of the time of
   writing, this is the numerical value returned by `type(v:null)` (see

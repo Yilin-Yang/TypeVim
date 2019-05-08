@@ -1,3 +1,17 @@
+Include: AssertThrew.vader
+
+Execute (typevim: Rethrow Rejects Non-String Arguments):
+  AssertThrows call typevim#Rethrow(1)
+  AssertThrew 'ERROR(WrongType)'
+
+Execute (typevim: Rethrow Prepends a Space if Exception Starts with 'Vim'):
+  AssertThrows call typevim#Rethrow('Vim')
+  AssertThrew '^ Vim$'
+
+Execute (typevim: Rethrow Throws "As Is" Otherwise):
+  AssertThrows call typevim#Rethrow("\tVim")
+  AssertThrew "^\tVim$"
+
 Execute (typevim: Test Type Constants):
   AssertEqual 6, typevim#Bool(),   'Failed on: Bool'
   AssertEqual 4, typevim#Dict(),   'Failed on: Dict'

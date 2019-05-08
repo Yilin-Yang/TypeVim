@@ -124,6 +124,25 @@ function! typevim#Print(...) abort
 endfunction
 
 ""
+" Read in the given [v_exception] and |:throw| it. If [v_exception] starts
+" with "Vim", prepend a space to avoid "E608: Cannot :throw exceptions with
+" 'Vim' prefix" errors.
+"
+" Meant to be used when propagating a |v:exception| trapped by a "catch-all"
+" |catch| statement.
+"
+" @default v_exception=|v:exception|
+" @throws WrongType if [v_exception] is not a string.
+function! typevim#Rethrow(...) abort
+  let l:v_exception = maktaba#ensure#IsString(get(a:000, 0, v:exception))
+  if match(l:v_exception, 'Vim') ==# 0
+    throw ' '.l:v_exception
+  else
+    throw l:v_exception
+  endif
+endfunction
+
+""
 " Return a numerical constant representing "any type". As of the time of
 " writing, this is the numerical value returned by `type(v:null)` (see
 " |type()|), but this may change in the future.
