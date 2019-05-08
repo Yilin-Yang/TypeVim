@@ -1,3 +1,4 @@
+Include: AssertThrew.vader
 Include: InterfaceHelpers.vader
 
 Execute (typevim#make#Interface: Interface, Error Checking):
@@ -9,35 +10,27 @@ Execute (typevim#make#Interface: Interface, Error Checking):
 
   let g:interface = {'foo': 9}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   let g:interface = {'foo': 'fdsfsdf'}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   let g:interface = {'foo': []}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   let g:interface = {'foo': [typevim#Number(), 'foo']}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   let g:interface = {'foo': ['foo', 'bar', typevim#Number()]}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   let g:interface = {'foo': [function('Foo'), 'foo', 'bar']}
   AssertThrows call typevim#make#Interface('Bad', g:interface)
-  " call typevim#make#Interface('Bad', g:interface)
-  " echoerr typevim#object#ShallowPrint(g:interface)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#make#Interface: Interface, Simple Types, Ensure):
   function! Foo() abort

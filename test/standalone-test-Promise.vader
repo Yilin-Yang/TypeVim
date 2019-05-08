@@ -1,3 +1,4 @@
+Include: AssertThrew.vader
 Include: PromiseHelpers.vader
 
 " **WHEN RUNNING THESE TESTS VISIBLY IN VIM,** it is necessary to skip
@@ -26,16 +27,12 @@ Then (Test Error Handling, Post Resolution Resolve/Reject):
   " these should immediately and synchronously throw exceptions,
   " so no wait necessary
   AssertThrows call g:promise.Resolve('another')
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to resolve an already fulfilled Promise'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotAuthorized): Tried to resolve an already fulfilled Promise'
   AssertNotEqual 'another', GetValAndReset()
   AssertEqual 'fulfilled', g:promise.State()
 
   AssertThrows call g:promise.Reject('another')
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise'
   AssertEqual 'fulfilled', g:promise.State()
 
 Execute (typevim#Promise: State Progression, Resolution):
@@ -84,15 +81,11 @@ Execute (typevim#Promise: Immediate Rejection):
   AssertEqual 'rejected', g:promise.State()
 Then (Test Error Handling, Post Rejection Resolve/Reject):
   AssertThrows call g:promise.Resolve('another')
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to resolve an already rejected Promise'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotAuthorized): Tried to resolve an already rejected Promise'
   AssertNotEqual 'another', GetValAndReset()
 
   AssertThrows call g:promise.Reject('another')
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Tried to reject an already rejected Promise'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotAuthorized): Tried to reject an already rejected Promise'
   AssertNotEqual 'another', GetOtherAndReset()
 
 Execute (typevim#Promise: Return Given Value from Resolve):
@@ -255,9 +248,8 @@ Execute (typevim#Promise: Resolve with Rejected Promise):
   try
     call YieldAndWait()
   catch /ERROR(NotFound)/
-    AssertNotEqual -1, match(v:exception,
-        \ "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'no'"),
-        \ 'Threw wrong exception: '.v:exception
+    let g:vader_exception = v:exception
+    AssertThrew "ERROR(NotFound): Unhandled Promise rejection; rejected with reason: 'no'"
   endtry
   AssertEqual 'rejected', g:promise.State()
   AssertEqual 'no', g:promise.Get()
@@ -265,9 +257,7 @@ Execute (typevim#Promise: Resolve with Rejected Promise):
 Execute (typevim#Promise: Resolve Promise with Itself):
   let g:promise = typevim#Promise#New()
   AssertThrows call g:promise.Resolve(g:promise)
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(BadValue): Tried to resolve a Promise with itself'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue): Tried to resolve a Promise with itself'
 
 Execute (typevim#Promise: Rejection w/ Catch Handler):
   let g:promise = typevim#Promise#New()
@@ -286,9 +276,8 @@ Execute (typevim#Promise: Throw Exception from Success Handler):
     call g:promise.Resolve('foo')
     call YieldAndWait()
   catch /ERROR(NotFound)/
-    AssertNotEqual -1, match(v:exception,
-        \ 'ERROR(NotFound): Unhandled Promise rejection; rejected with reason:'),
-        \ 'Threw wrong exception: '.v:exception
+    let g:vader_exception = v:exception
+    AssertThrew 'ERROR(NotFound): Unhandled Promise rejection; rejected with reason:'
   endtry
 
   " g:promise is resolved by the call to Resolve

@@ -1,3 +1,5 @@
+Include: AssertThrew.vader
+
 Execute (typevim#make#Derived: Derived Class, No Base Dtor):
   let g:der = TestDerived#New(0, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
@@ -48,37 +50,30 @@ Execute (typevim#make#Derived: Derived Class, With Base Dtor; Run Dtors):
 Then (Check Error Messages from Default Virtual Function):
   AssertThrows call g:der.SmallVirtual()
   " Not enough arguments...
-  AssertNotEqual -1, match(g:vader_exception, 'E119'),
-      \ 'Threw wrong exception, should be E119: '.g:vader_exception
+  AssertThrew 'E119'
 
   AssertThrows call g:der.SmallVirtual('foo', 'boo')
   " Too many arguments for...
-  AssertNotEqual -1, match(g:vader_exception, 'E118'),
-      \ 'Threw wrong exception, should be E118: '.g:vader_exception
+  AssertThrew 'E118'
 
   AssertThrows call g:der.MediumVirtual('foo', 'boo')
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotImplemented)'),
-      \ 'Threw wrong exception, should be NotImplemented: '.g:vader_exception
+  AssertThrew 'ERROR(NotImplemented)'
 
   " specify optional
   AssertThrows call g:der.MediumVirtual('foo', 'boo', 'roo')
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotImplemented)'),
-      \ 'Threw wrong exception, should be NotImplemented: '.g:vader_exception
+  AssertThrew 'ERROR(NotImplemented)'
 
   " specify too many optional
   AssertThrows call g:der.MediumVirtual('foo', 'boo', 'roo', 'aaaaah')
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(InvalidArguments)'),
-      \ 'Threw wrong exception, should be InvalidArguments: '.g:vader_exception
+  AssertThrew 'ERROR(InvalidArguments)'
 
   " specify too many optional
   AssertThrows call g:der.BigVirtual('foo', 'boo', 'roo', 'aaaaah')
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotImplemented)'),
-      \ 'Threw wrong exception, should be NotImplemented: '.g:vader_exception
+  AssertThrew 'ERROR(NotImplemented)'
 
 Execute (typevim#make#Derived: Derived Class, Fail to Clobber Member Variables):
   AssertThrows let g:der = TestDerived#New(1, 1, 0)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotAuthorized)'),
-      \ 'Threw wrong exception, should be NotAuthorized: '.g:vader_exception
+  AssertThrew 'ERROR(NotAuthorized)'
 
 Execute (typevim#make#Derived: Derived Class, Clobber Member Variables):
   let g:der = TestDerived#New(1, 1, 1)

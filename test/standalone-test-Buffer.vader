@@ -1,3 +1,5 @@
+Include: AssertThrew.vader
+
 Execute (Buffer: Construct Default):
   let g:buffer = typevim#Buffer#New()
   call g:buffer.Open()
@@ -358,36 +360,31 @@ Execute (Buffer: endline before startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(4, 2, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: endline before startline (both negative)):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-4, -5, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: endline before (negative) startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-8, 2, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: endline (negative) before startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(4, -8, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: Negative Values are Out of Range):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-12, -8, g:lines)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: Make Buffer Nonmodifiable (Setup)):
   call g:buffer.setbufvar('&modifiable', 0)
@@ -509,8 +506,7 @@ Execute (Buffer: Search from Bad Line Number):
   let g:num_tabs = tabpagenr('$')
   let g:curpos = getcurpos()
   AssertThrows call g:buffer.search('the', '', -10)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
   AssertEqual 0, &lazyredraw
   AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
   AssertEqual g:curpos, getcurpos()
@@ -565,8 +561,7 @@ Execute (Buffer: Search from curpos w/ 'c'):
 Execute (Buffer: Search w/ Bad Flags):
   call g:buffer.SetBuffer(bufnr('%'))
   AssertThrows call g:buffer.search('the', 'D')
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
   AssertEqual 0, &lazyredraw
 
   AssertThrows call g:buffer.search('the', 's')
@@ -581,23 +576,18 @@ Execute (Buffer: Bad curpos, Wrong List Size):
 
   " empty
   AssertThrows call g:buffer.search('the', '', [])
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-  
+  AssertThrew 'ERROR(BadValue)'
+
   " one elt
   AssertThrows call g:buffer.search('the', '', [2])
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
-   
+  AssertThrew 'ERROR(BadValue)'
+
   " three elts
   AssertThrows call g:buffer.search('the', '', [2, 1, 5])
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(BadValue)'
 
   " six elts
   AssertThrows call g:buffer.search('the', '', [2, 1, 5, 10, 10, 3])
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(BadValue)'),
-      \ 'Threw wrong exception: '.g:vader_exception
 
 Execute (Buffer: Is Open in this Tab, Yes):
   tabnew
@@ -634,8 +624,7 @@ Then:
 
 Execute (Buffer: Switch, Not Open):
   AssertThrows call g:buffer.Switch()
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotFound)'
 
 Execute (Buffer: Switch, Is Open, Same Tab):
   call g:buffer.SetBuffer(bufnr('%'))
@@ -654,8 +643,7 @@ Execute (Buffer: Switch, Is Open, Different Tab (but not allowed)):
   tabnew
 Then:
   AssertThrows call g:buffer.Switch(0)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotFound)'
 
 Execute (Buffer: Switch, Is Open, Different Tab (which is allowed)):
   call g:buffer.Switch()
@@ -667,8 +655,7 @@ Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which isn't a
   tabnew
 Then:
   AssertThrows call g:buffer.Switch(0)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(NotFound)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(NotFound)'
 
 Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which is given)):
   tabnew

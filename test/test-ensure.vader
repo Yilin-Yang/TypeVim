@@ -1,3 +1,5 @@
+Include: AssertThrew.vader
+
 Execute (typevim#ensure#IsPositive: Declare Helpers):
   function! AssertFuncCallThrows(Funcref, val, err_msg_fmt, ...) abort
     let g:F__funcref = a:Funcref
@@ -5,18 +7,14 @@ Execute (typevim#ensure#IsPositive: Declare Helpers):
     let g:__func_args = [a:val] + a:000
     let g:__fmt_args = [a:err_msg_fmt] + g:__func_args
     AssertThrows call call(g:F__funcref, g:__func_args)
-    AssertNotEqual -1,
-        \ match(g:vader_exception, call('printf', g:__fmt_args)),
-        \ 'Threw wrong exception: '.g:vader_exception
+    AssertThrew call('printf', g:__fmt_args)
   endfunction
 
   function! AssertThrowsWrongType(Funcref, val, ...) abort
     let g:__func_args = [a:val] + a:000
     let g:F__funcref = a:Funcref
     AssertThrows call call(g:F__funcref, g:__func_args)
-    AssertNotEqual -1,
-        \ match(g:vader_exception, 'ERROR(WrongType)'),
-        \ 'Threw wrong exception: '.g:vader_exception
+    AssertThrew 'ERROR(WrongType)'
   endfunction
 
 Execute (typevim#ensure#IsPositive):

@@ -1,3 +1,5 @@
+Include: AssertThrew.vader
+
 Execute (typevim#ensure#IsValidTypename: Valid):
   AssertEqual 'Foo', typevim#ensure#IsValidTypename('Foo')
 
@@ -107,26 +109,21 @@ Execute (typevim#ensure#IsTypeConstant: Actual Type Constants):
 
 Execute (typevim#ensure#IsTypeConstant: Negative Numbers):
   AssertThrows call typevim#ensure#IsTypeConstant(-1)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   AssertThrows call typevim#ensure#IsTypeConstant(-105)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#ensure#IsTypeConstant: Too-Large Numbers):
   AssertThrows call typevim#ensure#IsTypeConstant(84)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#ensure#IsTypeConstant: Non-Integer Values):
   AssertThrows call typevim#ensure#IsTypeConstant(1.5)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
   AssertThrows call typevim#ensure#IsTypeConstant(-0.87)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)'),
-      \ 'Threw wrong exception: '.g:vader_exception
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#ensure#IsValidObject: Valid Base Class):
   let g:obj = TestBase#New(3.14)
@@ -142,7 +139,7 @@ Execute (typevim#ensure#IsValidObject: Misnamed Type List):
   unlet g:obj[typevim#attribute#TYPE()]
   let g:obj['FE#SFdfcxcfazsfFEW'] = g:typelist
   AssertThrows call typevim#ensure#IsValidObject(g:obj)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#ensure#IsValidObject: Type List is Dictionary):
   let g:obj = TestBase#New(3.14)
@@ -153,10 +150,10 @@ Execute (typevim#ensure#IsValidObject: Type List is Dictionary):
   endfor
   let g:obj[typevim#attribute#TYPE()] = g:typedict
   AssertThrows call typevim#ensure#IsValidObject(g:obj)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertThrew 'ERROR(WrongType)'
 
 Execute (typevim#ensure#IsValidObject: Missing Clean Upper):
   let g:obj = TestBase#New(3.14)
   unlet g:obj.CleanUp
   AssertThrows call typevim#ensure#IsValidObject(g:obj)
-  AssertNotEqual -1, match(g:vader_exception, 'ERROR(WrongType)')
+  AssertThrew 'ERROR(WrongType)'

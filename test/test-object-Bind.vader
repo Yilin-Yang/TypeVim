@@ -1,3 +1,5 @@
+Include: AssertThrew.vader
+
 Execute (typevim#object#Bind: Basic Bind):
   let g:from = TestBase#New('from')
   let g:into = TestBase#New('into')
@@ -13,9 +15,7 @@ Then (Check for Successful Binding):
 Execute (typevim#object#Bind: Bind Already Bound, No Rebind):
   " g:into.GetVal is g:from.GetVal, bound already to g:from
   AssertThrows let g:into.GetVal = typevim#object#Bind(g:into.GetVal, g:into)
-  AssertNotEqual -1, match(g:vader_exception,
-      \ 'ERROR(NotAuthorized): Cannot rebind already bound Partial '
-      \ . '.*to new object', )
+  AssertThrew 'ERROR(NotAuthorized): Cannot rebind already bound Partial .*to new object'
 
 Execute (typevim#object#Bind: Bind Already Bound, Force Rebind):
   " g:into.GetVal is g:from.GetVal, bound already to g:from, use [force_rebind]
@@ -33,10 +33,23 @@ Execute (typevim#object#Bind: Bind Already Bound, Same Object):
   AssertEqual 'into', g:into.GetVal()
   AssertEqual 'from', g:from.GetVal()
 
-Execute (typevim#object#Bind: Bind Argslist):
+Execute (typevim#object#Bind: Bind Argslist Works):
   AssertEqual '[ 1, 2, 3 ]', g:into.StringifyVals(1, 2, 3)
-  let g:into['StringifyVals'] = typevim#object#Bind(g:into.StringifyVals, g:into, [1])
+  let g:into.StringifyVals = typevim#object#Bind(g:into.StringifyVals, g:into, [1])
   AssertEqual '[ 1 ]', g:into.StringifyVals()
-  AssertThrows call typevim#object#Bind(g:into, 'StringifyVals', [2], 0)
-  let g:into['StringifyVals'] = typevim#object#Bind(g:into.StringifyVals, g:into, [2], 1)
+
+Execute (typevim#object#Bind: Doesn't Block when Bound is Same Object):
+  let g:into.StringifyVals = typevim#object#Bind(g:into.StringifyVals, g:into, [1])
+
+Execute (typevim#object#Bind: Blocks Unforced Rebind, Allows Forced):
+  let g:into = TestBase#New('into')
+
+  let g:into.StringifyVals = typevim#object#Bind(
+      \ function('TestBase#StringifyVals'), {'foo': 1}, [1])
+  AssertEqual '[ 1 ]', g:into.StringifyVals()
+
+  AssertThrows call typevim#object#Bind(g:into.StringifyVals, g:into, [2], 0)
+  AssertThrew 'ERROR(NotAuthorized)'
+
+  let g:into.StringifyVals = typevim#object#Bind(g:into.StringifyVals, g:into, [2], 1)
   AssertEqual '[ 1, 2 ]', g:into.StringifyVals()
