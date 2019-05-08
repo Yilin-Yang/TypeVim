@@ -41,6 +41,35 @@ Execute (Buffer: SetDoRestore Returns Value of Given Funcref):
   AssertEqual 42, g:buffer.SetDoRestore({'&buftype': ''}, function('Foo'))
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
 
+Execute (Buffer: SetDoRestore Restores Variables on BadValue Exception):
+  function! Foo(unused_var) abort
+    return 42
+  endfunction
+  AssertThrows call g:buffer.SetDoRestore({'&buftype': ''}, function('Foo'))
+  AssertThrew 'ERROR(BadValue)'
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+
+Execute (Buffer: SetDoRestore Restores Variables on Other Exception):
+  function! Foo() abort
+    throw 'AAAAAA'
+  endfunction
+  AssertThrows call g:buffer.SetDoRestore({'&buftype': ''}, function('Foo'))
+  AssertThrew 'AAAAAA'
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+
+Execute (Buffer: SetDoRestore Works When Executing Command):
+  AssertEqual 0, g:buffer.SetDoRestore({'&buftype': ''}, 'let g:foo = "bar" | let g:bar = "foo"')
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+  AssertEqual 'bar', g:foo
+  AssertEqual 'foo', g:bar
+  unlet g:foo
+  unlet g:bar
+
+Execute (Buffer: SetDoRestore Restores When Given Command Throws Exception):
+  AssertThrows call g:buffer.SetDoRestore({'&buftype': ''}, 'throw "AAAAAA"')
+  AssertThrew "AAAAAA"
+  AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
+
 " Since split moves the cursor to the new split, check relative position by
 " moving *back* to the original window and checking that it *isn't* the owned
 " buffer.

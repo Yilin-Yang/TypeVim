@@ -265,29 +265,48 @@ endfunction
 " @dict Buffer
 " Set the given {temp_vars_and_vals} through a call to
 " @function(Buffer.ExchangeBufVars), call {Action}, and then restore the old
-" values from before setting {temp_vars_and_vals}. Returns the return value of
-" {Action}.
+" values from before setting {temp_vars_and_vals}, even if invoking {Action}
+" results in an exception being thrown.
 "
-" {Action} should be a Funcref (or a |Partial|) that takes no arguments.
+" {Action} should be a Funcref (or a |Partial|) that can be invoked without
+" this function supplying arguments, or a string that can be passed to an
+" |:execute| statement.
 "
-" @throws BadValue if {Action} needs arguments.
+" If {Action} is a Funcref, returns its return value. Else, returns 0.
+"
+" @throws BadValue if {Action} is a Funcref, but needs arguments.
 " @throws WrongType if {temp_vars_and_vals} is not a dict, or if {Action} is not a Funcref.
 "
 " This function throws the same exceptions as @function(Buffer.ExchangeBufVars).
 function! typevim#Buffer#SetDoRestore(temp_vars_and_vals, Action) dict abort
   call s:CheckType(l:self)
   call maktaba#ensure#IsDict(a:temp_vars_and_vals)
-  call maktaba#ensure#IsFuncref(a:Action)
+  call maktaba#ensure#TypeMatchesOneOf(a:Action, [function('s:CheckType'), ''])
   let l:old_vals = l:self.ExchangeBufVars(a:temp_vars_and_vals)
-  try
-    let l:to_return = a:Action()
-  catch /\(E116\)\|\(E118\)\|\(E119\)/
-    " Invalid arguments | Too many arguments | Not enough arguments
-    call l:self.ExchangeBufVars(l:old_vals)
-    throw maktaba#error#BadValue(
-        \ 'Funcref isn''it invocable with no arguments: %s',
-        \ typevim#object#ShallowPrint(a:Action, 2))
-  endtry
+  if maktaba#value#IsFuncref(a:Action)
+    try
+      let l:to_return = a:Action()
+    catch /\(E116\)\|\(E118\)\|\(E119\)/
+      " Invalid arguments | Too many arguments | Not enough arguments
+      call l:self.ExchangeBufVars(l:old_vals)
+      throw maktaba#error#BadValue(
+          \ 'Funcref isn''it invocable with no arguments: %s',
+          \ typevim#object#ShallowPrint(a:Action, 2))
+          \ . ', resulted in: '.v:exception
+    catch
+      call l:self.ExchangeBufVars(l:old_vals)
+      call typevim#Rethrow()
+    endtry
+  else  " is string
+    try
+      let l:to_return = 0
+      execute a:Action
+    catch
+      call l:self.ExchangeBufVars(l:old_vals)
+      call typevim#Rethrow()
+    endtry
+  endif
+
   call l:self.ExchangeBufVars(l:old_vals)
   return l:to_return
 endfunction

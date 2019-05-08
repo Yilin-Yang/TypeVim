@@ -895,12 +895,16 @@ Buffer.ExchangeBufVars({vars_and_vals})             *Buffer.ExchangeBufVars()*
 Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
   Set the given {temp_vars_and_vals} through a call to
   |Buffer.ExchangeBufVars()|, call {Action}, and then restore the old values
-  from before setting {temp_vars_and_vals}. Returns the return value of
-  {Action}.
+  from before setting {temp_vars_and_vals}, even if invoking {Action} results
+  in an exception being thrown.
 
-  {Action} should be a Funcref (or a |Partial|) that takes no arguments.
+  {Action} should be a Funcref (or a |Partial|) that can be invoked without
+  this function supplying arguments, or a string that will be passed to an
+  |:execute| statement.
 
-  Throws ERROR(BadValue) if {Action} needs arguments.
+  If {Action} is a Funcref, returns its return value. Else, returns 0.
+
+  Throws ERROR(BadValue) if {Action} is a Funcref, but needs arguments.
   Throws ERROR(WrongType) if {temp_vars_and_vals} is not a dict, or if
   {Action} is not a Funcref.
 
