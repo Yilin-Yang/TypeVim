@@ -48,8 +48,4 @@ Execute (Buffer: Won't Error if nohidden and Current Buffer Has Unsaved Changes)
   let g:new_name = g:orig_name[0:-2]
   let g:new_buf = typevim#Buffer#New({'bufname': g:new_name})
 
-  AssertEqual g;new_name, g:new_buf.GetName()
-
-Execute (Buffer: Clean Up):
-  " so that we can close the vim instance without needing to :qa!
-  set hidden
+  AssertEqual g:new_name, g:new_buf.GetName()

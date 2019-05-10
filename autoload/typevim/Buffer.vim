@@ -94,24 +94,16 @@ function! typevim#Buffer#New(...) abort
 
   let l:bufnr = l:properties.bufnr
   let l:bufname = l:properties.bufname
-  if !l:bufnr
-    let l:bufnr = bufnr('^'.l:bufname.'$', 1)
+  let l:need_rename = !l:bufnr
+  if l:need_rename
     " bufnr will *first* try to match the given bufname against existing
     " buffers; if it does not find a match, *then* it will create a buffer
     " with that name, but this buffer's name will include the ^ and $; but the
     " ^ and $ are necessary to force vim to consider only exact matches, of
     " which there should be none.
     "
-    " do this, and then give the newly created buffer a correct name
-    let l:winview = winsaveview()
-    let l:cur_buf = bufnr('%')
-    execute 'keepalt buffer '.l:bufnr
-    execute 'file '.l:bufname
-    " this 'bad' buffer has a name, and it'll be made the alternate buffer
-    let l:bufnr_to_destroy = bufnr('#')
-    execute 'keepalt buffer '.l:cur_buf
-    execute 'bwipeout! '.l:bufnr_to_destroy
-    call winrestview(l:winview)
+    " do this, and then give the newly created buffer a correct name down below
+    let l:bufnr = bufnr('^'.l:bufname.'$', 1)
   endif
 
   let l:new = {
@@ -142,14 +134,17 @@ function! typevim#Buffer#New(...) abort
 
   " set properties on the buffer
   let s:props_to_set =
-      \ exists('s:props_to_set') ?
-          \ s:props_to_set
-          \ :
-          \ ['bufhidden', 'buflisted', 'buftype', 'modifiable', 'swapfile']
+      \ exists('s:props_to_set') ? s:props_to_set
+                               \ : ['bufhidden', 'buflisted', 'buftype',
+                                  \ 'modifiable', 'swapfile']
   for l:prop in s:props_to_set
     let l:val = l:properties[l:prop]
     call l:new.setbufvar('&'.l:prop, l:val)
   endfor
+
+  if l:need_rename
+    call l:new.Rename(l:bufname)
+  endif
 
   return l:new
 endfunction
