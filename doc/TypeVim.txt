@@ -628,6 +628,23 @@ typevim#object#ShallowPrint({Obj}, [max_depth])
   Throws ERROR(BadValue) if [max_depth] is negative.
   Throws ERROR(WrongType) if [max_depth] is not a number.
 
+typevim#string#EscapeChars({String}, {Chars})   *typevim#string#EscapeChars()*
+  Iterate over each character in {Chars} from left-to-right, prepending a
+  backslash before every occurrence of that character in {String}.
+
+  If a character appears in {Chars} multiple times, it will be prefixed with
+  that many backslashes.
+>
+    call typevim#string#EscapeChars('abc aa', 'a')  # returns '\abc \a\a'
+    call typevim#string#EscapeChars('abc aa', 'ab') # returns '\a\bc \a\a'
+    call typevim#string#EscapeChars('abc aa', 'aa') # returns '\\abc \\a\\a'
+<
+  Each character will be read "one-at-a-time": if {Chars} is "\a", then all
+  "\" characters will be escaped, followed by all "a" characters.
+
+  Throws ERROR(BadValue) if {Chars} is an empty string.
+  Throws ERROR(WrongType) if either {String} or {Chars} are not strings.
+
 typevim#string#Listify({string}, [fileformat])      *typevim#string#Listify()*
   Split the given {string} on newlines (or on carriage-returns and newlines)
   into a list of separate lines, usable in a call to a function like
@@ -1076,6 +1093,10 @@ Buffer.Rename({new_name})                                    *Buffer.Rename()*
 
   If {new_name} is an empty string, the name of the buffer will be cleared
   through a call to |:0file|.
+
+  Be mindful of |cmdline-special| characters: to include literal "#" and "%"
+  characters, you must escape them with backslashes. See
+  |typevim#string#EscapeChars()|.
 
   This will have side effects if this buffer does not have |buftype| `nofile`,
   since the buffer's name would actually be the name of the file to which the

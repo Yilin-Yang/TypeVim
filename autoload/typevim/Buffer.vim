@@ -667,6 +667,10 @@ endfunction
 " If {new_name} is an empty string, the name of the buffer will be cleared
 " through a call to |:0file|.
 "
+" Be mindful of |cmdline-special| characters: to include literal "#" and "%"
+" characters, you must escape them with backslashes. See
+" @function(typevim#string#EscapeChars).
+"
 " This will have side effects if this buffer does not have |buftype| `nofile`,
 " since the buffer's name would actually be the name of the file to which the
 " buffer would be saved on write.

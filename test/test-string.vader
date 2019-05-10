@@ -1,3 +1,37 @@
+Include: AssertThrew.vader
+
+Execute (typevim#string#EscapeChars: Throws BadValue on Empty Chars):
+  AssertThrows call typevim#string#EscapeChars('abc', '')
+  AssertThrew 'ERROR(BadValue)'
+
+Execute (typevim#string#EscapeChars: Throws WrongType on Non-String Args):
+  AssertThrows call typevim#string#EscapeChars('abc', 0)
+  AssertThrew 'ERROR(WrongType)'
+
+  AssertThrows call typevim#string#EscapeChars(0, '')
+  AssertThrew 'ERROR(WrongType)'
+
+  function! Foo()
+  endfunction
+  AssertThrows call typevim#string#EscapeChars(function('Foo'), '')
+  AssertThrew 'ERROR(WrongType)'
+
+Execute (typevim#string#EscapeChars: Works With the Docs Example):
+  AssertEqual '\abc \a\a',    typevim#string#EscapeChars('abc aa', 'a')
+  AssertEqual '\a\bc \a\a',   typevim#string#EscapeChars('abc aa', 'ab')
+  AssertEqual '\\abc \\a\\a', typevim#string#EscapeChars('abc aa', 'aa')
+
+Execute (typevim#string#EscapeChars: Replaces Backslashes Correctly):
+  AssertEqual '\\\\\\', typevim#string#EscapeChars('\\\', '\')
+
+Execute (typevim#string#EscapeChars: Interprets Multichar Sequences Literally):
+  AssertEqual '\\abcdef', typevim#string#EscapeChars('abcdef', '\a\')
+
+Execute (typevim#string#EscapeChars: Replaces Magic Single Characters):
+  let g:test_str = '$1.01 * 10^3 \~= $500 * 2'
+  AssertEqual '\\$1\\.01 \\* 10\\^3 \\\\~= \\$500 \\* 2',
+      \ typevim#string#EscapeChars(g:test_str, '$.*~^\')
+
 Execute (typevim#string#Listify: Agnostic, Empty List):
   let g:string = ''
   let g:expected = [

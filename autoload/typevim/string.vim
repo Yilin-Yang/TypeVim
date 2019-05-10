@@ -1,4 +1,52 @@
 ""
+" Iterate over each character in {Chars} from left-to-right, prepending a
+" backslash before every occurrence of that character in {String}.
+"
+" If a character appears in {Chars} multiple times, it will be prefixed with
+" that many backslashes.
+" >
+"   call typevim#string#EscapeChars('abc aa', 'a')  # returns '\abc \a\a'
+"   call typevim#string#EscapeChars('abc aa', 'ab') # returns '\a\bc \a\a'
+"   call typevim#string#EscapeChars('abc aa', 'aa') # returns '\\abc \\a\\a'
+" <
+" Each character will be read "one-at-a-time": if {Chars} is "\a", then all
+" "\" characters will be escaped, followed by all "a" characters.
+"
+" @throws BadValue if {Chars} is an empty string.
+" @throws WrongType if either {String} or {Chars} are not strings.
+function! typevim#string#EscapeChars(String, Chars) abort
+  let l:str = maktaba#ensure#IsString(a:String)
+  call maktaba#ensure#IsString(a:Chars)
+  if empty(a:Chars)
+    throw maktaba#error#BadValue('Gave empty list of chars: %s', a:Chars)
+  endif
+  if empty(a:String) | return a:String | endif
+
+  let l:i = 0 | while l:i <# len(a:Chars)
+    let l:str = substitute(l:str, s:Disenchant(a:Chars[l:i]), '\\&', 'g')
+  let l:i += 1 | endwhile
+
+  return l:str
+endfunction
+
+""
+" If the given *single* character has a special meaning in a |magic|
+" regex pattern, return that character prefixed with a backslash. Otherwise,
+" return the character.
+function! s:Disenchant(char) abort
+  if a:char ==# '~'
+    " ~ is interpreted as a special character in match command
+    return '\~'
+  endif
+  if match(s:MAGIC_CHARS, a:char) !=# -1
+    return '\'.a:char
+  endif
+  return a:char
+endfunction
+let s:MAGIC_CHARS = '$.*~^\'
+lockvar s:MAGIC_CHARS
+
+""
 " Split the given {string} on newlines (or on carriage-returns and newlines)
 " into a list of separate lines, usable in a call to a function like
 " |append()| or @function(Buffer.InsertLines). Useful for formatting the
