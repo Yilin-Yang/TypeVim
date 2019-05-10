@@ -6,8 +6,8 @@ Execute (AssertThrew: Declare Helpers):
   " Assert that g:vader_exception contains the given {pat}.
   function! AssertThrewImpl(pat) abort
     AssertNotEqual -1, match(g:vader_exception, a:pat),
-        \ printf('Thrown exception did not contain pattern: %s --- Instead, got: %s',
-            \ a:pat, g:vader_exception)
+        \ printf('Thrown exception did not contain pattern: %s --- Instead, from %s, got: %s',
+            \ a:pat, g:vader_throwpoint, g:vader_exception)
   endfunction
 
   command! -nargs=1 AssertThrew call AssertThrewImpl(<args>)
