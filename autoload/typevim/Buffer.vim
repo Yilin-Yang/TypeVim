@@ -128,6 +128,7 @@ function! typevim#Buffer#New(...) abort
     \ 'search': typevim#make#Member('search'),
     \ 'split': typevim#make#Member('OpenSplit', [0]),
     \ 'vsplit': typevim#make#Member('OpenSplit', [1]),
+    \ 'GetName': typevim#make#Member('GetName'),
     \ 'Rename': typevim#make#Member('Rename'),
     \ 'NumLines': typevim#make#Member('NumLines'),
     \ 'GetLines': typevim#make#Member('GetLines'),
@@ -651,6 +652,17 @@ function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
       \ 'botright'])
   execute 'silent '.l:pos.' '.l:orientation.' '.l:size.' split'
   execute 'buffer! '.l:self.__bufnr
+endfunction
+
+""
+" @dict Buffer
+" Get the |bufname| of the managed buffer. Equivalent to:
+" >
+"   call bufnr(buffer_dict.bufnr())
+" <
+function! typevim#Buffer#GetName() dict abort
+  call s:CheckType(l:self)
+  return bufname(l:self.bufnr())
 endfunction
 
 ""

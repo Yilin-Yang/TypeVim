@@ -1,0 +1,55 @@
+Include: AssertThrew.vader
+
+Execute (Buffer: Construct Unnamed Buffers):
+  let g:default_named = []
+  call add(g:default_named, typevim#Buffer#New())
+  call add(g:default_named, typevim#Buffer#New())
+  call add(g:default_named, typevim#Buffer#New())
+  call add(g:default_named, typevim#Buffer#New())
+
+  let g:default_names = []
+  call add(g:default_names, g:default_named[0].GetName())
+  call add(g:default_names, g:default_named[1].GetName())
+  call add(g:default_names, g:default_named[2].GetName())
+  call add(g:default_names, g:default_named[3].GetName())
+Then (All Constructed Have Unique Names and Bufnr):
+  for g:i in range(1, len(g:default_named) - 2)
+    let g:test_buf = g:default_named[g:i - 1]
+    for g:j in range(2, len(g:default_named) - 1)
+      let g:comp_buf = g:default_named[g:j]
+      AssertNotEqual g:test_buf.GetName(), g:comp_buf.GetName()
+      AssertNotEqual g:test_buf.bufnr(), g:comp_buf.bufnr()
+    endfor
+  endfor
+
+Execute (Buffer: Throws BadValue on Name Collision):
+  for g:name in g:default_names
+    AssertThrows call typevim#Buffer#New({'bufname': g:name})
+    AssertThrew 'ERROR(BadValue)'
+  endfor
+
+Execute (Buffer: Throws BadValue on Name Collision w/ Given Bufnr):
+  let g:bufnr = bufnr('%')
+  for g:name in g:default_names
+    AssertThrows call typevim#Buffer#New({'bufname': g:name, 'bufnr': g:bufnr})
+    AssertThrew 'ERROR(BadValue)'
+  endfor
+
+Execute (Buffer: Won't Error if nohidden and Current Buffer Has Unsaved Changes):
+  set nohidden
+
+  new
+  normal! iabcdefghijklmnopqrstuvwxyz
+  AssertThrows execute "normal \<C-^>"
+
+  " use a name that will cause bufnr(name, 1) to match an existing buffer,
+  " rather than creating a new one with the given name
+  let g:orig_name = g:default_names[0]
+  let g:new_name = g:orig_name[0:-2]
+  let g:new_buf = typevim#Buffer#New({'bufname': g:new_name})
+
+  AssertEqual g;new_name, g:new_buf.GetName()
+
+Execute (Buffer: Clean Up):
+  " so that we can close the vim instance without needing to :qa!
+  set hidden

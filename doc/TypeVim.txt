@@ -1065,6 +1065,12 @@ Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
   Throws ERROR(WrongType) if {open_vertical} is not a boolean, if [cmd] is not
   a string, if [pos] is not a string, or if [size] is not a number.
 
+Buffer.GetName()                                            *Buffer.GetName()*
+  Get the |bufname| of the managed buffer. Equivalent to:
+>
+    call bufnr(buffer_dict.bufnr())
+<
+
 Buffer.Rename({new_name})                                    *Buffer.Rename()*
   Change the name of this buffer to {new_name} through a call to |:file_f|.
 
