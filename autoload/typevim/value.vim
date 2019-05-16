@@ -388,8 +388,14 @@ function! typevim#value#GetStackFrame(num_levels_down) abort
 
   " strip GetStackFrame from the callstack to get initial_callstack
   let l:initial_callstack = matchstr(expand('<sfile>'), s:strip_topmost_pat)
-  let l:callstack = l:initial_callstack
 
+  " check memo for precalculated value
+  let l:memo_key = l:initial_callstack.'+++'.a:num_levels_down
+  if has_key(s:callstacks_and_numlevels, l:memo_key)
+    return s:callstacks_and_numlevels[l:memo_key]
+  endif
+
+  let l:callstack = l:initial_callstack
   let l:removed = 0 | while l:removed <# a:num_levels_down && !empty(l:callstack)
     let l:callstack = matchstr(l:callstack, s:strip_topmost_pat)
   let l:removed += 1 | endwhile
@@ -402,8 +408,14 @@ function! typevim#value#GetStackFrame(num_levels_down) abort
   endif
 
   let l:to_return = matchstr(l:callstack, '\zs[^ .]*\ze\[[0-9]*\]$')
+  let s:callstacks_and_numlevels[l:memo_key] = l:to_return
   return l:to_return
 endfunction
+" memoized values for previous calls to GetStackFrame
+" keys are strings formed by the following concatenation:
+"     l:initial_callstack.'+++'.a:num_levels_down
+" values are the final value l:to_return
+let s:callstacks_and_numlevels = {}
 
 ""
 " @private
