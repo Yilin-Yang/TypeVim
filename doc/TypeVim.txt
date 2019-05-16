@@ -1107,6 +1107,8 @@ Buffer.Rename({new_name})                                    *Buffer.Rename()*
 Buffer.NumLines()                                          *Buffer.NumLines()*
   Return the total number of lines in this buffer.
 
+  Behavior is undefined if the managed buffer isn't loaded.
+
 Buffer.GetLines({startline}, [endline])                    *Buffer.GetLines()*
   Return lines {startline} to [endline], end-inclusive, from this buffer as a
   list of strings. Uses the same indexing rules as |Buffer.ReplaceLines()|.

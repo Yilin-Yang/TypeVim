@@ -108,6 +108,7 @@ function! typevim#Buffer#New(...) abort
 
   let l:new = {
     \ '__bufnr': l:bufnr,
+    \ '__last_num_lines': 1,
     \ 'ExchangeBufVars': typevim#make#Member('ExchangeBufVars'),
     \ 'OpenDoRestore': typevim#make#Member('OpenDoRestore'),
     \ 'SetDoRestore': typevim#make#Member('SetDoRestore'),
@@ -686,9 +687,80 @@ endfunction
 ""
 " @dict Buffer
 " Return the total number of lines in this buffer.
+"
+" Behavior is undefined if the managed buffer isn't loaded.
 function! typevim#Buffer#NumLines() dict abort
   call s:CheckType(l:self)
-  return len(getbufline(l:self.bufnr(), 1, '$'))
+  let l:bufnr = l:self.bufnr()
+
+  " check if the buffer is the same size as before
+  let l:curr_guess = l:self.__last_num_lines
+  let l:curr_line  = getbufline(l:bufnr, l:curr_guess)
+  let l:line_after = getbufline(l:bufnr, l:curr_guess + 1)
+  if !empty(l:curr_line) && empty(l:line_after)
+    return l:self.__last_num_lines
+  endif
+
+  " perform a binary search for the greatest line number for which getbufline
+  " does not return an empty list
+  let l:too_low = !empty(l:line_after)
+  let l:too_high = empty(l:curr_line)
+
+  let l:upper_bound = l:too_high ? l:curr_guess : 0x7FFFFFFF
+  let l:lower_bound = l:too_low  ? l:curr_guess : 1
+
+  if l:too_low
+    " we need to determine an upper bound for our search interval; we could
+    " just set l:upper_bound to 2^31 - 1, but it should be (very slightly)
+    " faster to find a tighter bound by doubling our guess until we overshoot
+    while !empty(l:line_after)
+      let l:curr_guess = l:curr_guess * 2
+      let l:line_after = getbufline(l:bufnr, l:curr_guess + 1)
+    endwhile
+    let l:upper_bound = l:curr_guess - 1
+  endif
+
+  let l:found_it = 0
+  while l:lower_bound <=# l:upper_bound && !l:found_it
+    let l:curr_guess = (l:upper_bound + l:lower_bound) / 2
+
+    let l:curr_line  = getbufline(l:bufnr, l:curr_guess)
+    let l:line_after = getbufline(l:bufnr, l:curr_guess + 1)
+
+    let l:too_low = !empty(l:line_after)
+    let l:too_high = empty(l:curr_line)
+
+    if l:lower_bound ==# l:upper_bound
+      " handle the edge case where l:lower_bound and l:upper_bound converge,
+      " but not on the actual value (will be at most off-by-one)
+      if l:too_low
+        let l:lower_bound += 1
+        let l:upper_bound += 1
+      elseif l:too_high
+        let l:lower_bound -= 1
+        let l:upper_bound -= 1
+      else
+        let l:found_it = 1
+      endif
+    elseif l:too_high
+      let l:upper_bound = l:curr_guess - 1
+    elseif l:too_low
+      let l:lower_bound = l:curr_guess + 1
+    else
+      let l:found_it = 1
+    endif
+  endwhile
+
+  if l:found_it
+    let l:self.__last_num_lines = l:curr_guess
+    return l:curr_guess
+  endif
+
+  let l:actual = len(getbufline(l:bufnr, 1, '$'))
+  echoerr printf('Retrieval of NumLines failed (please open a GitHub Issue!) '
+      \ . 'actual: %d, final guess: %d, lower: %d, upper: %d',
+      \ l:actual, l:curr_guess, l:lower_bound, l:upper_bound)
+  return l:actual
 endfunction
 
 ""

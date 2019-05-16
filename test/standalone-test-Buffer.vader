@@ -140,6 +140,27 @@ Execute (Buffer: Wipeout Buffer):
   let g:bufnr = g:buffer.bufnr()
   AssertEqual g:bufnr, g:buffer.SetBuffer(bufnr('%'), 'bwipeout')
 
+Given (One Line of Text):
+  first line
+
+Execute (Buffer: NumLines() Returns 1):
+  AssertEqual 1, g:buffer.NumLines()
+
+Given (Two Lines of Text):
+  first line
+  two line
+
+Execute (Buffer: NumLines() Returns 2):
+  AssertEqual 2, g:buffer.NumLines()
+
+Given (Three Lines of Text):
+  first line
+  second line
+  third line
+
+Execute (Buffer: NumLines() Returns 3):
+  AssertEqual 3, g:buffer.NumLines()
+
 
 Given (Ten Lines of Text):
   first line
