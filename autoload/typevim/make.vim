@@ -776,16 +776,32 @@ function! typevim#make#Member(funcname, ...) abort
   else
     let l:dict = 0
   endif
-  let l:full_name = typevim#value#GetStackFrame(1)
 
-  " strip everything after the last '#'
-  " (presumably, this is being called from a 'New' function or similar)
-  let l:prefix = matchstr(l:full_name, '\zs.*\ze#.\{-}$')
+  " memoize the last value returned from this function as a two-element list
+  " first element: the value of expand('<sfile>'), or v:null
+  " second element: return value
+  let l:callstack = expand('<sfile>')
+  if !exists('s:last_member_returned')
+    let s:last_member_returned = [v:null, v:null]
+  elseif s:last_member_returned[0] ==# l:callstack
+    let l:prefix = s:last_member_returned[1] 
+  endif
 
-  if empty(l:prefix)
-    throw maktaba#error#BadValue(
-        \ 'Not invoking this function from an autoload function '
-        \ . '(called from: "%s")', l:full_name)
+  if !exists('l:prefix')
+    let l:full_name = typevim#value#GetStackFrame(1)
+
+    " strip everything after the last '#'
+    " (presumably, this is being called from a 'New' function or similar)
+    let l:prefix = matchstr(l:full_name, '\zs.*\ze#.\{-}$')
+
+    if empty(l:prefix)
+      throw maktaba#error#BadValue(
+          \ 'Not invoking this function from an autoload function '
+          \ . '(called from: "%s")', l:full_name)
+    endif
+
+    " memoize this value
+    let s:last_member_returned = [l:callstack, l:prefix]
   endif
 
   " function ignores empty arglists, but will bind to an empty dict
