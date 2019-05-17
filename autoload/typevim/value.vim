@@ -208,6 +208,28 @@ function! typevim#value#IsType(Obj, typename) abort
 endfunction
 
 ""
+" Returns 1 when the given {Obj} is a |dict|, and 0 otherwise.
+"
+" Exactly like |maktaba#ensure#IsDict|, but optimized to be slightly faster.
+" As of the time of writing, vim-maktaba's implementation constructs an empty
+" dict with every call, while this function simply queries the |type()| of the
+" {Obj} and compares that to @function(typevim#Dict).
+function! typevim#value#IsDict(Obj) abort
+  return type(a:Obj) ==# s:DICT_TYPE
+endfunction
+let s:DICT_TYPE = typevim#Dict()
+
+""
+" Returns 1 when the given {Obj} is a |list|, and 0 otherwise.
+"
+" Exactly like |maktaba#ensure#IsList|, but optimized to be slightly faster.
+" See @function(typevim#value#IsDict) for further details.
+function! typevim#value#IsList(Obj) abort
+  return type(a:Obj) ==# s:LIST_TYPE
+endfunction
+let s:LIST_TYPE = typevim#List()
+
+""
 " Returns 1 when {Val} satisfies {constraint}, and 0 otherwise.
 " @throws WrongType when {constraint} is not a dict.
 function! s:SatisfiesConstraint(Val, constraint, property) abort

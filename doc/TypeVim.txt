@@ -284,6 +284,20 @@ typevim#ensure#IsType({Obj}, {typename})             *typevim#ensure#IsType()*
 
   Throws ERROR(BadValue) if {Obj} is not a dict or {typename} is not a string.
 
+typevim#ensure#IsDict({Obj})                         *typevim#ensure#IsDict()*
+  Throws an ERROR(WrongType) if the given {Obj} is not a |dict|.
+
+  Returns {Obj} for convenience.
+
+  See |typevim#value#IsDict()| for further details.
+
+typevim#ensure#IsList({Obj})                         *typevim#ensure#IsList()*
+  Throws an ERROR(WrongType) if the given {Obj} is not a |list|.
+
+  Returns {Obj} for convenience.
+
+  See |typevim#value#IsList()| for further details.
+
 typevim#ensure#Implements({Obj}, {Interface})    *typevim#ensure#Implements()*
   Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
   {Interface}.
@@ -775,6 +789,20 @@ typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
 
   Throws ERROR(BadValue) if {typename} isn't a valid typename.
   Throws ERROR(WrongType) if {typename} isn't a string.
+
+typevim#value#IsDict({Obj})                           *typevim#value#IsDict()*
+  Returns 1 when the given {Obj} is a |dict|, and 0 otherwise.
+
+  Exactly like |maktaba#ensure#IsDict|, but optimized to be slightly faster.
+  As of the time of writing, vim-maktaba's implementation constructs an empty
+  dict with every call, while this function simply queries the |type()| of the
+  {Obj} and compares that to |typevim#Dict()|.
+
+typevim#value#IsList({Obj})                           *typevim#value#IsList()*
+  Returns 1 when the given {Obj} is a |list|, and 0 otherwise.
+
+  Exactly like |maktaba#ensure#IsList|, but optimized to be slightly faster.
+  See |typevim#value#IsDict()| for further details.
 
 typevim#value#Implements({Obj}, {Interface})      *typevim#value#Implements()*
   Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.

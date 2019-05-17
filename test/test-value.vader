@@ -1,0 +1,23 @@
+Execute (typevim#value#IsDict: Returns True for Dict Objects):
+  AssertEqual 1, typevim#value#IsDict({})
+
+Execute (typevim#value#IsDict: Returns False for Things that Aren't Dicts):
+  function! Foo()
+  endfunction
+
+  for g:Obj in [[], function('Foo'), 0, 0.0, 'blah']
+    AssertEqual 0, typevim#value#IsDict(g:Obj),
+        \ 'Failed with '.maktaba#value#TypeName(g:Obj)
+  endfor
+
+Execute (typevim#value#IsList: Returns True for Dict Objects):
+  AssertEqual 1, typevim#value#IsList([])
+
+Execute (typevim#value#IsList: Returns False for Things that Aren't Lists):
+  function! Foo()
+  endfunction
+
+  for g:Obj in [{}, function('Foo'), 0, 0.0, 'blah']
+    AssertEqual 0, typevim#value#IsList(g:Obj),
+        \ 'Failed with '.maktaba#value#TypeName(g:Obj)
+  endfor

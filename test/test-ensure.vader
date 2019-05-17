@@ -1,5 +1,31 @@
 Include: AssertThrew.vader
 
+Execute (typevim#ensure#IsDict: Accepts Dict Objects):
+  let g:obj = {}
+  Assert g:obj is typevim#ensure#IsDict(g:obj)
+
+Execute (typevim#ensure#IsDict: Rejects Objects that Aren't Dicts):
+  function! Foo()
+  endfunction
+
+  for g:Obj in [[], function('Foo'), 0, 0.0, 'blah']
+    AssertThrows call typevim#ensure#IsDict(g:Obj)
+    AssertThrew 'ERROR(WrongType).*Got a '.maktaba#value#TypeName(g:Obj)
+  endfor
+
+Execute (typevim#ensure#IsList: Accepts Dict Objects):
+  let g:obj = []
+  Assert g:obj is typevim#ensure#IsList(g:obj)
+
+Execute (typevim#ensure#IsList: Rejects Objects that Aren't Lists):
+  function! Foo()
+  endfunction
+
+  for g:Obj in [{}, function('Foo'), 0, 0.0, 'blah']
+    AssertThrows call typevim#ensure#IsList(g:Obj)
+    AssertThrew 'ERROR(WrongType).*Got a '.maktaba#value#TypeName(g:Obj)
+  endfor
+
 Execute (typevim#ensure#IsPositive: Declare Helpers):
   function! AssertFuncCallThrows(Funcref, val, err_msg_fmt, ...) abort
     let g:F__funcref = a:Funcref

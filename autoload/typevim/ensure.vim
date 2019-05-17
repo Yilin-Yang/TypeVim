@@ -331,6 +331,36 @@ function! typevim#ensure#IsType(Obj, typename) abort
 endfunction
 
 ""
+" Throws an ERROR(WrongType) if the given {Obj} is not a |dict|.
+"
+" Returns {Obj} for convenience.
+"
+" See @function(typevim#value#IsDict) for further details.
+function! typevim#ensure#IsDict(Obj) abort
+  if type(a:Obj) !=# s:DICT_TYPE
+    throw maktaba#error#WrongType('Expected a Dictionary. Got a %s.',
+        \ maktaba#value#TypeName(a:Obj))
+  endif
+  return a:Obj
+endfunction
+let s:DICT_TYPE = typevim#Dict()
+
+""
+" Throws an ERROR(WrongType) if the given {Obj} is not a |list|.
+"
+" Returns {Obj} for convenience.
+"
+" See @function(typevim#value#IsList) for further details.
+function! typevim#ensure#IsList(Obj) abort
+  if type(a:Obj) !=# s:LIST_TYPE
+    throw maktaba#error#WrongType('Expected a List. Got a %s.',
+        \ maktaba#value#TypeName(a:Obj))
+  endif
+  return a:Obj
+endfunction
+let s:LIST_TYPE = typevim#List()
+
+""
 " Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
 " {Interface}.
 "
