@@ -49,6 +49,25 @@ let s:default_handler = function('s:DefaultHandler')
 
 let s:promise_id = 0
 
+let s:FUNC_PREFIX = 'typevim#Promise#'
+let s:PROTOTYPE = {
+    \ '__Clear': function(s:FUNC_PREFIX.'__Clear'),
+    \ '_HadHandlers': function(s:FUNC_PREFIX.'_HadHandlers'),
+    \ 'Resolve': function(s:FUNC_PREFIX.'Resolve'),
+    \ 'Reject': function(s:FUNC_PREFIX.'Reject'),
+    \ 'Then': function(s:FUNC_PREFIX.'Then'),
+    \ 'Catch': function(s:FUNC_PREFIX.'Catch'),
+    \ 'State': function(s:FUNC_PREFIX.'State'),
+    \ 'Get': function(s:FUNC_PREFIX.'Get'),
+    \ '__state': s:PENDING,
+    \ '__value': '[no value set]',
+    \ '__had_handlers': 0,
+    \ '__handler_attachments': [],
+    \ }
+" set this alias for Promise/A+ 2.2 compliance
+let s:PROTOTYPE.then = s:PROTOTYPE.Then
+call typevim#make#Class(s:typename, s:PROTOTYPE)
+
 ""
 " @dict Promise
 " @function typevim#Promise#New([Doer])
@@ -114,29 +133,17 @@ function! typevim#Promise#New(...) abort
         \ typevim#object#ShallowPrint(l:Doer, 2))
   endif
 
-  " NOTE: __handler_attachments is a list of triples: a Doer, a success handler, and an
-  " error handler. The Doer is linked to the Promise constructed and returned by
-  " the Promise.Then() or Promise.Catch() function calls.
+  " NOTE: __handler_attachments is a list of triples: a Doer, a success
+  " handler, and an error handler. The Doer is linked to the Promise
+  " constructed and returned by the Promise.Then() or Promise.Catch() function
+  " calls.
   let s:promise_id += 1
-  let l:new = {
+  let l:new = deepcopy(s:PROTOTYPE)
+  call extend(l:new, {
       \ '__id': s:promise_id,
-      \ '__had_handlers': 0,
       \ '__doer': l:Doer,
-      \ '__state': s:PENDING,
-      \ '__value': '[no value set]',
-      \ '__handler_attachments': [],
-      \ '__Clear': typevim#make#Member('__Clear'),
-      \ '_HadHandlers': typevim#make#Member('_HadHandlers'),
-      \ 'Resolve': typevim#make#Member('Resolve'),
-      \ 'Reject': typevim#make#Member('Reject'),
-      \ 'Then': typevim#make#Member('Then'),
-      \ 'Catch': typevim#make#Member('Catch'),
-      \ 'State': typevim#make#Member('State'),
-      \ 'Get': typevim#make#Member('Get'),
-      \ }
-  " set this alias for Promise/A+ 2.2 compliance
-  let l:new.then = l:new.Then
-  let l:new = typevim#make#Class(s:typename, l:new)
+      \ })
+
   let l:new.Resolve = typevim#object#Bind(l:new.Resolve, l:new)
   let l:new.Reject = typevim#object#Bind(l:new.Reject, l:new)
   call typevim#Promise#__SetDoerCallbacks(l:new.Resolve, l:new.Reject, l:Doer)

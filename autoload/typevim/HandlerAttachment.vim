@@ -15,6 +15,17 @@ function! s:DefaultHandler(Arg) abort
 endfunction
 let s:default_handler = function('s:DefaultHandler')
 
+let s:FUNC_PREFIX = 'typevim#HandlerAttachment#'
+let s:PROTOTYPE = {
+    \ 'StartDoing': function(s:FUNC_PREFIX.'StartDoing'),
+    \ 'HandleResolve': function(s:FUNC_PREFIX.'HandleResolve'),
+    \ 'HandleReject': function(s:FUNC_PREFIX.'HandleReject'),
+    \ 'ClearReferences': function(s:FUNC_PREFIX.'ClearReferences'),
+    \ 'GetNextLink': function(s:FUNC_PREFIX.'GetNextLink'),
+    \ 'HasErrorHandler': function(s:FUNC_PREFIX.'HasErrorHandler'),
+    \ }
+call typevim#make#Derived(s:typename, typevim#Doer#New(), s:PROTOTYPE)
+
 ""
 " @private
 " @usage {Success_handler} [Error_handler]
@@ -26,19 +37,13 @@ function! typevim#HandlerAttachment#New(Success_handler, ...) abort
   " This way, if the callbacks are unbound [dict] functions, l:self is not
   " implicitly set equal to the wrapping HandlerAttachment object, and calling
   " the function will throw E725.
-  let l:new = {
+  let l:new = deepcopy(s:PROTOTYPE)
+  call extend(l:new, {
       \ '__success_and_err': [a:Success_handler, l:Error_handler],
       \ '__called_success': 0,
       \ '__called_error': 0,
       \ '__next_link': {},
-      \ 'StartDoing': typevim#make#Member('StartDoing'),
-      \ 'HandleResolve': typevim#make#Member('HandleResolve'),
-      \ 'HandleReject': typevim#make#Member('HandleReject'),
-      \ 'ClearReferences': typevim#make#Member('ClearReferences'),
-      \ 'GetNextLink': typevim#make#Member('GetNextLink'),
-      \ 'HasErrorHandler': typevim#make#Member('HasErrorHandler'),
-      \ }
-  let l:new = typevim#make#Derived(s:typename, typevim#Doer#New(), l:new)
+      \ })
   return l:new
 endfunction
 
