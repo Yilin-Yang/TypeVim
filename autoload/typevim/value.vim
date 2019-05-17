@@ -85,8 +85,14 @@ function! typevim#value#IsValidTypename(Typename) abort
       \ || has_key(s:RESERVED_ATTRIBUTES, a:Typename)
     return 0
   endif
-  return match(a:Typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
+  if has_key(s:typenames_to_validity, a:Typename)
+    return s:typenames_to_validity[a:Typename]
+  endif
+  let l:to_return = match(a:Typename, '^[A-Z]\{1}[A-Za-z0-9_]*$') ==# 0
+  let s:typenames_to_validity[a:Typename] = l:to_return
+  return l:to_return
 endfunction
+let s:typenames_to_validity = {}
 
 ""
 " Returns 1 when the given {Id} is a a valid identifier, 0 otherwise.
