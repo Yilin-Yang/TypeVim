@@ -147,71 +147,55 @@ endfunction
 " writing, this is the numerical value returned by `type(v:null)` (see
 " |type()|), but this may change in the future.
 function! typevim#Any() abort
-  if typevim#value#HasTypeConstants()
-    return type(v:null)
-  endif
-  return 7
+  return s:ANY
 endfunction
+let s:ANY = typevim#value#HasTypeConstants() ? type(v:null) : 7
 
 ""
 " Return the numerical value of |v:t_bool|.
 function! typevim#Bool() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_bool
-  endif
-  return 6
+  return s:BOOL
 endfunction
+let s:BOOL = typevim#value#HasTypeConstants() ? v:t_bool : 6
 
 ""
 " Return the numerical value of |v:t_dict|.
 function! typevim#Dict() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_dict
-  endif
-  return 4
+  return s:DICT
 endfunction
+let s:DICT = typevim#value#HasTypeConstants() ? v:t_dict : 4
 
 ""
 " Return the numerical value of |v:t_float|.
 function! typevim#Float() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_float
-  endif
-  return 5
+  return s:FLOAT
 endfunction
+let s:FLOAT = typevim#value#HasTypeConstants() ? v:t_float : 5
 
 ""
 " Return the numerical value of |v:t_func|.
 function! typevim#Func() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_func
-  endif
-  return 2
+  return s:FUNC
 endfunction
+let s:FUNC = typevim#value#HasTypeConstants() ? v:t_func : 2
 
 ""
 " Return the numerical value of |v:t_list|.
 function! typevim#List() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_list
-  endif
-  return 3
+  return s:LIST
 endfunction
+let s:LIST = typevim#value#HasTypeConstants() ? v:t_list : 3
 
 ""
 " Return the numerical value of |v:t_number|.
 function! typevim#Number() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_number
-  endif
-  return 0
+  return s:NUMBER
 endfunction
+let s:NUMBER = typevim#value#HasTypeConstants() ? v:t_number : 0
 
 ""
 " Return the numerical value of |v:t_string|.
 function! typevim#String() abort
-  if typevim#value#HasTypeConstants()
-    return v:t_string
-  endif
-  return 1
+  return s:STRING
 endfunction
+let s:STRING = typevim#value#HasTypeConstants() ? v:t_string : 1
