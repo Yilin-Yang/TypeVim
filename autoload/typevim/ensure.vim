@@ -317,7 +317,7 @@ endfunction
 "
 " @throws BadValue if {Obj} is not a dict or {typename} is not a string.
 function! typevim#ensure#IsType(Obj, typename) abort
-  if !(maktaba#value#IsDict(a:Obj) && maktaba#value#IsString(a:typename))
+  if !(typevim#value#IsDict(a:Obj) && maktaba#value#IsString(a:typename))
     throw maktaba#error#BadValue(
         \ 'Gave bad arguments to IsType (should be dict and string): [%s, %s]',
         \ typevim#object#ShallowPrint(a:Obj),

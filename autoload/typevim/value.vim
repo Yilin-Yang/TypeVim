@@ -147,7 +147,7 @@ endfunction
 "
 " See @section(reserved) for more details.
 function! typevim#value#IsValidObject(Val) abort
-  if !maktaba#value#IsDict(a:Val)
+  if !typevim#value#IsDict(a:Val)
     return 0
   endif
   if !(has_key(a:Val, s:CLEAN_UPPER)
@@ -159,7 +159,7 @@ function! typevim#value#IsValidObject(Val) abort
   else
     return 0
   endif
-  if maktaba#value#IsList(l:type_val)
+  if typevim#value#IsList(l:type_val)
     for l:type in l:type_val
       if !typevim#value#IsValidTypename(l:type)
         return 0
@@ -178,7 +178,7 @@ endfunction
 " @throws BadValue if {typename} isn't a valid typename.
 " @throws WrongType if {typename} isn't a string.
 function! typevim#value#IsType(Obj, typename) abort
-  if !maktaba#value#IsDict(a:Obj)
+  if !typevim#value#IsDict(a:Obj)
     return 0
   endif
   call maktaba#ensure#IsString(a:typename)
@@ -188,7 +188,7 @@ function! typevim#value#IsType(Obj, typename) abort
   endif
 
   let l:type_list = a:Obj[s:TYPE_ATTR]
-  if !maktaba#value#IsList(l:type_list)  " type attribute is malformed
+  if !typevim#value#IsList(l:type_list)  " type attribute is malformed
     return 0
   endif
   for l:type in l:type_list
@@ -233,9 +233,9 @@ let s:LIST_TYPE = typevim#List()
 " Returns 1 when {Val} satisfies {constraint}, and 0 otherwise.
 " @throws WrongType when {constraint} is not a dict.
 function! s:SatisfiesConstraint(Val, constraint, property) abort
-  call maktaba#ensure#IsDict(a:constraint)
+  call typevim#ensure#IsDict(a:constraint)
   let l:type = a:constraint.type
-  let l:is_list = maktaba#value#IsList(l:type)
+  let l:is_list = typevim#value#IsList(l:type)
 
   if a:constraint.is_tag
     if !l:is_list
@@ -251,7 +251,7 @@ function! s:SatisfiesConstraint(Val, constraint, property) abort
     if index(l:type, typevim#Any()) !=# -1
       return 1  " if the type list allows 'any', for some reason, return 1
     endif
-    if maktaba#value#IsDict(a:Val)
+    if typevim#value#IsDict(a:Val)
       if index(l:type, typevim#Dict()) !=# -1 | return 1 | endif
       " it's a dict, but 'dict' isn't a specified type
       " check if it implements an interface
@@ -293,7 +293,7 @@ endfunction
 "
 " @throws WrongType if {Interface} is not a TypeVim interface (i.e. an object constructed through a call to @function(typevim#make#Interface).)
 function! typevim#value#Implements(Obj, Interface) abort
-  if !maktaba#value#IsDict(a:Obj)
+  if !typevim#value#IsDict(a:Obj)
     return 0
   endif
   call typevim#ensure#IsType(a:Interface, 'TypeVimInterface')
@@ -363,8 +363,8 @@ endfunction
 " @throws BadValue if {lhs} or {rhs} don't have length 2.
 " @throws WrongType if {lhs} or {rhs} are not lists.
 function! typevim#value#CompareKeys(lhs, rhs)
-  call maktaba#ensure#IsList(a:lhs)
-  call maktaba#ensure#IsList(a:rhs)
+  call typevim#ensure#IsList(a:lhs)
+  call typevim#ensure#IsList(a:rhs)
   if len(a:lhs) !=# 2 || len(a:rhs) !=# 2
     throw maktaba#error#BadValue(
         \ 'typevim#value#CompareKeys only sorts "pairs" (2-elem lists), '

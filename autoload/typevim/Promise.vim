@@ -305,7 +305,7 @@ function! typevim#Promise#Resolve(Val) dict abort
         \ l:self.State(), expand('<sfile>'),
         \ typevim#object#ShallowPrint(l:self, 2))
   endif
-  if maktaba#value#IsDict(a:Val) && typevim#value#IsType(a:Val, s:typename)
+  if typevim#value#IsDict(a:Val) && typevim#value#IsType(a:Val, s:typename)
     " 'disable' the current Doer, if one exists
     " when a Promise is resolved with another Promise, it *must* match that
     " other Promise's state (without resolving 'early', etc.) (A+ Spec, 2.3.2)

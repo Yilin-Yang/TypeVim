@@ -14,7 +14,7 @@ function! typevim#object#CleanUp() dict abort
         \ 'Object should have a list of its multiple destructors, but could '
         \ . 'find none! Object: %s', typevim#object#ShallowPrint(l:self))
   endif
-  if !maktaba#value#IsList(l:CleanUppers)
+  if !typevim#value#IsList(l:CleanUppers)
     throw maktaba#error#Failure(
         \ "Object's list of destructors somehow replaced with non-list object? "
         \ . 'Found: %s, Object: %s', typevim#object#ShallowPrint(l:CleanUppers),
@@ -69,8 +69,8 @@ endfunction
 " @throws WrongType if {obj} is not a dict, or if {Funcref} is not a Funcref, or if [arglist] is not a list.
 function! typevim#object#Bind(Funcref, obj, ...) abort
   call maktaba#ensure#IsFuncref(a:Funcref)
-  call maktaba#ensure#IsDict(a:obj)
-  let l:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  call typevim#ensure#IsDict(a:obj)
+  let l:arglist = typevim#ensure#IsList(get(a:000, 0, []))
   let l:force_rebind = maktaba#ensure#IsBool(get(a:000, 1, 0))
   let [l:_, l:Funcref, l:bound_args, l:bound_dict] =
       \ typevim#value#DecomposePartial(a:Funcref)
@@ -152,7 +152,7 @@ function! s:CheckSelfReference(Obj, seen_objects, self_refs) abort
   if !maktaba#value#IsCollection(a:Obj)
     return []
   endif
-  call maktaba#ensure#IsList(a:seen_objects)
+  call typevim#ensure#IsList(a:seen_objects)
   let l:i = 0 | while l:i <# len(a:seen_objects)
     let l:seen = a:seen_objects[l:i]
     if !maktaba#value#IsCollection(l:seen)
@@ -203,10 +203,10 @@ endfunction
 "
 " @throws WrongType
 function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
-  call maktaba#ensure#IsDict(a:Obj)
+  call typevim#ensure#IsDict(a:Obj)
   call maktaba#ensure#IsNumber(a:starting_indent)
-  call maktaba#ensure#IsList(a:seen_objs)
-  call maktaba#ensure#IsList(a:self_refs)
+  call typevim#ensure#IsList(a:seen_objs)
+  call typevim#ensure#IsList(a:self_refs)
 
   let l:starting_block = s:GetIndentBlock(a:starting_indent)
 
@@ -260,10 +260,10 @@ endfunction
 "
 " @throws WrongType
 function! s:PrettyPrintList(Obj, cur_indent, seen_objs, self_refs) abort
-  call maktaba#ensure#IsList(a:Obj)
+  call typevim#ensure#IsList(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_indent)
-  call maktaba#ensure#IsList(a:seen_objs)
-  call maktaba#ensure#IsList(a:self_refs)
+  call typevim#ensure#IsList(a:seen_objs)
+  call typevim#ensure#IsList(a:self_refs)
 
   if empty(a:Obj) | return '[  ]' | endif
   let l:str = '[ '
@@ -285,7 +285,7 @@ endfunction
 " Return a string of 'shallow-printed' self-referencing items {self_refs},
 " if the latter has more than one element; else, return an empty string.
 function! s:PrintSelfReferences(self_refs) abort
-  call maktaba#ensure#IsList(a:self_refs)
+  call typevim#ensure#IsList(a:self_refs)
   if len(a:self_refs) <=# 1
     return ''
   endif
@@ -322,11 +322,11 @@ endfunction
 function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsNumber(a:cur_indent_level)
-  call maktaba#ensure#IsList(a:seen_objects)
+  call typevim#ensure#IsList(a:seen_objects)
   " if typevim#value#StackHeight() ># 10
   "   return '{recursed too deep}'
   " endif
-  if maktaba#value#IsDict(a:Obj)
+  if typevim#value#IsDict(a:Obj)
     if typevim#value#IsValidObject(a:Obj)
       return s:PrettyPrintObject(
           \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
@@ -334,7 +334,7 @@ function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abor
       return s:PrettyPrintDict(
           \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
     endif
-  elseif maktaba#value#IsList(a:Obj)
+  elseif typevim#value#IsList(a:Obj)
     return s:PrettyPrintList(
         \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
   elseif maktaba#value#IsFuncref(a:Obj)
@@ -409,7 +409,7 @@ endfunction
 " deeply into large collections and bloating the output.
 " @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintDict(Obj, cur_depth, max_depth) abort
-  call maktaba#ensure#IsDict(a:Obj)
+  call typevim#ensure#IsDict(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   if empty(a:Obj)
@@ -436,7 +436,7 @@ endfunction
 " deeply into large collections and bloating the output.
 " @throws WrongType if {cur_depth} or {max_depth} aren't numbers.
 function! s:ShallowPrintList(Obj, cur_depth, max_depth) abort
-  call maktaba#ensure#IsList(a:Obj)
+  call typevim#ensure#IsList(a:Obj)
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
   if empty(a:Obj)
@@ -491,11 +491,11 @@ function! s:ShallowPrintImpl(Obj, cur_depth, max_depth) abort
     return string(a:Obj)
   endif
   if a:cur_depth ==# a:max_depth
-    if maktaba#value#IsList(a:Obj)
+    if typevim#value#IsList(a:Obj)
       return '[list]'
     elseif typevim#value#IsValidObject(a:Obj)
       return '{object}'
-    elseif maktaba#value#IsDict(a:Obj)
+    elseif typevim#value#IsDict(a:Obj)
       return '{dict}'
     elseif typevim#value#IsPartial(a:Obj)
       return "function('".get(a:Obj, 'name').", {partial}')"
@@ -503,11 +503,11 @@ function! s:ShallowPrintImpl(Obj, cur_depth, max_depth) abort
       return "function('".get(a:Obj, 'name')."')"
     endif
   elseif a:cur_depth <# a:max_depth
-    if maktaba#value#IsList(a:Obj)
+    if typevim#value#IsList(a:Obj)
       return s:ShallowPrintList(a:Obj, a:cur_depth, a:max_depth)
     elseif typevim#value#IsValidObject(a:Obj)
       return s:ShallowPrintObject(a:Obj, a:cur_depth, a:max_depth)
-    elseif maktaba#value#IsDict(a:Obj)
+    elseif typevim#value#IsDict(a:Obj)
       return s:ShallowPrintDict(a:Obj, a:cur_depth, a:max_depth)
     else  " IsFuncref
       return s:ShallowPrintFuncref(a:Obj, a:cur_depth, a:max_depth)

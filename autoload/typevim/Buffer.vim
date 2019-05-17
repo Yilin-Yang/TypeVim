@@ -58,7 +58,7 @@ let s:default_props = {
 " @throws BadValue if the given `bufname` matches an existing buffer that isn't `bufnr` (when nonzero), this function will throw an ERROR(BadValue).
 " @throws WrongType if the type of a value in [properties] doesn't match the list above.
 function! typevim#Buffer#New(...) abort
-  let l:properties = maktaba#ensure#IsDict(get(a:000, 0, {}))
+  let l:properties = typevim#ensure#IsDict(get(a:000, 0, {}))
   if empty(l:properties)
     let l:properties = deepcopy(s:default_props)
   else
@@ -227,7 +227,7 @@ endfunction
 " @throws WrongType if {vars_and_vals} is not a dict.
 function! typevim#Buffer#ExchangeBufVars(vars_and_vals) dict abort
   call s:CheckType(l:self)
-  call maktaba#ensure#IsDict(a:vars_and_vals)
+  call typevim#ensure#IsDict(a:vars_and_vals)
 
   let l:prev_vals = {}
   let l:vars_and_vals = items(a:vars_and_vals)
@@ -324,7 +324,7 @@ endfunction
 " This function throws the same exceptions as @function(Buffer.ExchangeBufVars).
 function! typevim#Buffer#SetDoRestore(temp_vars_and_vals, Action) dict abort
   call s:CheckType(l:self)
-  call maktaba#ensure#IsDict(a:temp_vars_and_vals)
+  call typevim#ensure#IsDict(a:temp_vars_and_vals)
   call maktaba#ensure#TypeMatchesOneOf(a:Action, [function('s:CheckType'), ''])
   let l:old_vals = l:self.ExchangeBufVars(a:temp_vars_and_vals)
 
@@ -551,7 +551,7 @@ function! typevim#Buffer#search(regexp, ...) dict abort
   let l:ignore_badflags = typevim#ensure#IsBool(get(a:000, 4, 0))
 
   " set l:lineno and l:colno with appropriate values
-  if maktaba#value#IsList(l:startpos)
+  if typevim#value#IsList(l:startpos)
     let l:normalized = []  " 'normalize' to [lineno, colno]
     let l:len = len(l:startpos)
     if l:len ==# 2
@@ -789,7 +789,7 @@ endfunction
 function! s:ReplaceLines(startline, endline, replacement) dict abort
   call maktaba#ensure#IsNumber(a:startline)
   call maktaba#ensure#IsNumber(a:endline)
-  call maktaba#ensure#IsList(a:replacement)
+  call typevim#ensure#IsList(a:replacement)
 
   let l:num_lines = l:self.NumLines()
   call s:ValidateLineNumbers(a:startline, a:endline, l:num_lines)

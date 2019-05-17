@@ -101,7 +101,7 @@ let s:listify_fileformats = ['agnostic', 'unix', 'dos', 'mac']
 " @default indent_block="  "
 " @throws WrongType if {listified} is not a list of strings, or if [indent_block] is not a string.
 function! typevim#string#IndentList(listified, ...) abort
-  call maktaba#ensure#IsList(a:listified)
+  call typevim#ensure#IsList(a:listified)
   let l:indent_block = maktaba#ensure#IsString(get(a:000, 0, '  '))
   if empty(l:indent_block) | return a:listified | endif
 

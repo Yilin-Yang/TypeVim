@@ -238,7 +238,7 @@ endfunction
 " @throws NotAuthorized if {attribute} is already defined on {dict}.
 " @throws WrongType
 function! s:AssignReserved(dict, attribute, Value) abort
-  call maktaba#ensure#IsDict(a:dict)
+  call typevim#ensure#IsDict(a:dict)
   call maktaba#ensure#IsString(a:attribute)
   if has_key(a:dict, a:attribute)
     throw s:IllegalRedefinition(
@@ -276,7 +276,7 @@ function! typevim#make#Class(typename, prototype, ...) abort
   " 'normalize' the numerical dummy value to zero
   if maktaba#value#IsNumber(l:CleanUp) | let l:CleanUp = 0 | endif
   call typevim#ensure#IsValidTypename(a:typename)
-  call maktaba#ensure#IsDict(a:prototype)
+  call typevim#ensure#IsDict(a:prototype)
 
   let l:new = a:prototype  " technically l:new is just an alias
   call s:AssignReserved(l:new, s:TYPE_ATTR, [a:typename])
@@ -331,7 +331,7 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
 
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()
-  elseif maktaba#value#IsDict(a:Parent)
+  elseif typevim#value#IsDict(a:Parent)
     let l:base = a:Parent
   else
     throw maktaba#error#WrongType(
@@ -396,13 +396,13 @@ function! s:IsConstraint(Val) abort
 endfunction
 
 function! s:MakeConstraintFromItem(Val) abort
-  if maktaba#value#IsList(a:Val)
+  if typevim#value#IsList(a:Val)
     throw maktaba#error#WrongType(
         \ 'Gave a list, but expected a single constraint: %s',
         \ typevim#object#ShallowPrint(a:Val))
   elseif s:IsConstraint(a:Val)
     return a:Val
-  elseif maktaba#value#IsDict(a:Val)  " but not a 'concrete' interface yet,
+  elseif typevim#value#IsDict(a:Val)  " but not a 'concrete' interface yet,
     return typevim#make#Interface('INTERFACE_ANON', a:Val)
   else
     call s:ThrowWrongConstraintType(a:Val)
@@ -410,8 +410,8 @@ function! s:MakeConstraintFromItem(Val) abort
 endfunction
 
 function! s:MakeTypeList(constraint, type_list) abort
-  call maktaba#ensure#IsDict(a:constraint)
-  let l:constraint_list = maktaba#ensure#IsList(a:type_list)
+  call typevim#ensure#IsDict(a:constraint)
+  let l:constraint_list = typevim#ensure#IsList(a:type_list)
   let l:to_return = []
   let l:i = 0 | while l:i <# len(l:constraint_list)
     let l:Item = l:constraint_list[l:i]
@@ -422,8 +422,8 @@ function! s:MakeTypeList(constraint, type_list) abort
 endfunction
 
 function! s:MakeTagList(constraint, tag_list) abort
-  call maktaba#ensure#IsDict(a:constraint)
-  call maktaba#ensure#IsList(a:tag_list)
+  call typevim#ensure#IsDict(a:constraint)
+  call typevim#ensure#IsList(a:tag_list)
   " just walk over the list, make sure it doesn't mix tag strings with
   " normal constraints
   let l:i = 0 | while l:i <# len(a:tag_list)
@@ -443,8 +443,8 @@ endfunction
 " Given {Val}, return a 'refined' constraint (individual, or a list of) that
 " that can be stored in a TypeVim interface object.
 function! s:MakeConstraintFrom(constraint, Val) abort
-  call maktaba#ensure#IsDict(a:constraint)
-  if maktaba#value#IsList(a:Val)
+  call typevim#ensure#IsDict(a:constraint)
+  if typevim#value#IsList(a:Val)
     if empty(a:Val)
       throw maktaba#error#WrongType('Gave empty list in interface constraint')
     elseif maktaba#value#IsString(a:Val[0])
@@ -509,7 +509,7 @@ endfunction
 "
 function! typevim#make#Interface(typename, prototype) abort
   call maktaba#ensure#IsString(a:typename)
-  call maktaba#ensure#IsDict(a:prototype)
+  call typevim#ensure#IsDict(a:prototype)
 
   " modify the prototype as follows:
   " - strip any question marks from key names
@@ -584,7 +584,7 @@ let s:incompats_to_errs['TYPE_TOO_PERMISSIVE'] =
 function! typevim#make#Extension(typename, base, prototype) abort
   call maktaba#ensure#IsString(a:typename)
   call typevim#ensure#IsType(a:base, s:TYPEVIM_INTERFACE)
-  call maktaba#ensure#IsDict(a:prototype)
+  call typevim#ensure#IsDict(a:prototype)
 
   let l:extension = typevim#make#Interface(a:typename, a:prototype)
   unlockvar! l:extension
@@ -601,9 +601,9 @@ function! typevim#make#Extension(typename, base, prototype) abort
       call s:ThrowIncompatible('NONOPTIONAL_IN_BASE', l:property)
     endif
 
-    let l:base_type = maktaba#value#IsList(l:BaseProp['type']) ?
+    let l:base_type = typevim#value#IsList(l:BaseProp['type']) ?
         \ l:BaseProp['type'] : [ l:BaseProp['type'] ]
-    let l:this_type = maktaba#value#IsList(l:Constraints['type']) ?
+    let l:this_type = typevim#value#IsList(l:Constraints['type']) ?
         \ l:Constraints['type'] : [ l:Constraints['type'] ]
     if len(l:base_type) ==# 1
       if l:base_type[0] ==# typevim#Any()
@@ -696,20 +696,20 @@ endfunction
 let s:interface_to_instance = {}
 
 function! s:DefaultValueOf(Constraints) abort
-  if !maktaba#value#IsDict(a:Constraints)
+  if !typevim#value#IsDict(a:Constraints)
     throw maktaba#error#Failure('Given property constraint is not a dict: %s',
         \ typevim#object#ShallowPrint(a:Constraints))
   endif
   let l:type = a:Constraints.type
   if a:Constraints.is_tag
     return a:Constraints.type[0]
-  elseif maktaba#value#IsList(l:type)
+  elseif typevim#value#IsList(l:type)
     " construct a sacrificial copy of these constraints, replacing the current
     " list of types with the very first value, then make a recursive call
     let l:con_copy = deepcopy(a:Constraints)
     let l:con_copy.type = l:type[0]
     return s:DefaultValueOf(l:con_copy)
-  elseif maktaba#value#IsDict(l:type)
+  elseif typevim#value#IsDict(l:type)
       \ && typevim#value#IsType(l:type, 'TypeVimInterface')
     return typevim#make#Instance(l:type)
   elseif typevim#value#IsTypeConstant(l:type)
@@ -779,9 +779,9 @@ let s:TypeConstantsToDefaults = {
 function! typevim#make#Member(funcname, ...) abort
   call typevim#ensure#HasPartials()
   call maktaba#ensure#IsString(a:funcname)
-  let l:arglist = maktaba#ensure#IsList(get(a:000, 0, []))
+  let l:arglist = typevim#ensure#IsList(get(a:000, 0, []))
   if a:0 ># 1
-    let l:dict = maktaba#ensure#IsDict(a:2)
+    let l:dict = typevim#ensure#IsDict(a:2)
   else
     let l:dict = 0
   endif
@@ -814,7 +814,7 @@ function! typevim#make#Member(funcname, ...) abort
   endif
 
   " function ignores empty arglists, but will bind to an empty dict
-  if maktaba#value#IsDict(l:dict)
+  if typevim#value#IsDict(l:dict)
     return function(l:prefix.'#'.a:funcname, l:arglist, l:dict)
   else
     return function(l:prefix.'#'.a:funcname, l:arglist)
@@ -857,7 +857,7 @@ endfunction
 function! typevim#make#AbstractFunc(typename, funcname, parameters) abort
   call typevim#ensure#IsValidTypename(a:typename)
   call maktaba#ensure#IsString(a:funcname)
-  call maktaba#ensure#IsList(a:parameters)
+  call typevim#ensure#IsList(a:parameters)
   let l:named = []
   let l:opt_named = []
   let l:opt_arglist = []
