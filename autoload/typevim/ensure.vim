@@ -4,13 +4,14 @@
 "
 " Returns 1.
 function! typevim#ensure#HasPartials() abort
-  if !typevim#value#HasPartials()
+  if !s:HAS_PARTIALS
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support Partials and/or the ability to '
         \ . 'get() the components of a Partial.')
   endif
   return 1
 endfunction
+let s:HAS_PARTIALS = typevim#value#HasPartials()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
@@ -18,12 +19,13 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasLambdas() abort
-  if !typevim#value#HasLambdas()
+  if !s:HAS_LAMBDAS
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support lambdas.')
   endif
   return 1
 endfunction
+let s:HAS_LAMBDAS = typevim#value#HasLambdas()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
@@ -31,13 +33,14 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasTypeConstants() abort
-  if !typevim#value#HasTypeConstants()
+  if !s:HAS_TYPECONSTANTS
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not have type constants, '
         \ . 'e.g. v:t_bool, v:t_dict, etc.')
   endif
   return 1
 endfunction
+let s:HAS_TYPECONSTANTS = typevim#value#HasTypeConstants()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
@@ -45,12 +48,13 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasSetBufline() abort
-  if !typevim#value#HasSetBufline()
+  if !s:HAS_SETBUFLINE
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support setbufline().')
   endif
   return 1
 endfunction
+let s:HAS_SETBUFLINE = typevim#value#HasSetBufline()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim will
@@ -59,12 +63,13 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasTimerTryCatchPatch() abort
-  if !typevim#value#HasTimerTryCatchPatch()
+  if !s:HAS_TIMERTRYCATCHPATCH
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not have patched timer exception handling.')
   endif
   return 1
 endfunction
+let s:HAS_TIMERTRYCATCHPATCH = typevim#value#HasTimerTryCatchPatch()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
@@ -72,12 +77,13 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasAppendBufline() abort
-  if !typevim#value#HasAppendBufline()
+  if !s:HAS_APPENDBUFLINE
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support appendbufline().')
   endif
   return 1
 endfunction
+let s:HAS_APPENDBUFLINE = typevim#value#HasAppendBufline()
 
 ""
 " Throws an ERROR(MissingFeature) if the current version of vim does not
@@ -85,12 +91,13 @@ endfunction
 "
 " Returns 1.
 function! typevim#ensure#HasDeleteBufline() abort
-  if !typevim#value#HasDeleteBufline()
+  if !s:HAS_DELETEBUFLINE
     throw maktaba#error#MissingFeature(
         \ 'This vim version does not support deletebufline().')
   endif
   return 1
 endfunction
+let s:HAS_DELETEBUFLINE = typevim#value#HasDeleteBufline()
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 

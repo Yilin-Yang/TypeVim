@@ -7,28 +7,32 @@ let s:CLEAN_UPPER = typevim#attribute#CLEAN_UPPER()
 " the ability to |get()| the components of a |Partial| or |Funcref| object,
 " and 0 otherwise.
 function! typevim#value#HasPartials() abort
-  return has('patch-7.4.1842')
+  return s:HAS_PARTIALS
   " return has('patch-7.4.1836')
 endfunction
+let s:HAS_PARTIALS = has('patch-7.4.1842')
 
 ""
 " Returns 1 if this version of vim supports |lambda|s, and 0 otherwise.
 function! typevim#value#HasLambdas() abort
-  return has('patch-7.4.2044')
+  return s:HAS_LAMBDAS
 endfunction
+let s:HAS_LAMBDAS = has('patch-7.4.2044')
 
 ""
 " Returns 1 if this version of vim supports |v:t_TYPE| constants, and 0
 " otherwise.
 function! typevim#value#HasTypeConstants() abort
-  return has('patch-7.4.2071')
+  return s:HAS_TYPECONSTANTS
 endfunction
+let s:HAS_TYPECONSTANTS = has('patch-7.4.2071')
 
 ""
 " Returns 1 if this version of vim supports |setbufline|, and 0 otherwise.
 function! typevim#value#HasSetBufline() abort
-  return has('patch-8.0.1039')
+  return s:HAS_SETBUFLINE
 endfunction
+let s:HAS_SETBUFLINE = has('patch-8.0.1039')
 
 ""
 " Returns 1 if this version of vim will, correctly, not terminate a timer
@@ -38,20 +42,23 @@ endfunction
 " If this is unsupported, @dict(Promise) resolution and rejection are not
 " guaranteed to work correctly.
 function! typevim#value#HasTimerTryCatchPatch() abort
-  return has('patch-8.0.1067')
+  return s:HAS_TIMERTRYCATCHPATCH
 endfunction
+let s:HAS_TIMERTRYCATCHPATCH = has('patch-8.0.1067')
 
 ""
 " Returns 1 if this version of vim supports |appendbufline|, and 0 otherwise.
 function! typevim#value#HasAppendBufline() abort
-  return has('patch-8.1.0037')
+  return s:HAS_APPENDBUFLINE
 endfunction
+let s:HAS_APPENDBUFLINE = has('patch-8.1.0037')
 
 ""
 " Returns 1 if this version of vim supports |deletebufline|, and 0 otherwise.
 function! typevim#value#HasDeleteBufline() abort
-  return has('patch-8.1.0039')
+  return s:HAS_DELETEBUFLINE
 endfunction
+let s:HAS_DELETEBUFLINE = has('patch-8.1.0039')
 
 ""
 " Returns 1 if the given {Val} is 1, 0, |v:true|, or |v:false|. Does not
@@ -81,10 +88,7 @@ endfunction
 " {Typename} cannot be an empty string, nor can it be a "reserved attribute".
 " See @section(reserved) for more details.
 function! typevim#value#IsValidTypename(Typename) abort
-  if !maktaba#value#IsString(a:Typename) || empty(a:Typename)
-      \ || has_key(s:RESERVED_ATTRIBUTES, a:Typename)
-    return 0
-  endif
+  if !maktaba#value#IsString(a:Typename) | return 0 | endif
   if has_key(s:typenames_to_validity, a:Typename)
     return s:typenames_to_validity[a:Typename]
   endif
@@ -92,7 +96,13 @@ function! typevim#value#IsValidTypename(Typename) abort
   let s:typenames_to_validity[a:Typename] = l:to_return
   return l:to_return
 endfunction
-let s:typenames_to_validity = {}
+let s:typenames_to_validity = deepcopy(s:RESERVED_ATTRIBUTES)
+let s:typenames_to_validity[''] = 0  " empty typename is invalid
+for s:attr in keys(s:typenames_to_validity)
+  " add these to the memo, so that reserved words are rejected
+  let s:typenames_to_validity[s:attr] = 0
+endfor
+unlet s:attr
 
 ""
 " Returns 1 when the given {Id} is a a valid identifier, 0 otherwise.
@@ -277,7 +287,8 @@ function! s:SatisfiesConstraint(Val, constraint, property) abort
       return 1
     endif
   else " it's a singular object
-    if typevim#value#IsType(l:type, 'TypeVimInterface')
+    if typevim#value#IsDict(l:type)
+      " optimization: assume that all dicts are Interfaces
       return typevim#value#Implements(a:Val, l:type)
     elseif l:type ==# typevim#Any()
       return 1

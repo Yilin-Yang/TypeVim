@@ -21,3 +21,15 @@ Execute (typevim#value#IsList: Returns False for Things that Aren't Lists):
     AssertEqual 0, typevim#value#IsList(g:Obj),
         \ 'Failed with '.maktaba#value#TypeName(g:Obj)
   endfor
+
+Execute (typevim#value#IsValidTypename: Rejects Values that Aren't Strings):
+  AssertEqual 0, typevim#value#IsValidTypename(0)
+
+Execute (typevim#value#IsValidTypename: Rejects Empty Strings):
+  AssertEqual 0, typevim#value#IsValidTypename('')
+
+Execute (typevim#value#IsValidTypename: Rejects Reserved Words):
+  for g:attr in typevim#attribute#ATTRIBUTES()
+    AssertEqual 0, typevim#value#IsValidTypename(g:attr),
+        \ 'Failed to reject: '.g:attr
+  endfor
