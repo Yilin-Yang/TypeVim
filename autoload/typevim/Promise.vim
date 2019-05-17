@@ -123,14 +123,18 @@ function! typevim#Promise#New(...) abort
     let g:typevim_promise_minversion_ignore = 1
   endif
 
-  let l:Doer = typevim#ensure#IsValidObject(get(a:000, 0, typevim#Doer#New()))
-  if !has_key(l:Doer, 'SetCallbacks')
-    throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
-        \ typevim#object#ShallowPrint(l:Doer, 2))
-  elseif !maktaba#value#IsFuncref(l:Doer['SetCallbacks'])
-    throw maktaba#error#BadValue(
-        \ "Given Doer's SetCallbacks is not a Funcref: %s",
-        \ typevim#object#ShallowPrint(l:Doer, 2))
+  if a:0
+    let l:Doer = typevim#ensure#IsValidObject(a:1)
+    if !has_key(l:Doer, 'SetCallbacks')
+      throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
+          \ typevim#object#ShallowPrint(l:Doer, 2))
+    elseif !maktaba#value#IsFuncref(l:Doer['SetCallbacks'])
+      throw maktaba#error#BadValue(
+          \ "Given Doer's SetCallbacks is not a Funcref: %s",
+          \ typevim#object#ShallowPrint(l:Doer, 2))
+    endif
+  else
+    let l:Doer = typevim#Doer#New()
   endif
 
   " NOTE: __handler_attachments is a list of triples: a Doer, a success
