@@ -678,13 +678,22 @@ endfunction
 " @throws WrongType if {interface} is not a TypeVim interface.
 function! typevim#make#Instance(interface) abort
   call typevim#ensure#IsType(a:interface, 'TypeVimInterface')
+
+  let l:interface_as_str = string(a:interface)
+  if has_key(s:interface_to_instance, l:interface_as_str)
+    return deepcopy(s:interface_to_instance[l:interface_as_str])
+  endif
+
   let l:new = {}
   for [l:prop, l:Constraints] in items(a:interface)
     if has_key(s:RESERVED_ATTRIBUTES, l:prop) | continue | endif
     let l:new[l:prop] = s:DefaultValueOf(l:Constraints)
   endfor
-  return typevim#make#Class(a:interface[typevim#attribute#INTERFACE()], l:new)
+  call typevim#make#Class(a:interface[typevim#attribute#INTERFACE()], l:new)
+  let s:interface_to_instance[l:interface_as_str] = deepcopy(l:new)
+  return l:new
 endfunction
+let s:interface_to_instance = {}
 
 function! s:DefaultValueOf(Constraints) abort
   if !maktaba#value#IsDict(a:Constraints)

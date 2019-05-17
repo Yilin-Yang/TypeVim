@@ -27,7 +27,9 @@ Execute (typevim#make#Instance: Verify That Instances Aren't Aliases):
   call typevim#make#Interface('Simple', g:interface)
   let g:instance = typevim#make#Instance(g:interface)
   let g:another = typevim#make#Instance(g:interface)
+  let g:another_nother = typevim#make#Instance(g:interface)
   Assert g:instance isnot g:another, 'Instances are aliases of each other'
+  Assert g:another isnot g:another_nother, 'Memoized instances are aliases of each other'
   Assert g:instance.dict isnot g:another.dict, 'Dicts are aliases of each other'
   Assert g:instance.list isnot g:another.list, 'Lists are aliases of each other'
   call CleanUp('g:interface')
