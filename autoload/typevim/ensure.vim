@@ -192,8 +192,12 @@ endfunction
 " @throws WrongType if the given {typename} is not a string.
 function! typevim#ensure#IsValidTypename(typename) abort
   if !maktaba#value#IsString(a:typename)
-    throw maktaba#error#WrongType('Given "typename" is not a string: %s',
-        \ typevim#object#ShallowPrint(a:typename))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType('Given "typename" is not a string: %s',
+          \ typevim#object#ShallowPrint(a:typename))
+    else
+      throw maktaba#error#WrongType('Given "typename" is not a string!')
+    endif
   endif
   if !typevim#value#IsValidTypename(a:typename)
     if empty(a:typename)
@@ -262,8 +266,12 @@ endfunction
 " @throws WrongType if the given {id} is not a string.
 function! typevim#ensure#IsValidInterfaceProp(id) abort
   if !maktaba#value#IsString(a:id)
-    throw maktaba#error#WrongType('Given "id" is not a string: %s',
-        \ typevim#object#ShallowPrint(a:id))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType('Given "id" is not a string: %s',
+          \ typevim#object#ShallowPrint(a:id))
+    else
+      throw maktaba#error#WrongType('Given "id" is not a string!')
+    endif
   endif
   if !typevim#value#IsValidInterfaceProp(a:id)
     if empty(a:id)
@@ -298,8 +306,12 @@ endfunction
 " Returns {Val} for convenience.
 function! typevim#ensure#IsTypeConstant(Val) abort
   if !typevim#value#IsTypeConstant(a:Val)
-    throw maktaba#error#WrongType('Given item is not a v:t_TYPE constant: %s',
-        \ typevim#object#ShallowPrint(a:Val))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType('Given item is not a v:t_TYPE constant: %s',
+          \ typevim#object#ShallowPrint(a:Val))
+    else
+      throw maktaba#error#WrongType('Given item is not a v:t_TYPE constant!')
+    endif
   endif
   return a:Val
 endfunction
@@ -310,8 +322,12 @@ endfunction
 " Returns {Val} for convenience.
 function! typevim#ensure#IsValidObject(Val) abort
   if !typevim#value#IsValidObject(a:Val)
-    throw maktaba#error#WrongType('Given item is not a TypeVim object: %s',
-        \ typevim#object#ShallowPrint(a:Val))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType('Given item is not a TypeVim object: %s',
+          \ typevim#object#ShallowPrint(a:Val))
+    else
+      throw maktaba#error#WrongType('Given item is not a TypeVim object!')
+    endif
   endif
   return a:Val
 endfunction

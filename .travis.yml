@@ -44,15 +44,19 @@ before_script:
 script:
   - cd "$REPO_DIR/test"  # to make handling filepaths easier
   - |
-    VIM_EXE=$HOME/out/7.4.1842/bin/vim
+    export VIM_EXE=$HOME/out/7.4.1842/bin/vim
     echo 'Running Vim 7.4 tests.' \
       && $VIM_EXE --version \
-      && ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
+      && ERROR_VERBOSITY=0 ./run_tests.sh --vim --vim_exe=$VIM_EXE --international \
+      && ERROR_VERBOSITY=1 ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
   - |
-    VIM_EXE=$HOME/out/8/bin/vim
+    export VIM_EXE=$HOME/out/8/bin/vim
     echo 'Running Vim 8.1+ tests.' \
       && $VIM_EXE --version \
-      && ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
+      && ERROR_VERBOSITY=0 ./run_tests.sh --vim --vim_exe=$VIM_EXE --international \
+      && ERROR_VERBOSITY=1 ./run_tests.sh --vim --vim_exe=$VIM_EXE --international
   - |
+    export VIM_EXE=
     echo 'Running neovim tests.' \
-      && ./run_tests.sh --neovim --international
+      && ERROR_VERBOSITY=0 ./run_tests.sh --neovim --international \
+      && ERROR_VERBOSITY=1 ./run_tests.sh --neovim --international

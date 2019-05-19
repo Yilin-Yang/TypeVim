@@ -237,10 +237,15 @@ function! typevim#Buffer#ExchangeBufVars(vars_and_vals) dict abort
           \ 'Gave a bufvar that was an empty string: %s',
           \ typevim#object#ShallowPrint(a:vars_and_vals))
     elseif l:var ==# '&'
-      throw maktaba#error#BadValue(
-          \ 'Cannot overwrite all buffer-local options at once! '
-            \ . '(Gave "&" as a varname in: %s)',
-          \ typevim#object#ShallowPrint(a:vars_and_vals))
+      if typevim#VerboseErrors()
+        throw maktaba#error#BadValue(
+            \ 'Cannot overwrite all buffer-local options at once! '
+              \ . '(Gave "&" as a varname in: %s)',
+            \ typevim#object#ShallowPrint(a:vars_and_vals))
+      else
+        throw maktaba#error#BadValue(
+            \ 'Cannot overwrite all buffer-local options at once!')
+      endif
     elseif l:var[0:0] ==# '&' && !exists(l:var)
       throw maktaba#error#BadValue('Option does not exist: %s', l:var)
     endif
@@ -258,6 +263,19 @@ function! typevim#Buffer#ExchangeBufVars(vars_and_vals) dict abort
     endtry
   endfor
   return l:prev_vals
+endfunction
+
+function! s:ThrowBadArgsInAction(Action, exception) abort
+  if typevim#VerboseErrors()
+    throw maktaba#error#BadValue(
+        \ 'Funcref isn''t invocable with no arguments: %s',
+        \ typevim#object#ShallowPrint(a:Action, 2))
+        \ . ', resulted in: '.a:exception
+  else
+    throw maktaba#error#BadValue(
+        \ 'Funcref isn''t invocable with no arguments: %s',
+        \ get(a:Action, 'name'))
+  endif
 endfunction
 
 ""
@@ -287,10 +305,7 @@ function! typevim#Buffer#OpenDoRestore(Action) dict abort
         let l:to_return = a:Action()
       catch /\(E116\)\|\(E118\)\|\(E119\)/
         " Invalid arguments | Too many arguments | Not enough arguments
-        throw maktaba#error#BadValue(
-            \ 'Funcref isn''it invocable with no arguments: %s',
-            \ typevim#object#ShallowPrint(a:Action, 2))
-            \ . ', resulted in: '.v:exception
+        call s:ThrowBadArgsInAction(a:Action, v:exception)
       endtry
     else
       let l:to_return = 0
@@ -334,10 +349,7 @@ function! typevim#Buffer#SetDoRestore(temp_vars_and_vals, Action) dict abort
         let l:to_return = a:Action()
       catch /\(E116\)\|\(E118\)\|\(E119\)/
         " Invalid arguments | Too many arguments | Not enough arguments
-        throw maktaba#error#BadValue(
-            \ 'Funcref isn''it invocable with no arguments: %s',
-            \ typevim#object#ShallowPrint(a:Action, 2))
-            \ . ', resulted in: '.v:exception
+        call s:ThrowBadArgsInAction(a:Action, v:exception)
       endtry
     else  " is string
       let l:to_return = 0

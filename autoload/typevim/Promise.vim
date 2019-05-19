@@ -126,12 +126,23 @@ function! typevim#Promise#New(...) abort
   if a:0
     let l:Doer = typevim#ensure#IsValidObject(a:1)
     if !has_key(l:Doer, 'SetCallbacks')
-      throw maktaba#error#BadValue('Given Doer has no SetCallbacks function: %s',
-          \ typevim#object#ShallowPrint(l:Doer, 2))
+      if typevim#VerboseErrors()
+        throw maktaba#error#BadValue(
+            \ 'Given Doer has no SetCallbacks function: %s',
+            \ typevim#object#ShallowPrint(l:Doer, 2))
+      else
+        throw maktaba#error#BadValue(
+            \ 'Given Doer has no SetCallbacks function!')
+      endif
     elseif !maktaba#value#IsFuncref(l:Doer['SetCallbacks'])
-      throw maktaba#error#BadValue(
-          \ "Given Doer's SetCallbacks is not a Funcref: %s",
-          \ typevim#object#ShallowPrint(l:Doer, 2))
+      if typevim#VerboseErrors()
+        throw maktaba#error#BadValue(
+            \ "Given Doer's SetCallbacks is not a Funcref: %s",
+            \ typevim#object#ShallowPrint(l:Doer, 2))
+      else
+        throw maktaba#error#BadValue(
+            \ "Given Doer's SetCallbacks is not a Funcref!")
+      endif
     endif
   else
     let l:Doer = typevim#Doer#New()
@@ -159,16 +170,22 @@ function! s:TypeCheck(Obj) abort
 endfunction
 
 function! s:ThrowUnhandledReject(Val, self) abort
-  try
-    let l:print_output = typevim#object#PrettyPrint(a:self)
-  catch /E132/  " Function call depth is higher than 'maxfuncdepth'
-    let l:print_output = typevim#object#ShallowPrint(a:self, 2)
-  endtry
-  call a:self.__Clear()
-  throw maktaba#error#NotFound('Unhandled Promise rejection; rejected with '
-        \ . 'reason: %s, inside of Promise: %s',
-      \ typevim#object#ShallowPrint(a:Val, 2),
-      \ l:print_output)
+  if typevim#VerboseErrors()
+    try
+      let l:print_output = typevim#object#PrettyPrint(a:self)
+    catch /E132/  " Function call depth is higher than 'maxfuncdepth'
+      let l:print_output = typevim#object#ShallowPrint(a:self, 2)
+    endtry
+    call a:self.__Clear()
+    throw maktaba#error#NotFound('Unhandled Promise rejection; rejected with '
+          \ . 'reason: %s, inside of Promise: %s',
+        \ typevim#object#ShallowPrint(a:Val, 2),
+        \ l:print_output)
+  else
+    throw maktaba#error#NotFound(
+        \ 'Unhandled Promise rejection; rejected with reason: %s',
+        \ typevim#object#ShallowPrint(a:Val, 2))
+  endif
 endfunction
 
 ""
@@ -201,14 +218,24 @@ function! typevim#Promise#__SetDoerCallbacks(Resolve, Reject, Doer) abort
     catch /E118/  " Too many arguments
       call a:Doer.SetCallbacks(a:Resolve)
     catch /E119/  " Not enough arguments
-      throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
-            \ . 'signature (too many parameters): %s',
-          \ typevim#object#ShallowPrint(a:Doer, 2))
+      if typevim#VerboseErrors()
+        throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+              \ . 'signature (too many parameters): %s',
+            \ typevim#object#ShallowPrint(a:Doer, 2))
+      else
+        throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+              \ . 'signature (too many parameters)')
+      endif
     endtry
   catch /E118/  " Too many arguments
-    throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
-          \ . 'signature (takes no parameters): %s',
-        \ typevim#object#ShallowPrint(a:Doer, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+            \ . 'signature (takes no parameters): %s',
+          \ typevim#object#ShallowPrint(a:Doer, 2))
+    else
+      throw maktaba#error#BadValue('SetCallbacks on Doer has bad function '
+            \ . 'signature (takes no parameters)')
+    endif
   endtry
 endfunction
 
@@ -311,15 +338,27 @@ endfunction
 function! typevim#Promise#Resolve(Val) dict abort
   call s:TypeCheck(l:self)
   if a:Val is l:self
-    throw maktaba#error#BadValue(
-        \ 'Tried to resolve a Promise with itself in callstack %s: %s',
-        \ expand('<sfile>'), typevim#object#ShallowPrint(a:Val))
+    if typevim#VerboseErrors()
+      throw maktaba#error#BadValue(
+          \ 'Tried to resolve a Promise with itself in callstack %s: %s',
+          \ expand('<sfile>'), typevim#object#ShallowPrint(a:Val))
+    else
+      throw maktaba#error#BadValue(
+          \ 'Tried to resolve a Promise with itself in callstack %s',
+          \ expand('<sfile>'))
+    endif
   endif
   if l:self.State() !=# s:PENDING
-    throw maktaba#error#NotAuthorized(
-        \ 'Tried to resolve an already %s Promise in callstack %s: %s',
-        \ l:self.State(), expand('<sfile>'),
-        \ typevim#object#ShallowPrint(l:self, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#NotAuthorized(
+          \ 'Tried to resolve an already %s Promise in callstack %s: %s',
+          \ l:self.State(), expand('<sfile>'),
+          \ typevim#object#ShallowPrint(l:self, 2))
+    else
+      throw maktaba#error#NotAuthorized(
+          \ 'Tried to resolve an already %s Promise in callstack %s',
+          \ l:self.State(), expand('<sfile>'))
+    endif
   endif
   if typevim#value#IsDict(a:Val) && typevim#value#IsType(a:Val, s:typename)
     " 'disable' the current Doer, if one exists
@@ -362,10 +401,16 @@ endfunction
 function! typevim#Promise#Reject(Val) dict abort
   call s:TypeCheck(l:self)
   if l:self.State() !=# s:PENDING
-    throw maktaba#error#NotAuthorized(
-        \ 'Tried to reject an already %s Promise in callstack %s: %s',
-        \ l:self.State(), expand('<sfile>'),
-        \ typevim#object#ShallowPrint(l:self, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#NotAuthorized(
+          \ 'Tried to reject an already %s Promise in callstack %s: %s',
+          \ l:self.State(), expand('<sfile>'),
+          \ typevim#object#ShallowPrint(l:self, 2))
+    else
+      throw maktaba#error#NotAuthorized(
+          \ 'Tried to reject an already %s Promise in callstack %s',
+          \ l:self.State(), expand('<sfile>'))
+    endif
   endif
 
   call timer_start(0, function(
@@ -409,9 +454,14 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   elseif a:Resolve is v:null
     let l:Resolve = s:default_handler
   else
-    throw maktaba#error#WrongType(
-        \ 'Given Resolve is neither a Funcref nor v:null: %s',
-        \ typevim#object#ShallowPrint(a:Resolve, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType(
+          \ 'Given Resolve is neither a Funcref nor v:null: %s',
+          \ typevim#object#ShallowPrint(a:Resolve, 2))
+    else
+      throw maktaba#error#WrongType(
+          \ 'Given Resolve is neither a Funcref nor v:null')
+    endif
   endif
   let l:Reject = get(a:000, 0, s:default_handler)
   if maktaba#value#IsFuncref(l:Reject)
@@ -419,9 +469,14 @@ function! typevim#Promise#Then(Resolve, ...) dict abort
   elseif l:Reject is v:null
     let l:Reject = s:default_handler
   else
-    throw maktaba#error#WrongType(
-        \ 'Given Reject is neither a Funcref nor v:null: %s',
-        \ typevim#object#ShallowPrint(a:Resolve, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType(
+          \ 'Given Reject is neither a Funcref nor v:null: %s',
+          \ typevim#object#ShallowPrint(a:Resolve, 2))
+    else
+      throw maktaba#error#WrongType(
+          \ 'Given Reject is neither a Funcref nor v:null')
+    endif
   endif
   let l:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
 
@@ -488,9 +543,14 @@ endfunction
 function! typevim#Promise#Get() dict abort
   call s:TypeCheck(l:self)
   if l:self.__state ==# s:PENDING
-    throw maktaba#error#NotFound(
-        \ 'Promise has not resolved/rejected and stores no value: %s',
-        \ typevim#object#ShallowPrint(l:self, 2))
+    if typevim#VerboseErrors()
+      throw maktaba#error#NotFound(
+          \ 'Promise has not resolved/rejected and stores no value: %s',
+          \ typevim#object#ShallowPrint(l:self, 2))
+    else
+      throw maktaba#error#NotFound(
+          \ 'Promise has not resolved/rejected and stores no value')
+    endif
   endif
   return l:self.__value
 endfunction

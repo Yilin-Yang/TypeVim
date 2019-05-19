@@ -329,8 +329,12 @@ function! typevim#value#Implements(Obj, Interface) abort
 endfunction
 
 function! s:NotTypeVimObject(Obj) abort
-  throw maktaba#error#BadValue('Given object is not a TypeVim object: %s',
-      \ typevim#object#ShallowPrint(a:Obj))
+  if typevim#VerboseErrors()
+    throw maktaba#error#BadValue('Given object is not a TypeVim object: %s',
+        \ typevim#object#ShallowPrint(a:Obj))
+  else
+    throw maktaba#error#BadValue('Given object is not a TypeVim object!')
+  endif
 endfunction
 
 ""

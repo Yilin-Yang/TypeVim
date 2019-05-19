@@ -23,3 +23,7 @@ filetype plugin indent on
 syntax enable
 set autoread
 set hidden
+
+if $ERROR_VERBOSITY !=# ''
+  let g:typevim_enable_verbose_error_messages = $ERROR_VERBOSITY
+endif

@@ -117,8 +117,13 @@ function! typevim#HandlerAttachment#HandleReject(Val) dict abort
   let l:Handler = l:self.__success_and_err[1]
   if l:Handler ==# s:default_handler
     call l:self.Reject(a:Val)
-    throw maktaba#error#NotFound(
-        \ 'Rejection without an error handler: %s', a:Val)
+    if typevim#VerboseErrors()
+        throw maktaba#error#NotFound(
+            \ 'Rejection without an error handler: %s',
+            \ typevim#object#ShallowPrint(a:Val))
+    else
+        throw maktaba#error#NotFound('Rejection without an error handler!')
+    endif
   else
     try
       let l:Returned = l:Handler(a:Val)

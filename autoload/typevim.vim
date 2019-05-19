@@ -2,7 +2,7 @@
 " @section Introduction, intro
 " @stylized TypeVim
 " @library
-" @order intro summary functions dicts make
+" @order intro summary logging functions dicts make
 " A library providing a prototype-based class system in VimL.
 "
 " VimL allows users to assign Funcrefs into a dictionary; these |function|s,
@@ -106,6 +106,30 @@
 " datatype.
 
 ""
+" @section Logging, logging
+" The verbosity of TypeVim's error messages and exception text is
+" configurable by changing |g:typevim_enable_verbose_error_messages| to `1`
+" from its default value of `0`.
+"
+" Developers may benefit from setting higher levels of error message
+" verbosity: this will, among other things, cause Promises rejected without an
+" error handler to @function(typevim#object#PrettyPrint) themselves into the
+" error message text, capturing a "self-snapshot" that may be useful for
+" debugging. (Note that because vim's error messages don't render newline
+" characters, in order for this output to be useful, one may have to
+" copy-paste the error message into a buffer and "pre-process" it by replacing
+" the `^@` literals with actual newlines.)
+"
+" Verbose error messages, however, may hurt performance, on top of being
+" obnoxious and unsightly. For this reason, they are disabled by default.
+"
+" THIS SETTING SHALL NOT BE CHANGED INSIDE OF "PRODUCTION CODE."
+" The intent is for verbose output to be enabled manually by plugin
+" developers (on the command line, or in a test suite's .vimrc), or by end
+" users who are trying to debug their configurations. A plugin silently
+" changing this value would be very difficult to troubleshoot.
+
+""
 " @section About
 " TypeVim is provided under the terms of the MIT license.
 
@@ -199,3 +223,12 @@ function! typevim#String() abort
   return s:STRING
 endfunction
 let s:STRING = typevim#value#HasTypeConstants() ? v:t_string : 1
+
+""
+" @private
+function! typevim#VerboseErrors() abort
+  if !exists('g:typevim_enable_verbose_error_messages')
+    let g:typevim_enable_verbose_error_messages = 0
+  endif
+  return g:typevim_enable_verbose_error_messages
+endfunction

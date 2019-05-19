@@ -334,10 +334,16 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   elseif typevim#value#IsDict(a:Parent)
     let l:base = a:Parent
   else
-    throw maktaba#error#WrongType(
-        \ 'Given Parent should be a Funcref to base class constructor, '
-        \ . 'or a base class "prototype" dict: %s',
-        \ typevim#object#ShallowPrint(a:Parent))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType(
+          \ 'Given Parent should be a Funcref to base class constructor, '
+          \ . 'or a base class "prototype" dict: %s',
+          \ typevim#object#ShallowPrint(a:Parent))
+    else
+      throw maktaba#error#WrongType(
+          \ 'Given Parent should be a Funcref to base class constructor, '
+          \ . 'or a base class "prototype" dict')
+    endif
   endif
   call typevim#ensure#IsValidObject(l:base)
 
@@ -355,10 +361,16 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
     endif
     if has_key(l:derived, l:key)
       if !maktaba#value#IsFuncref(l:Value) && !l:clobber_base_vars
-        throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
-            \ . 'class member variable: "%s" (Set [clobber_base_vars] if this '
-            \ . 'is intentional.) Would overwrite with value: %s',
-            \ l:key, typevim#object#ShallowPrint(l:Value))
+        if typevim#VerboseErrors()
+          throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
+              \ . 'class member variable: "%s" (Set [clobber_base_vars] if '
+              \ . 'this is intentional.) Would overwrite with value: %s',
+              \ l:key, typevim#object#ShallowPrint(l:Value))
+        else
+          throw maktaba#error#NotAuthorized('Inheritance would redefine a base '
+              \ . 'class member variable: "%s" (Set [clobber_base_vars] if '
+              \ . 'this is intentional.)', l:key)
+        endif
       else
         " if l:Value is a Funcref, preserve l:derived's Funcref, implementing
         " function overriding
@@ -397,9 +409,14 @@ endfunction
 
 function! s:MakeConstraintFromItem(Val) abort
   if typevim#value#IsList(a:Val)
-    throw maktaba#error#WrongType(
-        \ 'Gave a list, but expected a single constraint: %s',
-        \ typevim#object#ShallowPrint(a:Val))
+    if typevim#VerboseErrors()
+      throw maktaba#error#WrongType(
+          \ 'Gave a list, but expected a single constraint: %s',
+          \ typevim#object#ShallowPrint(a:Val))
+    else
+      throw maktaba#error#WrongType(
+          \ 'Gave a list, but expected a single constraint!')
+    endif
   elseif s:IsConstraint(a:Val)
     return a:Val
   elseif typevim#value#IsDict(a:Val)  " but not a 'concrete' interface yet,
@@ -429,9 +446,13 @@ function! s:MakeTagList(constraint, tag_list) abort
   let l:i = 0 | while l:i <# len(a:tag_list)
     let l:tag = a:tag_list[l:i]
     if !maktaba#value#IsString(l:tag)
-      throw maktaba#error#WrongType(
-          \ 'Give a non-string value in a tag list: %s',
-          \ typevim#object#ShallowPrint(l:tag))
+      if typevim#VerboseErrors()
+        throw maktaba#error#WrongType(
+            \ 'Give a non-string value in a tag list: %s',
+            \ typevim#object#ShallowPrint(l:tag))
+      else
+        throw maktaba#error#WrongType('Give a non-string value in a tag list!')
+      endif
     endif
   let l:i += 1 | endwhile
   let a:constraint.type = a:tag_list

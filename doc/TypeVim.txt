@@ -8,13 +8,14 @@ CONTENTS                                                    *TypeVim-contents*
       1. Differences from Traditional OOP................|TypeVim-differences|
       2. Sugar.................................................|TypeVim-sugar|
       3. Type Information.......................................|TypeVim-type|
-  3. Functions.............................................|TypeVim-functions|
-  4. Dictionaries..............................................|TypeVim-dicts|
-  5. Class Definitions..........................................|TypeVim-make|
+  3. Logging.................................................|TypeVim-logging|
+  4. Functions.............................................|TypeVim-functions|
+  5. Dictionaries..............................................|TypeVim-dicts|
+  6. Class Definitions..........................................|TypeVim-make|
       1. Declaring a Class................................|TypeVim-basic_decl|
       2. Declaring a Derived Class (Polymorphism)..........|TypeVim-poly_decl|
       3. Reserved Attributes................................|TypeVim-reserved|
-  6. About.....................................................|TypeVim-about|
+  7. About.....................................................|TypeVim-about|
 
 ==============================================================================
 INTRODUCTION                                                   *TypeVim-intro*
@@ -119,6 +120,31 @@ using |typevim#value#IsType()|, or assert the same using
 |typevim#ensure#IsType()|. Checking whether a given value is a TypeVim object
 at all is done using |typevim#value#IsValidObject()|, or the analogous
 function from the `ensure` namespace.
+
+==============================================================================
+LOGGING                                                      *TypeVim-logging*
+
+The verbosity of TypeVim's error messages and exception text is configurable
+by changing |g:typevim_enable_verbose_error_messages| to `1` from its default
+value of `0`.
+
+Developers may benefit from setting higher levels of error message verbosity:
+this will, among other things, cause Promises rejected without an error
+handler to |typevim#object#PrettyPrint()| themselves into the error message
+text, capturing a "self-snapshot" that may be useful for debugging. (Note that
+because vim's error messages don't render newline characters, in order for
+this output to be useful, one may have to copy-paste the error message into a
+buffer and "pre-process" it by replacing the `^@` literals with actual
+newlines.)
+
+Verbose error messages, however, may hurt performance, on top of being
+obnoxious and unsightly. For this reason, they are disabled by default.
+
+THIS SETTING SHALL NOT BE CHANGED INSIDE OF "PRODUCTION CODE." The intent is
+for verbose output to be enabled manually by plugin developers (on the command
+line, or in a test suite's .vimrc), or by end users who are trying to debug
+their configurations. A plugin silently changing this value would be very
+difficult to troubleshoot.
 
 ==============================================================================
 FUNCTIONS                                                  *TypeVim-functions*
