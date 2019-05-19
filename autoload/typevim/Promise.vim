@@ -385,30 +385,38 @@ endfunction
 " It is strongly suggested that a [Reject] handler be provided in calls to
 " this function.
 "
-" If {Resolve} is not a Funcref, it will be replaced with a "default" Funcref
+" If {Resolve} is |v:null|, it will be replaced with a "default" Funcref
 " that simply returns (unmodified) whatever value it's given. If [Reject] is
-" not a Funcref, then the function will behave as if no error handler was
-" given at all.
+" |v:null|, then the function will behave as if no error handler was given at
+" all.
 "
 " Returns a "child" Promise that will be fulfilled, or rejected, with the
 " value of the given {Resolve} success handler or [Reject] error handler
 " respectively, unless [chain] is 0, in which case it will return 0.
 "
-" @default Reject=a "null" error handler.
+" @default Reject=a "null" error handler
 " @default chain=1
 " @throws WrongType if {Resolve} or [Reject] are not Funcrefs.
 function! typevim#Promise#Then(Resolve, ...) dict abort
   call s:TypeCheck(l:self)
   if maktaba#value#IsFuncref(a:Resolve)
     let l:Resolve = a:Resolve
-  else
+  elseif a:Resolve is v:null
     let l:Resolve = s:default_handler
+  else
+    throw maktaba#error#WrongType(
+        \ 'Given Resolve is neither a Funcref nor v:null: %s',
+        \ typevim#object#ShallowPrint(a:Resolve, 2))
   endif
   let l:Reject = get(a:000, 0, s:default_handler)
   if maktaba#value#IsFuncref(l:Reject)
     let l:Reject = l:Reject
-  else
+  elseif l:Reject is v:null
     let l:Reject = s:default_handler
+  else
+    throw maktaba#error#WrongType(
+        \ 'Given Reject is neither a Funcref nor v:null: %s',
+        \ typevim#object#ShallowPrint(a:Resolve, 2))
   endif
   let l:chain = maktaba#ensure#IsBool(get(a:000, 1, 1))
 

@@ -1362,16 +1362,16 @@ Promise.Then({Resolve}, [Reject], [chain])                    *Promise.Then()*
   It is strongly suggested that a [Reject] handler be provided in calls to
   this function.
 
-  If {Resolve} is not a Funcref, it will be replaced with a "default" Funcref
-  that simply returns (unmodified) whatever value it's given. If [Reject] is
-  not a Funcref, then the function will behave as if no error handler was
-  given at all.
+  If {Resolve} is |v:null|, it will be replaced with a "default" Funcref that
+  simply returns (unmodified) whatever value it's given. If [Reject] is
+  |v:null|, then the function will behave as if no error handler was given at
+  all.
 
   Returns a "child" Promise that will be fulfilled, or rejected, with the
   value of the given {Resolve} success handler or [Reject] error handler
   respectively, unless [chain] is 0, in which case it will return 0.
 
-  [Reject] is a "null" error handler. if omitted.
+  [Reject] is a "null" error handler if omitted.
   [chain] is 1 if omitted.
   Throws ERROR(WrongType) if {Resolve} or [Reject] are not Funcrefs.
 

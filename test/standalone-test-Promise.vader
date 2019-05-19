@@ -35,6 +35,15 @@ Then (Test Error Handling, Post Resolution Resolve/Reject):
   AssertThrew 'ERROR(NotAuthorized): Tried to reject an already fulfilled Promise'
   AssertEqual 'fulfilled', g:promise.State()
 
+Execute (typevim#Promise: Rejects Malformed Arguments to Then):
+  let g:promise = typevim#Promise#New()
+  AssertThrows call g:promise.Then(0)
+  AssertThrew 'ERROR(WrongType).*Resolve.*'
+
+  let g:promise = typevim#Promise#New()
+  AssertThrows call g:promise.Then(function('SetVal'), 0)
+  AssertThrew 'ERROR(WrongType).*Reject.*'
+
 Execute (typevim#Promise: State Progression, Resolution):
   let g:promise = typevim#Promise#New()
   AssertEqual 'pending', g:promise.State()
@@ -158,10 +167,10 @@ Execute (typevim#Promise: Resolve/Reject Next-in-Chain, Non Funcref Arguments):
   if typevim#value#HasTimerTryCatchPatch()
     " This test fails spuriously if this patch is not supported.
     let g:to_resolve = typevim#Promise#New()
-    let g:resolved = g:to_resolve.Then(0, 1)
+    let g:resolved = g:to_resolve.Then(v:null, v:null)
 
     let g:to_reject = typevim#Promise#New()
-    let g:rejected = g:to_reject.Then(0, 1)
+    let g:rejected = g:to_reject.Then(v:null, v:null)
 
     call g:to_resolve.Resolve('foo')
     call g:to_reject.Reject('foo')
