@@ -1,4 +1,5 @@
 let s:TYPE_ATTR = typevim#attribute#TYPE()
+let s:TYPE_DICT_ATTR = typevim#attribute#TYPE_DICT()
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:CLEAN_UPPER = typevim#attribute#CLEAN_UPPER()
 
@@ -192,29 +193,15 @@ function! typevim#value#IsType(Obj, typename) abort
     return 0
   endif
   call maktaba#ensure#IsString(a:typename)
-  call typevim#ensure#IsValidTypename(a:typename)
-  if !has_key(a:Obj, s:TYPE_ATTR)  " no type attribute
+  if !has_key(a:Obj, s:TYPE_DICT_ATTR) " no type attribute
     return 0
   endif
 
-  let l:type_list = a:Obj[s:TYPE_ATTR]
-  if !typevim#value#IsList(l:type_list)  " type attribute is malformed
+  let l:TypeDict = a:Obj[s:TYPE_DICT_ATTR]
+  if !typevim#value#IsDict(l:TypeDict)  " type attribute is malformed
     return 0
   endif
-  for l:type in l:type_list
-    if !typevim#value#IsValidTypename(l:type)
-      throw maktaba#error#Failure(
-          \ 'Object typelist contains invalid typename: %s, object is %s '
-            \ . 'with typelist %s',
-          \ typevim#object#ShallowPrint(l:type),
-          \ typevim#object#ShallowPrint(a:Obj),
-          \ typevim#object#ShallowPrint(l:type_list))
-    endif
-    if l:type ==# a:typename
-      return 1
-    endif
-  endfor
-  return 0
+  return has_key(l:TypeDict, a:typename)
 endfunction
 
 ""

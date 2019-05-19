@@ -21,6 +21,7 @@
 
 let s:Attributes = {
     \ 'TYPE': '___TYPE___',
+    \ 'TYPE_DICT': '___TYPES_DICT___',
     \ 'CLEAN_UPPER_LIST': '___CLEAN_UPPERS___',
     \ 'INTERFACE': '___INTERFACE___',
     \ 'CLEAN_UP': 'CleanUp',
@@ -54,6 +55,14 @@ endfunction
 " @private
 function! typevim#attribute#TYPE() abort
   return s:Attributes['TYPE']
+endfunction
+
+""
+" Return the key used for storing an object's TYPE_DICT attribute, used for
+" fast lookup of whether an object implements a particular type.
+" @private
+function! typevim#attribute#TYPE_DICT() abort
+  return s:Attributes['TYPE_DICT']
 endfunction
 
 ""

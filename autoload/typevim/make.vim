@@ -167,6 +167,7 @@
 
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
+let s:TYPE_DICT_ATTR = typevim#attribute#TYPE_DICT()
 let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
 let s:CLN_UP_FUNC = typevim#attribute#CLEAN_UPPER()
 
@@ -283,6 +284,10 @@ function! typevim#make#Class(typename, prototype, ...) abort
   call s:AssignReserved(l:new, s:CLN_UP_LIST_ATTR, [l:CleanUp])
   call s:AssignReserved(l:new, s:CLN_UP_FUNC, s:CleanUpAll)
 
+  let l:typedict = {}
+  let l:typedict[a:typename] = 1
+  call s:AssignReserved(l:new, s:TYPE_DICT_ATTR, l:typedict)
+
   return l:new
 endfunction
 
@@ -332,7 +337,7 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()
   elseif typevim#value#IsDict(a:Parent)
-    let l:base = a:Parent
+    let l:base = deepcopy(a:Parent)
   else
     if typevim#VerboseErrors()
       throw maktaba#error#WrongType(
@@ -353,7 +358,9 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
       \ extend(l:base[s:CLN_UP_LIST_ATTR], l:derived[s:CLN_UP_LIST_ATTR])
 
   call add(l:base[s:TYPE_ATTR], a:typename)
+  let l:base[s:TYPE_DICT_ATTR][a:typename] = 1
   let l:derived[s:TYPE_ATTR] = l:base[s:TYPE_ATTR]
+  let l:derived[s:TYPE_DICT_ATTR] = l:base[s:TYPE_DICT_ATTR]
 
   for [l:key, l:Value] in items(l:base)
     if has_key(s:RESERVED_ATTRIBUTES, l:key)
@@ -814,7 +821,7 @@ function! typevim#make#Member(funcname, ...) abort
   if !exists('s:last_member_returned')
     let s:last_member_returned = [v:null, v:null]
   elseif s:last_member_returned[0] ==# l:callstack
-    let l:prefix = s:last_member_returned[1] 
+    let l:prefix = s:last_member_returned[1]
   endif
 
   if !exists('l:prefix')
