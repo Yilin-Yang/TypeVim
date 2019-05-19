@@ -159,11 +159,16 @@ function! s:TypeCheck(Obj) abort
 endfunction
 
 function! s:ThrowUnhandledReject(Val, self) abort
+  try
+    let l:print_output = typevim#object#PrettyPrint(a:self)
+  catch /E132/  " Function call depth is higher than 'maxfuncdepth'
+    let l:print_output = typevim#object#ShallowPrint(a:self, 2)
+  endtry
+  call a:self.__Clear()
   throw maktaba#error#NotFound('Unhandled Promise rejection; rejected with '
         \ . 'reason: %s, inside of Promise: %s',
       \ typevim#object#ShallowPrint(a:Val, 2),
-      \ typevim#object#ShallowPrint(a:self, 2))
-  call a:self.__Clear()
+      \ l:print_output)
 endfunction
 
 ""
