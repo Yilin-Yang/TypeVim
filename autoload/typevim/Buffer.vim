@@ -128,6 +128,7 @@ function! typevim#Buffer#New(...) abort
     \ 'ReplaceLines': typevim#make#Member('ReplaceLines'),
     \ 'InsertLines': typevim#make#Member('InsertLines'),
     \ 'DeleteLines': typevim#make#Member('DeleteLines'),
+    \ 'IsOpen': typevim#make#Member('IsOpen'),
     \ 'IsOpenInTab': typevim#make#Member('IsOpenInTab'),
   \ }
 
@@ -973,6 +974,23 @@ endfunction
 
 ""
 " @dict Buffer
+" Returns 1 if this @dict(Buffer) is open in any tabpage, and 0 otherwise. If
+" the buffer owned by this @dict(Buffer) no longer exists, return 0.
+function! typevim#Buffer#IsOpen() dict abort
+  let l:last_tab = tabpagenr('$')
+  try
+    let l:this_buf = l:self.bufnr()
+  catch /ERROR(NotFound)/
+    return 0
+  endtry
+  for l:tabnr in range(1, l:last_tab)
+    if s:IsOpenInTab(l:this_buf, l:tabnr) | return 1 | endif
+  endfor
+  return 0
+endfunction
+
+""
+" @dict Buffer
 " Returns 1 if this @dict(Buffer) is open in the tabpage with the given
 " [tabnr], and 0 otherwise. If the buffer owned by this @dict(Buffer) no
 " longer exists, return 0.
@@ -991,9 +1009,13 @@ function! typevim#Buffer#IsOpenInTab(...) dict abort
   catch /ERROR(NotFound)/  " buffer no longer exists
     return 0
   endtry
-  let l:bufs_in_tab = tabpagebuflist(l:tabnr)
+  return s:IsOpenInTab(l:this_buf, l:tabnr)
+endfunction
+
+function! s:IsOpenInTab(bufnr, tabnr) abort
+  let l:bufs_in_tab = tabpagebuflist(a:tabnr)
   for l:buf in l:bufs_in_tab
-    if l:buf ==# l:this_buf | return 1 | endif
+    if l:buf ==# a:bufnr | return 1 | endif
   endfor
   return 0
 endfunction

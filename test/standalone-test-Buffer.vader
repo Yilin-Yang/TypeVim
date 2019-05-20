@@ -692,6 +692,7 @@ Execute (Buffer: Is Open in this Tab, Yes):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
 Then:
+  AssertEqual 1, g:buffer.IsOpen()
   AssertEqual 1, g:buffer.IsOpenInTab()
   AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
 
@@ -700,6 +701,7 @@ Execute (Buffer: Is Open in Previous Tab):
   let g:old_tab = tabpagenr()
   tabnew
 Then:
+  AssertEqual 1, g:buffer.IsOpen()
   AssertEqual 1, g:buffer.IsOpenInTab(g:old_tab)
   AssertEqual 0, g:buffer.IsOpenInTab()
   AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
@@ -708,6 +710,7 @@ Execute (Buffer: Is Open in Previous Tab, and In Current):
   call g:buffer.Open()
 Then:
   AssertEqual 1, g:buffer.IsOpenInTab(g:old_tab)
+  AssertEqual 1, g:buffer.IsOpen()
   AssertEqual 1, g:buffer.IsOpenInTab()
   AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
 
@@ -717,6 +720,7 @@ Execute (Buffer: Is Not Open At All):
   tabnew
   call g:buffer.CleanUp()
 Then:
+  AssertEqual 0, g:buffer.IsOpen()
   AssertEqual 0, g:buffer.IsOpenInTab(g:old_tab)
   AssertEqual 0, g:buffer.IsOpenInTab()
   AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
@@ -776,3 +780,8 @@ Execute (Buffer: Switch, Is Open in Different (Specific) Tab (which is given), a
 Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
+
+Execute (Buffer: Returns 0 for IsOpen when Buf No Longer Exists):
+  execute 'bwipeout! '.g:buffer.bufnr()
+  AssertEqual 0, g:buffer.IsOpen()
+  AssertEqual 0, g:buffer.IsOpenInTab()

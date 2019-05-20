@@ -1227,6 +1227,10 @@ Buffer.DeleteLines({startline}, {endline})              *Buffer.DeleteLines()*
 
   See |Buffer.ReplaceLines()| for details on exceptions and indexing.
 
+Buffer.IsOpen()                                              *Buffer.IsOpen()*
+  Returns 1 if this |TypeVim.Buffer| is open in any tabpage, and 0 otherwise.
+  If the buffer owned by this |TypeVim.Buffer| no longer exists, return 0.
+
 Buffer.IsOpenInTab([tabnr])                             *Buffer.IsOpenInTab()*
   Returns 1 if this |TypeVim.Buffer| is open in the tabpage with the given
   [tabnr], and 0 otherwise. If the buffer owned by this |TypeVim.Buffer| no
