@@ -1015,6 +1015,8 @@ Buffer.Open([cmd], [keepalt])                                  *Buffer.Open()*
   If [keepalt] is 1, then the current alternate buffer will be preserved. See
   |keepalt|.
 
+  Throws ERROR(NotFound) if the managed buffer does not exist.
+
 Buffer.Switch([open_in_any], [tabnr])                        *Buffer.Switch()*
   Move the cursor to (one of) this buffer's window(s) in the given tab.
 

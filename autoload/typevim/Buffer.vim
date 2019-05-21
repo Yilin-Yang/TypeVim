@@ -412,13 +412,15 @@ endfunction
 " For details on [cmd], see `:h buffer`. [cmd] should include a leading `+`.
 " If [keepalt] is 1, then the current alternate buffer will be preserved. See
 " |keepalt|.
+"
+" @throws NotFound if the managed buffer does not exist.
 function! typevim#Buffer#Open(...) dict abort
   call s:CheckType(l:self)
   let l:cmd = get(a:000, 0, '')
   let l:keepalt = get(a:000, 1, 0)
   let l:open_cmd = (l:keepalt ? 'keepalt ' : '') . 'buffer '
   if !empty(l:cmd) | let l:open_cmd .= l:cmd.' ' | endif
-  execute l:open_cmd.l:self.__bufnr
+  execute l:open_cmd.l:self.bufnr()
 endfunction
 
 ""

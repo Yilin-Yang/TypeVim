@@ -785,3 +785,7 @@ Execute (Buffer: Returns 0 for IsOpen when Buf No Longer Exists):
   execute 'bwipeout! '.g:buffer.bufnr()
   AssertEqual 0, g:buffer.IsOpen()
   AssertEqual 0, g:buffer.IsOpenInTab()
+
+Execute (Buffer: Throws ERROR(NotFound) on Open() when Buf No Longer Exists):
+  AssertThrows call g:buffer.Open()
+  AssertThrew 'ERROR(NotFound)'
