@@ -144,6 +144,29 @@ function! typevim#value#IsTypeConstant(Val) abort
 endfunction
 
 ""
+" Returns the typename associated with the given {Type} constant. Similar to
+" (and returns the same names as) |maktaba#value#TypeName|, but takes in
+" |type()| constants rather than actual objects.
+" @throws WrongType if {Type} is not a type constant.
+function! typevim#value#ConstantToTypeName(Type) abort
+  call typevim#ensure#IsTypeConstant(a:Type)
+  if !exists('s:constants_to_typenames')
+    let s:constants_to_typenames = {
+        \ typevim#Any() : 'any',
+        \ typevim#Bool() : 'boolean',
+        \ typevim#Dict() : 'dictionary',
+        \ typevim#Float() : 'float',
+        \ typevim#Func() : 'funcref',
+        \ typevim#List() : 'list',
+        \ typevim#Number() : 'number',
+        \ typevim#String() : 'string',
+        \ }
+    lockvar! s:constants_to_typenames
+  endif
+  return s:constants_to_typenames[a:Type]
+endfunction
+
+""
 " Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 "
 " A valid TypeVim object is a dictionary. It shall contain the following

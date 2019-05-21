@@ -794,6 +794,12 @@ typevim#value#IsTypeConstant({Val})           *typevim#value#IsTypeConstant()*
   Returns 1 when the given {Val} is a number equal to a valid |v:t_TYPE|
   constant or |typevim#Any()|, and 0 otherwise.
 
+typevim#value#ConstantToTypeName({Type})  *typevim#value#ConstantToTypeName()*
+  Returns the typename associated with the given {Type} constant. Similar to
+  (and returns the same names as) |maktaba#value#TypeName|, but takes in
+  |type()| constants rather than actual objects.
+  Throws ERROR(WrongType) if {Type} is not a type constant.
+
 typevim#value#IsValidObject({Val})             *typevim#value#IsValidObject()*
   Returns 1 when the given object is a valid TypeVim object, 0 otherwise.
 

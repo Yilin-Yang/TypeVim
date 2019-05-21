@@ -31,3 +31,18 @@ Execute (typevim: Test Type Constants w/ Built-Ins):
     AssertEqual v:t_number, typevim#Number(), 'Failed on: Number'
     AssertEqual v:t_string, typevim#String(), 'Failed on: String'
   endif
+
+Execute (typevim: Test Type Constants to TypeNames):
+  function! Foo()
+    echo 'yee'
+  endfunction
+
+  for g:Ref in [{}, 0.0, function('Foo'), [], 0, '']
+    AssertEqual maktaba#value#TypeName(g:Ref),
+              \ typevim#value#ConstantToTypeName(type(g:Ref))
+  endfor
+
+  if typevim#value#HasTypeConstants()
+    AssertEqual maktaba#value#TypeName(v:true),
+              \ typevim#value#ConstantToTypeName(typevim#Bool())
+  endif
