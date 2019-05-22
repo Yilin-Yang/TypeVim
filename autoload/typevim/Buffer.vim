@@ -205,9 +205,11 @@ endfunction
 ""
 " @dict Buffer
 " Perform cleanup for this Buffer object.
+"
+" @throws NotFound if the managed buffer no longer exists, i.e. it was already wiped out.
 function! typevim#Buffer#CleanUp() dict abort
   call s:CheckType(l:self)
-  execute 'bwipeout! '.l:self.__bufnr
+  execute 'bwipeout! '.l:self.bufnr()
 endfunction
 
 ""
@@ -290,17 +292,18 @@ endfunction
 " previous view and previous value of |lazyredraw| are restored even if
 " executing {Action} results in an error.
 "
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {Action} is not a Funcref or a string.
 function! typevim#Buffer#OpenDoRestore(Action) dict abort
   call s:CheckType(l:self)
   call maktaba#ensure#TypeMatchesOneOf(a:Action, [function('s:CheckType'), ''])
 
+  let l:bufnr = l:self.bufnr()
   let l:old_tabpage = tabpagenr()
   let l:old_redraw = &lazyredraw
-
   try
     tabnew
-    execute 'buffer '.l:self.__bufnr
+    execute 'buffer '.l:bufnr
     if maktaba#value#IsFuncref(a:Action)
       try
         let l:to_return = a:Action()
@@ -368,6 +371,7 @@ endfunction
 " Invoke `getbufvar` on this Buffer's stored buffer with the given arguments.
 " See `:h getbufvar` for argument details.
 " @usage {varname} [default]
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#getbufvar(varname, ...) dict abort
   call s:CheckType(l:self)
@@ -375,7 +379,7 @@ function! typevim#Buffer#getbufvar(varname, ...) dict abort
   let l:default = get(a:000, 0, 0)
   let l:gave_default = a:0
   let l:to_return = 0
-  execute 'let l:to_return = getbufvar(l:self["__bufnr"], a:varname'
+  execute 'let l:to_return = getbufvar(l:self.bufnr(), a:varname'
       \ . (l:gave_default ? ', l:default)' : ')')
   return l:to_return
 endfunction
@@ -384,10 +388,11 @@ endfunction
 " @dict Buffer
 " Invoke `setbufvar` on this Buffer's stored buffer with the given arguments.
 " See `:h setbufvar` for argument details.
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {varname} is not a string.
 function! typevim#Buffer#setbufvar(varname, Val) dict abort
   call s:CheckType(l:self)
-  call setbufvar(l:self.__bufnr, a:varname, a:Val)
+  call setbufvar(l:self.bufnr(), a:varname, a:Val)
 endfunction
 
 ""
@@ -483,7 +488,7 @@ endfunction
 " @default action=""
 " @default force=0
 " @throws BadValue if [action] is not one of the values listed above.
-" @throws NotFound if the given {bufnr} doesn't correspond to a real buffer.
+" @throws NotFound if the given {bufnr} doesn't correspond to a real buffer, or if the managed buffer doesn't exist and [action] is not an empty string.
 " @throws WrongType if {bufnr} is not a number, if [action] is not a string, or if [force] is not a boolean.
 function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
   call s:CheckType(l:self)
@@ -493,9 +498,13 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
   let l:action = maktaba#ensure#IsString(get(a:000, 0, ''))
   let l:force  = typevim#ensure#IsBool(get(a:000, 1, 1))
   call maktaba#ensure#IsIn(l:action, ['', 'bunload', 'bdelete', 'bwipeout'])
-  let l:to_return = l:self.__bufnr
   if l:action !=# ''
-    execute l:action . l:force ? '! ' : ' ' . l:to_return
+    " will throw ERROR(NotFound) if the buffer doesn't exist
+    let l:to_return = l:self.bufnr()
+    execute l:action . ( l:force ? '! ' : ' ' ) . l:to_return
+  else
+    " we aren't touching this buffer, so we can just return it to the user
+    let l:to_return = l:self.__bufnr
   endif
   let l:self.__bufnr = a:bufnr
   return l:to_return
@@ -510,13 +519,13 @@ endfunction
 " additional [flags] may be provided to modify the behavior of the search,
 " which starts from the given [startpos].
 "
-" This function is a wrapper around the |search()| function. The wrapped
-" buffer is silently (with |lazyredraw| enabled) opened in a new tabpage,
-" where the search is performed. Prior to the search, the cursor position is
-" set to the given [startpos]. After the search, the previous cursor position
-" is restored, the new tab is closed, and |lazyredraw| is reset to its previous
-" value. This will have side effects; for instance, any applicable buffer
-" events (e.g. |BufEnter|) will fire.
+" This function wraps the |search()| function. The managed buffer is silently
+" (with |lazyredraw| enabled) opened in a new tabpage, where the search is
+" performed. Prior to the search, wrapscan is enabled, and the cursor position
+" is set to the given [startpos]. Afterwards, the previous cursor position is
+" restored, the new tab is closed, and |wrapscan| and |lazyredraw| are reset
+" to their previous value. This will have side effects; for instance, any
+" applicable buffer events (e.g. |BufEnter|) will fire.
 "
 " The following [flags] are supported. Matching is always done as if the 'n'
 " flag is set, and other flags that affect movement of the cursor are ignored.
@@ -608,23 +617,26 @@ function! typevim#Buffer#search(regexp, ...) dict abort
 
   let l:old_tabpage = tabpagenr()
   let l:old_redraw = &lazyredraw
-  let &lazyredraw = 1
+  let l:old_wrapscan = &wrapscan
+  try
+    let &lazyredraw = 1
+    let &wrapscan = 1
     tabnew
-    execute 'buffer '.l:self.__bufnr
+    execute 'buffer '.l:self.bufnr()
     let l:old_curpos = getcurpos()
     if setpos('.', [0, l:lineno, l:colno, 0]) ==# -1
       " setpos failed, user gave bad startpos
-      let &lazyredraw = l:old_redraw
-      tabclose
-      execute 'tabnext '.l:old_tabpage
       throw maktaba#error#BadValue(
           \ 'Given startpos not valid in buffer: %s', string(l:startpos))
     endif
     let l:to_return = search(a:regexp, l:flags_to_use, l:stopline, l:timeout)
     call setpos('.', l:old_curpos)
+  finally
     tabclose
     execute 'tabnext '.l:old_tabpage
-  let &lazyredraw = l:old_redraw
+    let &wrapscan = l:old_wrapscan
+    let &lazyredraw = l:old_redraw
+  endtry
 
   return l:to_return
 endfunction
@@ -646,11 +658,16 @@ let s:valid_search_flags = 'bcnpwWz'
 " [size] is the height/width of the horizontal/vertical split to be created.
 " If 0, this parameter will be ignored.
 "
+" One can also call `Buffer.split` and `Buffer.vsplit`; these invoke OpenSplit
+" with {open_vertical} set to 0 and 1 respectively, but otherwise take the
+" same arguments.
+"
 " @default cmd=""
 " @default pos=""
 " @default size=0
 "
 " @throws BadValue if [pos] is not "leftabove", "aboveleft", "rightbelow", "belowright", "topleft", or "botright".
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {open_vertical} is not a boolean, if [cmd] is not a string, if [pos] is not a string, or if [size] is not a number.
 function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
   call s:CheckType(l:self)
@@ -660,9 +677,10 @@ function! typevim#Buffer#OpenSplit(open_vertical, ...) dict abort
   let l:size = maktaba#ensure#IsNumber(get(a:000, 2, 0))
   call maktaba#ensure#IsIn(
       \ l:pos, ['leftabove', 'aboveleft', 'rightbelow', 'belowright', 'topleft',
-      \ 'botright'])
+      \ 'botright', ''])
+  let l:bufnr = l:self.bufnr()
   execute 'silent '.l:pos.' '.l:orientation.' '.l:size.' split'
-  execute 'buffer! '.l:self.__bufnr
+  execute 'buffer! '.l:bufnr
 endfunction
 
 ""
@@ -671,6 +689,7 @@ endfunction
 " >
 "   call bufnr(buffer_dict.bufnr())
 " <
+" @throws NotFound if the managed buffer no longer exists.
 function! typevim#Buffer#GetName() dict abort
   call s:CheckType(l:self)
   return bufname(l:self.bufnr())
@@ -784,20 +803,24 @@ endfunction
 " list of strings. Uses the same indexing rules as @function(Buffer.ReplaceLines).
 "
 " @default endline={startline}
+" @throws NotFound if the managed buffer no longer exists.
 function! typevim#Buffer#GetLines(startline, ...) dict abort
   call s:CheckType(l:self)
   call maktaba#ensure#IsNumber(a:startline)
   let l:endline = maktaba#ensure#IsNumber(get(a:000, 0, a:startline))
   let l:num_lines = l:self.NumLines()
+
+  let l:bufnr = l:self.bufnr()
+
   call s:ValidateLineNumbers(a:startline, l:endline, l:num_lines)
   let l:lnum = s:NormalizeLineNo(a:startline, l:num_lines)
   let l:end  = s:NormalizeLineNo(l:endline,   l:num_lines)
   if has('nvim')
     let l:after   = l:lnum - 1
     let l:through = l:end
-    return nvim_buf_get_lines(l:self.__bufnr, l:after, l:through, 1)
+    return nvim_buf_get_lines(l:bufnr, l:after, l:through, 1)
   else  " getbufline is supported in pre-7.4
-    return getbufline(l:self.__bufnr, l:lnum, l:end)
+    return getbufline(l:bufnr, l:lnum, l:end)
   endif
 endfunction
 
@@ -882,6 +905,7 @@ endfunction
 " line range, and set the buffer back to |nomodifiable|.
 "
 " @throws BadValue if the {startline} is positioned after the {endline} in the buffer, or if the given lines are out of range for the current buffer, or if {startline} or {endline} are 0.
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {startline} or {endline} are not numbers, or if {replacement} is not a list of strings.
 function! typevim#Buffer#ReplaceLines(startline, endline, replacement) dict abort
   call s:CheckType(l:self)
@@ -951,6 +975,7 @@ endfunction
 " |nomodifiable|; it will set the buffer as |modifiable|, insert the given
 " {lines}, and set the buffer back to |nomodifiable|.
 "
+" @throws NotFound if the managed buffer no longer exists.
 " @throws WrongType if {after} is not a number or `"$"`, or if {lines} is not a list.
 function! typevim#Buffer#InsertLines(after, lines) dict abort
   call s:CheckType(l:self)
@@ -969,6 +994,7 @@ endfunction
 " line range, and set the buffer back to |nomodifiable|.
 "
 " See @function(Buffer.ReplaceLines) for details on exceptions and indexing.
+" @throws NotFound if the managed buffer no longer exists.
 function! typevim#Buffer#DeleteLines(startline, endline) dict abort
   call s:CheckType(l:self)
   call l:self.ReplaceLines(a:startline, a:endline, [])
