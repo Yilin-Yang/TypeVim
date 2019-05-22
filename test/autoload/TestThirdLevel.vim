@@ -4,6 +4,7 @@ function! TestThirdLevel#New(Val, ...) abort
   let l:set_dtor = get(a:000, 0, 0)
   if exists('g:third_level_dtor_called')
     unlet g:third_level_dtor_called
+    unlet g:third_level_dtor_timestamp
   endif
   let l:new = {
       \ }
@@ -18,5 +19,6 @@ endfunction
 
 function! TestThirdLevel#CleanUp() dict abort
   let g:third_level_dtor_called = 1
+  let g:third_level_dtor_timestamp = reltimefloat(reltime())
   return 1
 endfunction

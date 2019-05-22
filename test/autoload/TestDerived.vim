@@ -7,6 +7,7 @@ function! TestDerived#New(set_base_dtor, try_clobber, enable_clobber) abort
 
   if exists('g:derived_dtor_called')
     unlet g:derived_dtor_called
+    unlet g:derived_dtor_timestamp
   endif
 
   let l:new = {
@@ -39,6 +40,7 @@ endfunction
 function! TestDerived#CleanUp() dict abort
   call typevim#ensure#IsType(l:self, s:typename)
   let g:derived_dtor_called = 1
+  let g:derived_dtor_timestamp = reltimefloat(reltime())
   return 1
 endfunction
 

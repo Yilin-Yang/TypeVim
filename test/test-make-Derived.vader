@@ -1,35 +1,41 @@
 Include: AssertThrew.vader
 
-Execute (typevim#make#Derived: Derived Class, No Base Dtor):
+Execute (typevim#make#Derived: can construct a derived class without a base class dtor):
   let g:der = TestDerived#New(0, 0, 0)
   call typevim#ensure#IsType(g:der, 'TestBase')
   call typevim#ensure#IsType(g:der, 'TestDerived')
   let g:type_list = g:der[typevim#attribute#TYPE()]
   AssertEqual ['TestBase', 'TestDerived'], g:type_list
-Then (Run Destructor):
+  call typevim#ensure#IsType(g:der, 'TestDerived')
+  call typevim#ensure#IsType(g:der, 'TestBase')
+Then (can call its destructor):
   call g:der.CleanUp()
   Assert !exists('g:base_dtor_called')
   AssertEqual 1, g:derived_dtor_called
 
-Execute (typevim#make#Derived: Test Function Overriding):
+Execute (typevim#make#Derived: overrides member functions from base class):
   let g:der = TestDerived#New(0, 0, 0)
   AssertEqual 'overridden', g:der.GetVal()
 
-Execute (typevim#make#Derived: Derived Class, Run Clean Uppers in Order):
+Execute (typevim#make#Derived: runs CleanUppers i order from most- to least-derived):
   let g:der = TestDerived#New(1, 0, 0)
   call g:der.CleanUp()
 Then:
   AssertEqual 1, g:base_dtor_called
   AssertEqual 1, g:derived_dtor_called
+  Assert g:derived_dtor_timestamp <# g:base_dtor_timestamp,
+      \ 'Did not clean up in correct order'
 
-Execute (typevim#make#Derived: Three-Level Derived, Run Parent/GrandParent Clean-Uppers):
+Execute (typevim#make#Derived: third-level derived object w/out dtor calls ancestor dtors in order):
   let g:der = TestThirdLevel#New(3.14)
   call g:der.CleanUp()
 Then:
   AssertEqual 1, g:base_dtor_called
   AssertEqual 1, g:derived_dtor_called
+  Assert g:derived_dtor_timestamp <# g:base_dtor_timestamp,
+      \ 'Did not clean up in correct order'
 
-Execute (typevim#make#Derived: Three-Level Derived, Run All Three):
+Execute (typevim#make#Derived: runs three levels of destructors in correct order):
   let g:der = TestThirdLevel#New(3.14, 1)
   call g:der.CleanUp()
 Then:
@@ -37,17 +43,20 @@ Then:
   AssertEqual 1, g:derived_dtor_called
   AssertEqual 1, g:third_level_dtor_called
 
-Execute (typevim#make#Derived: Derived Class, With Base Dtor; Run Dtors):
+  Assert g:derived_dtor_timestamp <# g:base_dtor_timestamp,
+      \ 'Base class CleanUpper ran before derived class'
+  Assert g:third_level_dtor_timestamp <# g:derived_dtor_timestamp,
+      \ 'Derived class CleanUpper ran before third-level derived class'
+
+Execute (typevim#make#Derived: derived class has an appropriately sized clean upper list):
   let g:der = TestDerived#New(1, 0, 0)
-  call typevim#ensure#IsType(g:der, 'TestBase')
-  call typevim#ensure#IsType(g:der, 'TestDerived')
   AssertEqual ['TestBase', 'TestDerived'], g:der[typevim#attribute#TYPE()]
   Assert has_key(g:der, typevim#attribute#CLEAN_UPPER_LIST()),
       \ printf('Did not have a clean-upper list when it should have: %s',
       \ typevim#object#ShallowPrint(g:der, 2))
   AssertEqual 2, len(g:der[typevim#attribute#CLEAN_UPPER_LIST()])
 
-Then (Check Error Messages from Default Virtual Function):
+Then (and throws correct error messages from calling an abstract functions):
   AssertThrows call g:der.SmallVirtual()
   " Not enough arguments...
   AssertThrew 'E119'
@@ -71,10 +80,23 @@ Then (Check Error Messages from Default Virtual Function):
   AssertThrows call g:der.BigVirtual('foo', 'boo', 'roo', 'aaaaah')
   AssertThrew 'ERROR(NotImplemented)'
 
-Execute (typevim#make#Derived: Derived Class, Fail to Clobber Member Variables):
+Execute (typevim#make#Derived: won't clobber base class variables if flag isn't set):
   AssertThrows let g:der = TestDerived#New(1, 1, 0)
   AssertThrew 'ERROR(NotAuthorized)'
 
-Execute (typevim#make#Derived: Derived Class, Clobber Member Variables):
+Execute (typevim#make#Derived: will clobber base class variables if flag is set):
   let g:der = TestDerived#New(1, 1, 1)
   AssertEqual '-1010', g:der['__val']
+
+Execute (typevim#make#Derived: providing a base class instance to ctor does not modify that instance):
+  function! Foo() dict abort
+  endfunction
+
+  function! Bar() dict abort
+  endfunction
+
+  let g:base = typevim#make#Class('Base', {'foo': function('Foo')})
+  let g:base_copy = deepcopy(g:base)
+
+  let g:der = typevim#make#Derived('Derived', g:base, {'foo': function('Bar')})
+  AssertEqual g:base, g:base_copy
