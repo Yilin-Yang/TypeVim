@@ -1,6 +1,6 @@
 Include: AssertThrew.vader
 
-Execute (Buffer: Construct Default):
+Execute (Buffer: sets default bufsettings on open):
   let g:buffer = typevim#Buffer#New()
   call g:buffer.Open()
 Then:
@@ -9,18 +9,18 @@ Then:
   AssertEqual 'nofile', &buftype
   AssertEqual 0,        &swapfile
 
-Execute (Buffer: Set Buffer Variable):
+Execute (Buffer: setbufvar() can set a buffer-local variable):
   let g:buffer = typevim#Buffer#New()
   call g:buffer.setbufvar('test_var', 1)
   call g:buffer.Open()
 Then:
   AssertEqual 1, b:test_var
 
-Execute (Buffer: Get Buffer Variable):
+Execute (Buffer: getbufvar() can return a buffer-local variable):
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 1, g:buffer.getbufvar('test_var')
 
-Execute (Buffer: Exchange):
+Execute (Buffer: ExchangeBufVars() works ):
   AssertEqual 1, g:buffer.getbufvar('&modifiable')
   let g:old_vals = g:buffer.ExchangeBufVars({'&modifiable': 0, '&buftype': '', 'test_var': ''})
 
@@ -34,14 +34,27 @@ Execute (Buffer: Exchange):
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 1,        g:buffer.getbufvar('test_var')
 
-Execute (Buffer: SetDoRestore Works and Returns Value When Given Funcref):
+Execute (Buffer: setbufvar()/getbufvar() throw ERROR(NotFound) if the managed buffer doesn't exist):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  execute 'bwipeout! '.g:buffer.bufnr()
+
+  AssertThrows call g:buffer.setbufvar('test_var', 1)
+  AssertThrew 'ERROR(NotFound)'
+
+  AssertThrows call g:buffer.getbufvar('test_var')
+  AssertThrew 'ERROR(NotFound)'
+Then:
+  call g:buffer.SetBuffer(bufnr('%'))
+
+Execute (Buffer: SetDoRestore() Works and gives the return value when given funcref):
   function! Foo() abort
     return 42
   endfunction
   AssertEqual 42, g:buffer.SetDoRestore({'&buftype': ''}, function('Foo'))
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
 
-Execute (Buffer: SetDoRestore Restores Variables on BadValue Exception):
+Execute (Buffer: SetDoRestore() restores settings on badvalue exception):
   function! Foo(unused_var) abort
     return 42
   endfunction
@@ -49,7 +62,7 @@ Execute (Buffer: SetDoRestore Restores Variables on BadValue Exception):
   AssertThrew 'ERROR(BadValue)'
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
 
-Execute (Buffer: SetDoRestore Restores Variables on Other Exception):
+Execute (Buffer: SetDoRestore() restores settings on arbitrary exceptions):
   function! Foo() abort
     throw 'AAAAAA'
   endfunction
@@ -57,7 +70,7 @@ Execute (Buffer: SetDoRestore Restores Variables on Other Exception):
   AssertThrew 'AAAAAA'
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
 
-Execute (Buffer: SetDoRestore Works When Executing Command):
+Execute (Buffer: SetDoRestore() can :execute a "multiline" pipe-separated string command):
   AssertEqual 0, g:buffer.SetDoRestore({'&buftype': ''}, 'let g:foo = "bar" | let g:bar = "foo"')
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
   AssertEqual 'bar', g:foo
@@ -65,7 +78,7 @@ Execute (Buffer: SetDoRestore Works When Executing Command):
   unlet g:foo
   unlet g:bar
 
-Execute (Buffer: SetDoRestore Restores When Given Command Throws Exception):
+Execute (Buffer: SetDoRestore() restores settings when given command throws exception):
   AssertThrows call g:buffer.SetDoRestore({'&buftype': ''}, 'throw "AAAAAA"')
   AssertThrew "AAAAAA"
   AssertEqual 'nofile', g:buffer.getbufvar('&buftype')
@@ -85,7 +98,7 @@ Execute (Buffer: Declare Helpers for Checking Before-and-After):
     AssertEqual a:tabp_and_winview[1], winsaveview()
   endfunction
 
-Execute (Buffer: OpenDoRestore Works and Returns Value When Given Funcref):
+Execute (Buffer: OpenDoRestore() works and gives return value when given funcref):
   function! Foo() abort
     let b:foobar = 1
     return 42
@@ -96,14 +109,14 @@ Execute (Buffer: OpenDoRestore Works and Returns Value When Given Funcref):
   AssertEqual 1, g:buffer.getbufvar('foobar')
   call AssertSameState(g:state)
 
-Execute (Buffer: OpenDoRestore Works When Given Evaltext):
+Execute (Buffer: OpenDoRestore() works when `:execute`ing a pipe-separated string command):
   let g:state = SaveState()
   AssertEqual 0, g:buffer.OpenDoRestore('let b:barfoo = 2 | let b:goofar = 3')
   AssertEqual 2, g:buffer.getbufvar('barfoo')
   AssertEqual 3, g:buffer.getbufvar('goofar')
   call AssertSameState(g:state)
 
-Execute (Buffer: OpenDoRestore Restores Everything On Funcref BadValue):
+Execute (Buffer: OpenDoRestore() restores everything on funcref BadValue exception):
   function! Foo(unused) abort
     return 42
   endfunction
@@ -113,7 +126,7 @@ Execute (Buffer: OpenDoRestore Restores Everything On Funcref BadValue):
   AssertThrew 'ERROR(BadValue)'
   call AssertSameState(g:state)
 
-Execute (Buffer: OpenDoRestore Restores Everything on Bad Evaltext):
+Execute (Buffer: OpenDoRestore() restores everything when given a bad string command):
   let g:state = SaveState()
   AssertThrows call g:buffer.OpenDoRestore("throw 'BBBBB'")
   AssertThrew 'BBBBB'
@@ -122,28 +135,68 @@ Execute (Buffer: OpenDoRestore Restores Everything on Bad Evaltext):
 " Since split moves the cursor to the new split, check relative position by
 " moving *back* to the original window and checking that it *isn't* the owned
 " buffer.
-Execute (Buffer: Open Horizontal Split):
-  buffer 1
+Execute (Buffer: opens a horizontal split correctly):
+  call g:buffer.setbufvar('test_var', 1)
+  tabnew
   call g:buffer.split('', 'botright')
 Then:
+  Assert exists('b:test_var'), "Buffer wasn't open after split"
   wincmd k
-  Assert !exists('b:test_var')
+  Assert !exists('b:test_var'), "Buffer opened in the wrong position"
 
-Execute (Buffer: Open Vertical Split):
-  buffer 1
+Execute (Buffer: opens a vertical split cirrectly):
+  call g:buffer.setbufvar('test_var', 1)
+  tabnew
   call g:buffer.vsplit('', 'botright')
 Then:
+  Assert exists('b:test_var'), "Buffer wasn't open after split"
   wincmd h
-  Assert !exists('b:test_var')
+  Assert !exists('b:test_var'), "Buffer opened in the wrong position"
 
-Execute (Buffer: Wipeout Buffer):
+Execute (Buffer: split/vsplit throw ERROR(NotFound) when buf no longer exists):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  execute 'bwipeout! '.g:buffer.bufnr()
+
+  AssertThrows call g:buffer.split()
+  AssertThrew 'ERROR(NotFound)'
+
+  AssertThrows call g:buffer.vsplit()
+  AssertThrew 'ERROR(NotFound)'
+
+Execute (Buffer: SetBuffer() can :bwipeout the old buffer):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
   let g:bufnr = g:buffer.bufnr()
   AssertEqual g:bufnr, g:buffer.SetBuffer(bufnr('%'), 'bwipeout')
+  Assert !bufexists(g:bufnr), 'Did not :bwipeout replaced buffer'
+
+Execute (Buffer: SetBuffer() can replace a bwipeout'd buffer):
+  tabnew
+  let g:bufnr = bufnr('%')
+  call g:buffer.SetBuffer(g:bufnr)
+  execute 'bwipeout! '.g:bufnr
+  call g:buffer.SetBuffer(bufnr('%'))  " shouldn't throw
+
+Execute (Buffer: SetBuffer() throws ERROR(NotFound) when trying to modify a bwipeout'd buffer):
+  tabnew
+  let g:bufnr = bufnr('%')
+  call g:buffer.SetBuffer(g:bufnr)
+  execute 'bwipeout! '.g:bufnr
+  let g:new_bufnr = bufnr('%')
+  let g:actions = ['bunload', 'bdelete', 'bwipeout']
+  for g:act in g:actions
+    for g:force in [0, 1]
+      AssertThrows call g:buffer.SetBuffer(g:new_bufnr, g:act, g:force)
+      AssertThrew 'ERROR(NotFound)'
+    endfor
+  endfor
 
 Given (One Line of Text):
   first line
 
 Execute (Buffer: NumLines() Returns 1):
+  call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 1, g:buffer.NumLines()
 
 Given (Two Lines of Text):
@@ -151,6 +204,7 @@ Given (Two Lines of Text):
   two line
 
 Execute (Buffer: NumLines() Returns 2):
+  call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 2, g:buffer.NumLines()
 
 Given (Three Lines of Text):
@@ -159,6 +213,7 @@ Given (Three Lines of Text):
   third line
 
 Execute (Buffer: NumLines() Returns 3):
+  call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 3, g:buffer.NumLines()
 
 
@@ -174,10 +229,11 @@ Given (Ten Lines of Text):
   ninth line
   tenth line
 
-Execute (Buffer: Get Single Line):
+Execute (Buffer: GetLines() can return a single line):
+  call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual ['first line'], g:buffer.GetLines(1)
 
-Execute (Buffer: Get All Lines):
+Execute (Buffer: GetLines() can return all lines):
   let g:expected = [
       \ 'first line',
       \ 'second line',
@@ -192,7 +248,7 @@ Execute (Buffer: Get All Lines):
       \ ]
   AssertEqual g:expected, g:buffer.GetLines(1, -1)
 
-Execute (Buffer: Get Range of Lines):
+Execute (Buffer: GetLines() can return a specific range of lines):
   let g:expected = [
       \ 'fourth line',
       \ 'fifth line',
@@ -201,7 +257,7 @@ Execute (Buffer: Get Range of Lines):
       \ ]
   AssertEqual g:expected, g:buffer.GetLines(4, 7)
 
-Execute (Buffer: Delete Buffer Contents):
+Execute (Buffer: can DeleteLines() a range of lines):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.DeleteLines(1, 5)
 Expect:
@@ -211,13 +267,13 @@ Expect:
   ninth line
   tenth line
 
-Execute (Buffer: Delete Everything):
+Execute (Buffer: can DeleteLines() the entire buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.DeleteLines(1, -1)
 Expect:
   
 
-Execute (Buffer: Replace Buffer Contents):
+Execute (Buffer: can ReplaceLines() a range of lines with fewer lines):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -235,7 +291,7 @@ Expect:
   ninth line
   tenth line
 
-Execute (Buffer: Replace Single Line):
+Execute (Buffer: can ReplaceLines() a single line with multiple lines):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -257,7 +313,7 @@ Expect:
   ninth line
   tenth line
 
-Execute (Buffer: Replace Last Lines, Purely Numerically):
+Execute (Buffer: can ReplaceLines() the last lines with an explicit range):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -275,7 +331,7 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: Replace Everything, Explicit Numeral):
+Execute (Buffer: can ReplaceLines() everything with an explicit range):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -288,13 +344,13 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: Delete Everything, Explicit Numeral):
+Execute (Buffer: DeleteLines() can delete everything with an explicit line range):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.DeleteLines(1, 10)
 Expect:
   
 
-Execute (Buffer: Prepend Lines):
+Execute (Buffer: InsertLines() can prepend lines to the buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -317,7 +373,7 @@ Expect:
   ninth line
   tenth line
 
-Execute (Buffer: Insert Lines Midway):
+Execute (Buffer: can InsertLines() midway through the buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -340,7 +396,7 @@ Expect:
   ninth line
   tenth line
 
-Execute (Buffer: Insert Lines At End):
+Execute (Buffer: can InsertLines() at the end of the buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -363,7 +419,7 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: Insert Lines At End w/ Explicit Line Number):
+Execute (Buffer: can InsertLines() at the end w/ explicit line number):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -386,7 +442,7 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: Insert Lines At End w/ Explicit Line Number Past-the-End):
+Execute (Buffer: can InsertLines() at end w/ explicit line number past-the-end):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = [
     \ 'foo1',
@@ -455,42 +511,43 @@ Expect:
   foo2
   foo3
 
-Execute (Buffer: endline before startline):
+Execute (Buffer: ReplaceLines() rejects an endline before startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(4, 2, g:lines)
   AssertThrew 'ERROR(BadValue)'
 
-Execute (Buffer: endline before startline (both negative)):
+Execute (Buffer: ReplaceLines() rejects endline before startline (both negative)):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-4, -5, g:lines)
   AssertThrew 'ERROR(BadValue)'
 
-Execute (Buffer: endline before (negative) startline):
+Execute (Buffer: ReplaceLines() rejects endline before (negative) startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-8, 2, g:lines)
   AssertThrew 'ERROR(BadValue)'
 
-Execute (Buffer: endline (negative) before startline):
+Execute (Buffer: ReplaceLines() rejects endline (negative) before startline):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(4, -8, g:lines)
   AssertThrew 'ERROR(BadValue)'
 
-Execute (Buffer: Negative Values are Out of Range):
+Execute (Buffer: ReplaceLines() rejects negative values that are out of range):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:lines = []
   AssertThrows call g:buffer.ReplaceLines(-12, -8, g:lines)
   AssertThrew 'ERROR(BadValue)'
 
 Execute (Buffer: Make Buffer Nonmodifiable (Setup)):
+  " just make sure this is working properly
   call g:buffer.setbufvar('&modifiable', 0)
 Then:
   AssertEqual 0, g:buffer.getbufvar('&modifiable')
 
-Execute (Buffer: Nonmodifiable, Delete Buffer Contents):
+Execute (Buffer: DeleteLines() can delete lines even when buffer is nonmodifiable):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.setbufvar('&modifiable', 0)
   call g:buffer.DeleteLines(1, 5)
@@ -503,7 +560,7 @@ Expect:
 Then:
   AssertEqual 0, g:buffer.getbufvar('&modifiable')
 
-Execute (Buffer: Nonmodifiable, Delete Everything):
+Execute (Buffer: can DeleteLines() everything from a nonmodifiable buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.setbufvar('&modifiable', 0)
   call g:buffer.DeleteLines(1, -1)
@@ -512,7 +569,7 @@ Expect:
 Then:
   AssertEqual 0, g:buffer.getbufvar('&modifiable')
 
-Execute (Buffer: Nonmodifiable, Replace Buffer Contents):
+Execute (Buffer: can ReplaceLines() in a nonmodifiable buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.setbufvar('&modifiable', 0)
   let g:lines = [
@@ -533,7 +590,7 @@ Expect:
 Then:
   AssertEqual 0, g:buffer.getbufvar('&modifiable')
 
-Execute (Buffer: Nonmodifiable, Prepend Lines):
+Execute (Buffer: InsertLines() can prepend lines in a nonmodifiable buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   call g:buffer.setbufvar('&modifiable', 0)
   let g:lines = [
@@ -565,14 +622,16 @@ Given (Searchable Text):
   dog
 
 Execute (Buffer: Search Setup, Disable Lazyredraw, Wraparound):
+  " so that we can test that lazyredraw and wrapscan are being restored properly
   set nowrapscan
-  " so that we can test that lazyredraw value is being restored properly
   set nolazyredraw
 
-Execute (Buffer: Search from w/in Buffer):
+Execute (Buffer: Search() works from w/in buffer):
   " the position of the cursor should not affect the search, the cursor
   " position should be restored afterward, total number of tabs shouldn't
   " change
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   normal! 3G
   let g:num_tabs = tabpagenr('$')
@@ -581,46 +640,59 @@ Execute (Buffer: Search from w/in Buffer):
   AssertEqual 2, g:buffer.search('the')
 
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
   AssertEqual g:curpos, getcurpos()
 
-Execute (Buffer: Search from Another Buffer):
+Execute (Buffer: Search() works from another buffer):
   call g:buffer.SetBuffer(bufnr('%'))
   tabnew
   let g:bufnr = bufnr('%')
 
-  AssertEqual 2, g:buffer.search('the')
-
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
+  AssertEqual 2, g:buffer.search('the')
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
+
   " tabnew'd buffer should be open
   AssertEqual g:bufnr, bufnr('%')
 
-Execute (Buffer: Search from Good Line Number):
+Execute (Buffer: will Search() from good line number):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 2, g:buffer.search('the', '', 2)
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Search from Bad Line Number):
+Execute (Buffer: won't Search() from bad line number):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   let g:num_tabs = tabpagenr('$')
   let g:curpos = getcurpos()
   AssertThrows call g:buffer.search('the', '', -10)
   AssertThrew 'ERROR(BadValue)'
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
   AssertEqual g:curpos, getcurpos()
 
-Execute (Buffer: Search Unreachable with Stopline):
+Execute (Buffer: Search() fails when given a too-constraining stopline):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   let g:curpos = getcurpos()
   AssertEqual 0, g:buffer.search('dog', '', 1, 1)
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
 " explicitly calling g:buffer.search() from the command line doesn't
 " always return to the old tabpage without an explicit :tabnext <TABNR> call
 " **THIS TEST DOES NOT EXPOSE THAT BUGGY BEHAVIOR** but is included for
 " thoroughness, and in case we can get the test working in the future
-Do (Buffer: Return to Old Tab After Cmdline Search):
+Do (Buffer: returns to old tab after cmdline search):
   :-tabnew\<cr>
   iI am the man who arranges the blocks that descend upon\<cr>
   me from up above, they come down and I spin them around\<esc>
@@ -633,62 +705,94 @@ Then:
   AssertEqual 1, g:result
   AssertEqual g:curpos, getcurpos()
 
-Execute (Buffer: Search with Wraparound):
+Execute (Buffer: Search() will wraparound with proper flags):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 1, g:buffer.search('the', 'w', 3)
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Search without Wraparound):
+Execute (Buffer: won't wraparound in Search() with no-wraparound flag):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 0, g:buffer.search('the', 'W', 3)
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Search from curpos w/out 'c'):
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 2, g:buffer.search('the', '', [1, 1])
-  AssertEqual 0, g:buffer.search('the', '', [2, 12])
+Execute (Buffer: won't Search() from curpos w/out 'c'):
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
+  call g:buffer.SetBuffer(bufnr('%'))
+  AssertEqual 2, g:buffer.search('the', 'W', [1, 1])
+  AssertEqual 0, g:buffer.search('the', 'W', [2, 12])
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Search from curpos w/ 'c'):
+Execute (Buffer: can Search() from curpos w/ 'c'):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 1, g:buffer.search('the', 'c', [1, 1])
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
   AssertEqual 2, g:buffer.search('the', 'c', [2, 12])
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Search w/ Bad Flags):
+Execute (Buffer: won't Search() w/ bad flags):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertThrows call g:buffer.search('the', 'D')
   AssertThrew 'ERROR(BadValue)'
   AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
   AssertThrows call g:buffer.search('the', 's')
   AssertThrows call g:buffer.search('the', 'cez')
 
-Execute (Buffer: Search w/ Bad Flags, but Ignore Bad Flags):
+Execute (Buffer: will Search() w/ bad flags if told to ignore them):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   call g:buffer.SetBuffer(bufnr('%'))
   AssertEqual 2, g:buffer.search('the', 'D', 1, 0, 0, 1)
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
 
-Execute (Buffer: Bad curpos, Wrong List Size):
+Execute (Buffer: search() rejects bad curpos args with wrong input list size):
   call g:buffer.SetBuffer(bufnr('%'))
 
   " empty
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertThrows call g:buffer.search('the', '', [])
   AssertThrew 'ERROR(BadValue)'
 
   " one elt
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertThrows call g:buffer.search('the', '', [2])
   AssertThrew 'ERROR(BadValue)'
 
   " three elts
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertThrows call g:buffer.search('the', '', [2, 1, 5])
   AssertThrew 'ERROR(BadValue)'
 
   " six elts
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
   AssertThrows call g:buffer.search('the', '', [2, 1, 5, 10, 10, 3])
+  AssertThrew 'ERROR(BadValue)'
 
-Execute (Buffer: Is Open in this Tab, Yes):
+  AssertEqual 0, &lazyredraw
+  AssertEqual 0, &wrapscan
+
+Execute (Buffer: IsOpen(), IsOpenInTab() work when its open in the current window):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
 Then:
@@ -696,7 +800,7 @@ Then:
   AssertEqual 1, g:buffer.IsOpenInTab()
   AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
 
-Execute (Buffer: Is Open in Previous Tab):
+Execute (Buffer: IsOpen(), IsOpenInTab() work when its open in the previous tab but not the current):
   call g:buffer.SetBuffer(bufnr('%'))
   let g:old_tab = tabpagenr()
   tabnew
@@ -706,7 +810,7 @@ Then:
   AssertEqual 0, g:buffer.IsOpenInTab()
   AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
 
-Execute (Buffer: Is Open in Previous Tab, and In Current):
+Execute (Buffer: IsOpen(), IsOpenInTab() return 1 when open in previous tab, and in current):
   call g:buffer.Open()
 Then:
   AssertEqual 1, g:buffer.IsOpenInTab(g:old_tab)
@@ -714,7 +818,7 @@ Then:
   AssertEqual 1, g:buffer.IsOpenInTab()
   AssertEqual 1, g:buffer.IsOpenInTab(tabpagenr())
 
-Execute (Buffer: Is Not Open At All):
+Execute (Buffer: IsOpen(), IsOpenInTab() return zero is not open at all):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
   tabnew
@@ -725,11 +829,11 @@ Then:
   AssertEqual 0, g:buffer.IsOpenInTab()
   AssertEqual 0, g:buffer.IsOpenInTab(tabpagenr())
 
-Execute (Buffer: Switch, Not Open):
+Execute (Buffer: won't Switch() if the buffer isn't open anywhere):
   AssertThrows call g:buffer.Switch()
   AssertThrew 'ERROR(NotFound)'
 
-Execute (Buffer: Switch, Is Open, Same Tab):
+Execute (Buffer: Switch() succeeds if the buffer is already open in the current window):
   call g:buffer.SetBuffer(bufnr('%'))
   tabnew
   let g:tabnr = tabpagenr()
@@ -739,7 +843,7 @@ Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
 
-Execute (Buffer: Switch, Is Open, Different Tab (but not allowed)):
+Execute (Buffer: won't Switch() to a different tab if that tab isn't given and exact match is required):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
   let g:tabnr = tabpagenr()
@@ -748,19 +852,13 @@ Then:
   AssertThrows call g:buffer.Switch(0)
   AssertThrew 'ERROR(NotFound)'
 
-Execute (Buffer: Switch, Is Open, Different Tab (which is allowed)):
+Execute (Buffer: will Switch() to a different tab if a specific tab isn't given and no exact match is required):
   call g:buffer.Switch()
 Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
 
-Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which isn't allowed)):
-  tabnew
-Then:
-  AssertThrows call g:buffer.Switch(0)
-  AssertThrew 'ERROR(NotFound)'
-
-Execute (Buffer: Switch, Is Only Open in Different (Specific) Tab (which is given)):
+Execute (Buffer: Switch()es to a different tab when that tab is given):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
   let g:tabnr = tabpagenr()
@@ -770,7 +868,7 @@ Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
 
-Execute (Buffer: Switch, Is Open in Different (Specific) Tab (which is given), and Current (not given)):
+Execute (Buffer: Switch()es to a different tab if told to do so, when also open in current tab):
   tabnew
   call g:buffer.SetBuffer(bufnr('%'))
   let g:tabnr = tabpagenr()
@@ -781,11 +879,21 @@ Then:
   AssertEqual g:tabnr, tabpagenr()
   AssertEqual g:buffer.bufnr(), bufnr('%')
 
-Execute (Buffer: Returns 0 for IsOpen when Buf No Longer Exists):
+Execute (Buffer: returns 0 for IsOpen when buf no longer exists):
   execute 'bwipeout! '.g:buffer.bufnr()
   AssertEqual 0, g:buffer.IsOpen()
   AssertEqual 0, g:buffer.IsOpenInTab()
 
-Execute (Buffer: Throws ERROR(NotFound) on Open() when Buf No Longer Exists):
+Execute (Buffer: throws ERROR(NotFound) on Open() when buf no longer exists):
   AssertThrows call g:buffer.Open()
   AssertThrew 'ERROR(NotFound)'
+
+Execute (Buffer: throws ERROR(NotFound) on CleanUp() when buf no longer exists):
+  AssertThrows call g:buffer.CleanUp()
+  AssertThrew 'ERROR(NotFound)'
+
+Execute (Buffer: throws ERROR(NotFound) on search() when buf no longer exists):
+  AssertEqual 0, &lazyredraw
+  AssertThrows call g:buffer.search('.*', 'c', 1)
+  AssertThrew 'ERROR(NotFound).*buffer.*'
+  AssertEqual 0, &lazyredraw

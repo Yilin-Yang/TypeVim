@@ -951,6 +951,9 @@ typevim#Buffer#New([properties])                                *Buffer.New()*
 Buffer.CleanUp()                                            *Buffer.CleanUp()*
   Perform cleanup for this Buffer object.
 
+  Throws ERROR(NotFound) if the managed buffer no longer exists, i.e. it was
+  already wiped out.
+
 Buffer.ExchangeBufVars({vars_and_vals})             *Buffer.ExchangeBufVars()*
   For each buffer variable/setting and value in {vars_and_vals}:
   Replace the current value of "var" with "val",
@@ -979,6 +982,7 @@ Buffer.OpenDoRestore({Action})                        *Buffer.OpenDoRestore()*
   and previous value of |lazyredraw| are restored even if executing {Action}
   results in an error.
 
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {Action} is not a Funcref or a string.
 
 Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
@@ -1002,11 +1006,13 @@ Buffer.SetDoRestore({temp_vars_and_vals}, {Action})    *Buffer.SetDoRestore()*
 Buffer.getbufvar({varname}, [default])                    *Buffer.getbufvar()*
   Invoke `getbufvar` on this Buffer's stored buffer with the given arguments.
   See `:h getbufvar` for argument details.
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {varname} is not a string.
 
 Buffer.setbufvar({varname}, {Val})                        *Buffer.setbufvar()*
   Invoke `setbufvar` on this Buffer's stored buffer with the given arguments.
   See `:h setbufvar` for argument details.
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {varname} is not a string.
 
 Buffer.bufnr()                                                *Buffer.bufnr()*
@@ -1056,7 +1062,8 @@ Buffer.SetBuffer({bufnr}, [action], [force])              *Buffer.SetBuffer()*
   [force] is 0 if omitted.
   Throws ERROR(BadValue) if [action] is not one of the values listed above.
   Throws ERROR(NotFound) if the given {bufnr} doesn't correspond to a real
-  buffer.
+  buffer, or if the managed buffer doesn't exist and [action] is not an empty
+  string.
   Throws ERROR(WrongType) if {bufnr} is not a number, if [action] is not a
   string, or if [force] is not a boolean.
 
@@ -1068,13 +1075,13 @@ Buffer.search({regexp}, [flags], [startpos], [stopline], [timeout],
   additional [flags] may be provided to modify the behavior of the search,
   which starts from the given [startpos].
 
-  This function is a wrapper around the |search()| function. The wrapped
-  buffer is silently (with |lazyredraw| enabled) opened in a new tabpage,
-  where the search is performed. Prior to the search, the cursor position is
-  set to the given [startpos]. After the search, the previous cursor position
-  is restored, the new tab is closed, and |lazyredraw| is reset to its
-  previous value. This will have side effects; for instance, any applicable
-  buffer events (e.g. |BufEnter|) will fire.
+  This function wraps the |search()| function. The managed buffer is silently
+  (with |lazyredraw| enabled) opened in a new tabpage, where the search is
+  performed. Prior to the search, wrapscan is enabled, and the cursor position
+  is set to the given [startpos]. Afterwards, the previous cursor position is
+  restored, the new tab is closed, and |wrapscan| and |lazyredraw| are reset
+  to their previous value. This will have side effects; for instance, any
+  applicable buffer events (e.g. |BufEnter|) will fire.
 
   The following [flags] are supported. Matching is always done as if the 'n'
   flag is set, and other flags that affect movement of the cursor are ignored.
@@ -1135,12 +1142,17 @@ Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
   [size] is the height/width of the horizontal/vertical split to be created.
   If 0, this parameter will be ignored.
 
+  One can also call `Buffer.split` and `Buffer.vsplit`; these invoke OpenSplit
+  with {open_vertical} set to 0 and 1 respectively, but otherwise take the
+  same arguments.
+
   [cmd] is "" if omitted.
   [pos] is "" if omitted.
   [size] is 0 if omitted.
 
   Throws ERROR(BadValue) if [pos] is not "leftabove", "aboveleft",
   "rightbelow", "belowright", "topleft", or "botright".
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {open_vertical} is not a boolean, if [cmd] is not
   a string, if [pos] is not a string, or if [size] is not a number.
 
@@ -1149,6 +1161,7 @@ Buffer.GetName()                                            *Buffer.GetName()*
 >
     call bufnr(buffer_dict.bufnr())
 <
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
 
 Buffer.Rename({new_name})                                    *Buffer.Rename()*
   Change the name of this buffer to {new_name} through a call to |:file_f|.
@@ -1176,6 +1189,7 @@ Buffer.GetLines({startline}, [endline])                    *Buffer.GetLines()*
   list of strings. Uses the same indexing rules as |Buffer.ReplaceLines()|.
 
   [endline] is {startline} if omitted.
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
 
 Buffer.ReplaceLines({startline}, {endline}, {replacement})
                                                        *Buffer.ReplaceLines()*
@@ -1200,6 +1214,7 @@ Buffer.ReplaceLines({startline}, {endline}, {replacement})
   Throws ERROR(BadValue) if the {startline} is positioned after the {endline}
   in the buffer, or if the given lines are out of range for the current
   buffer, or if {startline} or {endline} are 0.
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {startline} or {endline} are not numbers, or if
   {replacement} is not a list of strings.
 
@@ -1223,6 +1238,7 @@ Buffer.InsertLines({after}, {lines})                    *Buffer.InsertLines()*
   |nomodifiable|; it will set the buffer as |modifiable|, insert the given
   {lines}, and set the buffer back to |nomodifiable|.
 
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
   Throws ERROR(WrongType) if {after} is not a number or `"$"`, or if {lines}
   is not a list.
 
@@ -1234,6 +1250,7 @@ Buffer.DeleteLines({startline}, {endline})              *Buffer.DeleteLines()*
   line range, and set the buffer back to |nomodifiable|.
 
   See |Buffer.ReplaceLines()| for details on exceptions and indexing.
+  Throws ERROR(NotFound) if the managed buffer no longer exists.
 
 Buffer.IsOpen()                                              *Buffer.IsOpen()*
   Returns 1 if this |TypeVim.Buffer| is open in any tabpage, and 0 otherwise.
