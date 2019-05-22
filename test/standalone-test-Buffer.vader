@@ -621,72 +621,78 @@ Given (Searchable Text):
   jumps over the lazy
   dog
 
-Execute (Buffer: Search Setup, Disable Lazyredraw, Wraparound):
-  " so that we can test that lazyredraw and wrapscan are being restored properly
-  set nowrapscan
-  set nolazyredraw
+Execute (Buffer: Search Setup, Declare Helpers, Disable Lazyredraw, Wraparound):
+
+  ""
+  " Disable |wrapscan| and |nolazyredraw| so that we can test that they're
+  " being restored properly. If [buffer] is given, then set its buffer to the
+  " buffer currently open.
+  function! SearchTestSetup(...) abort
+    if a:0
+      call a:1.SetBuffer(bufnr('%'))
+    endif
+    set nowrapscan
+    set nolazyredraw
+  endfunction
+
+  ""
+  " Feed {regexp}, [flags], and [pos] to |Buffer.search|. Assert that setting
+  " values are properly preserved, before and after the search. If {expected}
+  " is a number, assert that it matches the return value of |Buffer.search|.
+  " If it's a string, assert that |Buffer.search| throws an exception, and use
+  " {expected} as a pattern in a call to AssertThrew.
+  function! TestSearch(buffer, expected, regexp, ...) abort
+    let l:expect_throw = maktaba#value#IsString(a:expected)
+    if !l:expect_throw
+      call maktaba#ensure#IsNumber(a:expected)
+    endif
+    let l:curpos = getcurpos()
+    let l:tabnr = tabpagenr()
+    let l:num_tabs = tabpagenr('$')
+    let l:winnr = winnr()
+    let l:bufnr = bufnr('%')
+    if l:expect_throw
+      " a: and l: scoped variables not accessible from an AssertThrows call
+      let g:F___ToCall = a:buffer.search
+      let g:___Args = [a:regexp] + a:000
+      let g:___expected = a:expected
+      AssertThrows call call(g:F___ToCall, g:___Args)
+      AssertThrew g:___expected
+    else
+      AssertEqual a:expected, call(a:buffer.search, [a:regexp] + a:000)
+    endif
+    AssertEqual l:curpos, getcurpos(), 'Cursor position changed!'
+    AssertEqual l:tabnr, tabpagenr(), 'Current tab is different'
+    AssertEqual l:num_tabs, tabpagenr('$'), 'Total number of tabs changed'
+    AssertEqual l:winnr, winnr(), 'Windows number changed'
+    AssertEqual l:bufnr, bufnr('%'), 'Opened buffer changed'
+    AssertEqual 0, &lazyredraw, 'Redraw setting was not reset'
+    AssertEqual 0, &wrapscan, 'Wrapscan setting was not reset'
+  endfunction
 
 Execute (Buffer: Search() works from w/in buffer):
-  " the position of the cursor should not affect the search, the cursor
-  " position should be restored afterward, total number of tabs shouldn't
-  " change
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup()
   call g:buffer.SetBuffer(bufnr('%'))
+  " the position of the cursor should not affect the search
   normal! 3G
-  let g:num_tabs = tabpagenr('$')
-  let g:curpos = getcurpos()
-
-  AssertEqual 2, g:buffer.search('the')
-
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
-  AssertEqual g:curpos, getcurpos()
+  call TestSearch(g:buffer, 2, 'the')
 
 Execute (Buffer: Search() works from another buffer):
-  call g:buffer.SetBuffer(bufnr('%'))
+  call SearchTestSetup(g:buffer)
   tabnew
-  let g:bufnr = bufnr('%')
-
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertEqual 2, g:buffer.search('the')
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-
-  " tabnew'd buffer should be open
-  AssertEqual g:bufnr, bufnr('%')
+  call TestSearch(g:buffer, 2, 'the')
 
 Execute (Buffer: will Search() from good line number):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 2, g:buffer.search('the', '', 2)
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 2, 'the', '', 2)
 
 Execute (Buffer: won't Search() from bad line number):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:num_tabs = tabpagenr('$')
-  let g:curpos = getcurpos()
-  AssertThrows call g:buffer.search('the', '', -10)
-  AssertThrew 'ERROR(BadValue)'
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertEqual g:num_tabs, tabpagenr('$'), 'Failed to close new tabpage'
-  AssertEqual g:curpos, getcurpos()
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', '', -10)
 
 Execute (Buffer: Search() fails when given a too-constraining stopline):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  let g:curpos = getcurpos()
-  AssertEqual 0, g:buffer.search('dog', '', 1, 1)
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 0, 'dog', '', 1, 1)
 
 " explicitly calling g:buffer.search() from the command line doesn't
 " always return to the old tabpage without an explicit :tabnext <TABNR> call
@@ -706,91 +712,55 @@ Then:
   AssertEqual g:curpos, getcurpos()
 
 Execute (Buffer: Search() will wraparound with proper flags):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 1, g:buffer.search('the', 'w', 3)
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 1, 'the', 'w', 3)
 
 Execute (Buffer: won't wraparound in Search() with no-wraparound flag):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 0, g:buffer.search('the', 'W', 3)
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 0, 'the', 'W', 3)
 
 Execute (Buffer: won't Search() from curpos w/out 'c'):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 2, g:buffer.search('the', 'W', [1, 1])
-  AssertEqual 0, g:buffer.search('the', 'W', [2, 12])
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 2, 'the', 'W', [1, 1])
+  call TestSearch(g:buffer, 0, 'the', 'W', [2, 12])
 
 Execute (Buffer: can Search() from curpos w/ 'c'):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 1, g:buffer.search('the', 'c', [1, 1])
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 1, 'the', 'c', [1, 1])
+  call TestSearch(g:buffer, 2, 'the', 'c', [2, 12])
 
-  AssertEqual 2, g:buffer.search('the', 'c', [2, 12])
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+Execute (Buffer: can match patterns across multiple lines):
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 1, 'fox\nju', 'c', [1, 1])
+
+Execute (Buffer: handles 'z' flag correctly):
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 1, 'brown \zsfox', 'zcW', [1, 1])
+  call TestSearch(g:buffer, 0, 'brown \zsfox', 'zcW', [1, 17])
 
 Execute (Buffer: won't Search() w/ bad flags):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertThrows call g:buffer.search('the', 'D')
-  AssertThrew 'ERROR(BadValue)'
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-
-  AssertThrows call g:buffer.search('the', 's')
-  AssertThrows call g:buffer.search('the', 'cez')
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', 'D')
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', 's')
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', 'cez')
 
 Execute (Buffer: will Search() w/ bad flags if told to ignore them):
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  call g:buffer.SetBuffer(bufnr('%'))
-  AssertEqual 2, g:buffer.search('the', 'D', 1, 0, 0, 1)
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 2, 'the', 'D', 1, 0, 0, 1)
 
 Execute (Buffer: search() rejects bad curpos args with wrong input list size):
   call g:buffer.SetBuffer(bufnr('%'))
+  call SearchTestSetup(g:buffer)
 
   " empty
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertThrows call g:buffer.search('the', '', [])
-  AssertThrew 'ERROR(BadValue)'
-
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', '', [])
   " one elt
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertThrows call g:buffer.search('the', '', [2])
-  AssertThrew 'ERROR(BadValue)'
-
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', '', [2])
   " three elts
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertThrows call g:buffer.search('the', '', [2, 1, 5])
-  AssertThrew 'ERROR(BadValue)'
-
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', '', [2, 1, 5])
   " six elts
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
-  AssertThrows call g:buffer.search('the', '', [2, 1, 5, 10, 10, 3])
-  AssertThrew 'ERROR(BadValue)'
-
-  AssertEqual 0, &lazyredraw
-  AssertEqual 0, &wrapscan
+  call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', '', [2, 1, 5, 10, 10, 3])
 
 Execute (Buffer: IsOpen(), IsOpenInTab() work when its open in the current window):
   tabnew
@@ -893,7 +863,5 @@ Execute (Buffer: throws ERROR(NotFound) on CleanUp() when buf no longer exists):
   AssertThrew 'ERROR(NotFound)'
 
 Execute (Buffer: throws ERROR(NotFound) on search() when buf no longer exists):
-  AssertEqual 0, &lazyredraw
-  AssertThrows call g:buffer.search('.*', 'c', 1)
-  AssertThrew 'ERROR(NotFound).*buffer.*'
-  AssertEqual 0, &lazyredraw
+  call SearchTestSetup()
+  call TestSearch(g:buffer, 'ERROR(NotFound).*buffer.*', '.*', 'c', 1)
