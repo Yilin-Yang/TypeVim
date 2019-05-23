@@ -567,6 +567,28 @@ function! s:NormalizeSearchArgs(regexp, ...) abort
 
   return [a:regexp, l:flags_to_use, l:lineno, l:colno, l:stopline, l:timeout]
 endfunction
+
+""
+" @private
+" Parse |search()| flags into a dict.
+function! typevim#Buffer#ParseFlags(flags) abort
+  let l:to_return = {
+      \ 'backward': match(a:flags, 'b') !=# -1,
+      \ 'accept_at_cursor': match(a:flags, 'c') !=# -1,
+      \ 'return_subpattern': match(a:flags, 'p') !=# -1,
+      \ 'wraparound': 0,
+      \ 'start_from_curcol': match(a:flags, 'z') !=# -1,
+      \ }
+  let l:w_pos = match(a:flags, 'w\(.*w\)\@!')  " find last w
+  let l:W_pos = match(a:flags, 'W\(.*W\)\@!')  " find last W
+  " neither flag is given, so default to wraparound enabled, OR,
+  " wraparound flag is present and W does not appear after it
+  let l:to_return.wraparound = (l:w_pos ==# -1 && l:W_pos ==# -1) ||
+      \ ( (l:w_pos !=# -1) && (l:W_pos ==# -1 || (l:W_pos <# l:w_pos)) )
+  return l:to_return
+endfunction
+
+""
 " @dict Buffer
 " @usage {regexp} [flags] [startpos] [stopline] [timeout] [ignore_badflags]
 " Perform a |search()| in the given buffer and return the result.

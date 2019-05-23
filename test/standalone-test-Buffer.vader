@@ -1048,3 +1048,38 @@ Execute (Buffer: NextInterval() iterates backward after a wraparound):
       \ [13, 17, 0, 0],
       \ [12, 12, 1, 0],
       \ ], g:intervals
+
+Execute (Buffer: ParseFlags() works):
+  AssertEqual {
+      \ 'backward': 1,
+      \ 'accept_at_cursor': 1,
+      \ 'return_subpattern': 1,
+      \ 'wraparound': 1,
+      \ 'start_from_curcol': 1,
+      \ }, typevim#Buffer#ParseFlags('bcenpswz')
+
+  " have wraparound default to 1
+  AssertEqual {
+      \ 'backward': 1,
+      \ 'accept_at_cursor': 1,
+      \ 'return_subpattern': 1,
+      \ 'wraparound': 1,
+      \ 'start_from_curcol': 0,
+      \ }, typevim#Buffer#ParseFlags('bbcpbbbc')
+
+Execute (Buffer: ParseFlags() can override earlier 'w' or 'W' flags):
+  AssertEqual {
+      \ 'backward': 1,
+      \ 'accept_at_cursor': 1,
+      \ 'return_subpattern': 1,
+      \ 'wraparound': 1,
+      \ 'start_from_curcol': 0,
+      \ }, typevim#Buffer#ParseFlags('bbwcpbwbWwbc')
+
+  AssertEqual {
+      \ 'backward': 1,
+      \ 'accept_at_cursor': 1,
+      \ 'return_subpattern': 1,
+      \ 'wraparound': 0,
+      \ 'start_from_curcol': 0,
+      \ }, typevim#Buffer#ParseFlags('bWbwcpbwbWbc')
