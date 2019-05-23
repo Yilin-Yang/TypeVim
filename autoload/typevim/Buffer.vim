@@ -757,6 +757,9 @@ function! typevim#Buffer#NumLines() dict abort
   let l:found_it = 0
   while l:lower_bound <=# l:upper_bound && !l:found_it
     let l:curr_guess = (l:upper_bound + l:lower_bound) / 2
+    if l:curr_guess <# 1  " buffer is entirely empty
+      return 0
+    endif
 
     let l:curr_line  = getbufline(l:bufnr, l:curr_guess)
     let l:line_after = getbufline(l:bufnr, l:curr_guess + 1)
