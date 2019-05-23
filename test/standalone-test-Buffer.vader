@@ -192,6 +192,13 @@ Execute (Buffer: SetBuffer() throws ERROR(NotFound) when trying to modify a bwip
     endfor
   endfor
 
+Execute (Buffer: NumLines() returns 0 for empty (unloaded) buffer):
+  tabnew
+  call g:buffer.SetBuffer(bufnr('%'))
+  tabclose
+  execute 'bunload '.g:buffer.bufnr()
+  AssertEqual 0, g:buffer.NumLines()
+
 Given (One Line of Text):
   first line
 
