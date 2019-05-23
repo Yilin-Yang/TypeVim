@@ -119,6 +119,7 @@ function! typevim#Buffer#New(...) abort
     \ 'Switch': typevim#make#Member('Switch'),
     \ 'SetBuffer': typevim#make#Member('SetBuffer'),
     \ 'search': typevim#make#Member('search'),
+    \ 'FindLine': typevim#make#Member('FindLine'),
     \ 'split': typevim#make#Member('OpenSplit', [0]),
     \ 'vsplit': typevim#make#Member('OpenSplit', [1]),
     \ 'GetName': typevim#make#Member('GetName'),
@@ -677,36 +678,227 @@ endfunction
 let s:valid_search_flags = 'bcnpwWz'
 
 ""
+" @dict Buffer
+" @usage {regexp} [flags] [startpos] [stopline] [timeout] [ignore_badflags]
+" Find and return the number of a line whose text matches against {regexp}.
+"
+" This function is like @function(typevim#Buffer#search), taking the same
+" parameters and returning the same value, except that the 'p' flag is not
+" accepted, and [timeout] is currently ignored.
+"
+" Unlike that function, it works by iterating over a list of lines from the
+" buffer. Because opening the buffer in a new tab is an expensive operation,
+" this is expected to be faster when matching lines are expected to be close
+" to the cursor. However, this prevents the use of a {regexp} that spans
+" multiple lines; {regexp} will be tested on each line in isolation.
+"
+" This function will |string-match| {regexp} against each line of the buffer.
+" Like with |search()| and |searchpos()|, {regexp} is tested on the starting
+" line from column zero and matches before the cursor are discarded. If the
+" 'z' flag is given, {regexp} is tested against a substring of the starting
+" line: if 'c' is given, the substring includes the given column number, but
+" if not, then it starts after the given column number. The function will not
+" match against the remainder of that line unless it wraps around the file.
+" This crudely approximates, but does not perfectly replicate, the behavior of
+" |search()| and |searchpos()| with the 'z' flag set.
+"
+" @throws BadValue if the 'p' flag is given.
+function! typevim#Buffer#FindLine(regexp, ...) dict abort
+  let [l:regexp, l:flags_str, l:lineno, l:colno, l:stopline, l:timeout] =
+      \ call('s:NormalizeSearchArgs', [a:regexp] + a:000)
+  let l:flags = typevim#Buffer#ParseFlags(l:flags_str)
+  if l:flags.return_subpattern
+    throw maktaba#error#BadValue("'p' is an invalid flag")
+  endif
+
+  let l:num_lines = l:self.NumLines()
+  if l:lineno ># l:num_lines
+    throw maktaba#error#BadValue('Line number out of range: %d', l:lineno)
+  endif
+
+  let l:INTERVAL_SIZE = g:___TYPEVIM_BUFFER_INTERVAL_SIZE
+  if !maktaba#value#IsNumber(l:INTERVAL_SIZE)
+    throw maktaba#error#Failure(
+        \ 'Bad type on interval size, expected number: %s',
+        \ maktaba#value#TypeName(l:INTERVAL_SIZE))
+  elseif l:INTERVAL_SIZE <# 1
+    throw maktaba#error#Failure(
+        \ 'Invalid interval size for retrieval: %d', l:INTERVAL_SIZE)
+  endif
+  lockvar l:INTERVAL_SIZE
+  let [l:int_start, l:int_end, l:contains_firstline, l:hit_eof, l:hit_stopline] =
+        \ typevim#Buffer#NextInterval(
+            \ [0, 0, 0, 0, 0],
+            \ l:lineno, l:stopline, l:num_lines, l:flags, l:INTERVAL_SIZE)
+  let l:interval = l:self.GetLines(l:int_start, l:int_end)
+
+  let l:start_line = l:interval[0]
+  let l:cutoff_col = l:colno
+  if l:cutoff_col <=# 0 | let l:cutoff_col = 1 | endif
+
+  " note: match() returns a 0-based index, while l:colno is (generally)
+  " 1-based starting from the leftmost column
+
+  if !l:flags.accept_at_cursor
+    let l:cutoff_col += (l:flags.backward) ? -1 : 1
+  endif
+
+  " perform matching on the very first line
+  if !l:flags.start_from_curcol
+    " 'z' not given, match from zero column, discard matches before cursor
+    let l:count = 0
+    if l:flags.backward
+      while 1
+        let l:idx = match(l:start_line, l:regexp, 0, l:count)
+        if l:idx + 1 ># l:cutoff_col || l:idx ==# -1
+          " we've overshot the cutoff column, or ran out of matches
+          " set the index of the last potentially viable match
+          let l:count -= 1
+          let l:idx = match(l:start_line, l:regexp, 0, l:count)
+          break
+        endif
+        let l:count += 1
+      endwhile
+      if l:idx !=# -1 && l:idx + 1 <# l:cutoff_col
+        " if the last potentially viable was good, return
+        return l:lineno
+      endif
+    else  " forward search
+      let l:idx = -2
+      while l:idx != -1
+        let l:idx = match(l:start_line, l:regexp, 0, l:count)
+        if l:idx + 1 >=# l:cutoff_col
+          " there is a match after the cutoff column
+          return l:lineno
+        endif
+        let l:count += 1
+      endwhile
+    endif
+  else  " 'z' flag given, slice into substrings around cutoff and basic match
+    let l:substr = (l:flags.backward) ? l:start_line[0 : l:cutoff_col - 1]
+                                    \ : l:start_line[l:cutoff_col - 1 : ]
+    " if there's any match at all, it's within the bounds allowed by the cutoff
+    if match(l:substr, l:regexp) !=# -1
+      return l:lineno
+    endif
+  endif
+
+  " search the rest of the very first interval
+  let [l:success, l:match_idx] =
+      \ typevim#Buffer#SearchInterval(l:regexp, l:interval, l:lineno,
+                                    \ l:flags, 1)
+  if l:success | return l:match_idx + l:int_start | endif
+
+  " search the remaining intervals till we hit EOF
+  while !l:hit_eof && !l:hit_stopline
+    let [l:int_start, l:int_end, l:contains_firstline, l:hit_eof,
+        \ l:hit_stopline] = typevim#Buffer#NextInterval(
+            \ [l:int_start, l:int_end, l:contains_firstline,
+                \ l:hit_eof, l:hit_stopline],
+            \ l:lineno, l:stopline, l:num_lines, l:flags, l:INTERVAL_SIZE)
+    let l:interval = l:self.GetLines(l:int_start, l:int_end)
+    let [l:success, l:match_idx] =
+        \ typevim#Buffer#SearchInterval(l:regexp, l:interval, l:lineno,
+                                      \ l:flags, 0)
+    if l:success | return l:match_idx + l:int_start | endif
+  endwhile
+
+  if !l:flags.wraparound || l:hit_stopline
+    return 0  " no match
+  endif
+
+  " this might be 1, if the interval runs from the start line till EOF
+  let l:contains_firstline = 0
+  while !l:contains_firstline
+    let [l:int_start, l:int_end, l:contains_firstline, l:hit_eof,
+        \ l:hit_stopline] = typevim#Buffer#NextInterval(
+            \ [l:int_start, l:int_end, l:contains_firstline,
+                \ l:hit_eof, l:hit_stopline],
+            \ l:lineno, l:stopline, l:num_lines, l:flags, l:INTERVAL_SIZE)
+    let l:interval = l:self.GetLines(l:int_start, l:int_end)
+    let [l:success, l:match_idx] =
+        \ typevim#Buffer#SearchInterval(l:regexp, l:interval, l:lineno,
+                                      \ l:flags, 0)
+    if l:success | return l:match_idx + l:int_start | endif
+  endwhile
+
+  return 0  " match failed
+endfunction
+" silently expose this variable, for testing purposes
+let g:___TYPEVIM_BUFFER_INTERVAL_SIZE = 1000
+
+""
 " @private
-" Returns `[first_line, last_line, contains_startline, hit_eof]`, start- and
-" end-inclusive, of the next range of lines to retrieve from the buffer in an
-" ongoing FindLine search.
+" Search the given interval of {lines} for a {regexp} match. Returns a two
+" element list: `[success, index]`, where `success` is 1 on a match and 0 if
+" no match was found. If the match succeeded, `index` is equal to the index of
+" the line that matched in the given {lines}; otherwise, it's equal to zero.
+function! typevim#Buffer#SearchInterval(regexp, lines, start_line, flags,
+                                      \ is_first_interval) abort
+  " linewise search through the first interval, skipping the starting line
+  " if applicable
+  if a:flags.backward
+    let l:i = len(a:lines) - 1 - (a:is_first_interval ? 1 : 0)
+    let l:stop_index = -1
+    let l:incr = -1
+  else
+    let l:i = 0 + (a:is_first_interval ? 1 : 0)
+    let l:stop_index = len(a:lines)
+    let l:incr = 1
+  endif
+
+  while l:i !=# l:stop_index
+    if match(a:lines[l:i], a:regexp) !=# -1
+      return [1, l:i]
+    endif
+  let l:i += l:incr | endwhile
+
+  return [0, 0]
+endfunction
+
+""
+" @private
+" Returns `[first_line, last_line, contains_startline, hit_eof,
+" hit_stopline]`, start- and end-inclusive, of the next range of lines to
+" retrieve from the buffer in an ongoing FindLine search.
 "
 " Everything beyond `last_line` is a flag. `contains_startline` is true if the
 " first or last line in the interval is {start_line}. `hit_eof` is true if the
-" last line in the interval is the last line in the buffer.
+" last line in the interval is the last line in the buffer. `hit_stopline` is
+" true if the interval contains the {stopline}.
 "
 " {last_interval} is the list of values returned by a previous call to this
-" function, or `[0, 0, 0, 0]` if this is the first interval being returned.
+" function, or `[0, 0, 0, 0, 0]` if this is the first interval being returned.
 "
 " {start_line} is the line number of the user's given startpos. {num_lines}
-" is the number of lines in the buffer. {flags} is a set of flags as returned
+" is the number of lines in the buffer. {stopline} is the last line to be
+" searched, or 0 if not applicable. {flags} is a set of flags as returned
 " by @function(typevim#Buffer#ParseFlags). {interval_size} is the number of
 " lines to be included in the interval.
 "
 " This function handles the 'backward' flag, but no others. Given a
 " {last_interval} with `hit_eof` set to true, the returned interval will wrap
 " around.
-function! typevim#Buffer#NextInterval(last_interval, start_line, num_lines,
-                                    \ flags, interval_size) abort
+function! typevim#Buffer#NextInterval(last_interval, start_line, stopline,
+                                    \ num_lines, flags, interval_size) abort
   let l:last_int_sta = a:last_interval[0]
   let l:last_int_end = a:last_interval[1]
   let l:last_contains_startline = a:last_interval[2]
   let l:last_hit_eof = a:last_interval[3]
+  let l:last_hit_stopline = a:last_interval[4]
 
   " initialize flags
   let l:contains_startline = 0
   let l:hit_eof = 0
+  let l:hit_stopline = 0
+
+  if a:stopline
+    if a:flags.backward && a:stopline ># a:start_line ||
+        \ !a:flags.backward && a:stopline <# a:start_line
+      " stopline before startline -> search immediately fails
+      return [0, 0, 0, 0, 1]
+    endif
+  endif
 
   " initialize start of interval
   if a:flags.backward
@@ -763,7 +955,21 @@ function! typevim#Buffer#NextInterval(last_interval, start_line, num_lines,
       endif
     endif
   endif
-  return [l:int_start, l:int_end, l:contains_startline, l:hit_eof]
+
+  if a:stopline && l:int_start <=# a:stopline && a:stopline <=# l:int_end
+    let l:hit_stopline = 1
+    if a:flags.backward
+      let l:int_start = a:stopline
+      " if the interval 'shrank from' the EOF, reset that flag
+      if a:stopline !=# 1 | let l:hit_eof = 0 | endif
+    else
+      let l:int_end = a:stopline
+      if a:stopline !=# a:num_lines | let l:hit_eof = 0 | endif
+    endif
+  endif
+
+  return [l:int_start, l:int_end, l:contains_startline,
+        \ l:hit_eof, l:hit_stopline]
 endfunction
 let s:LAST_IS_FIRSTLINE = 'l' | lockvar s:LAST_IS_FIRSTLINE
 let s:HIT_EOF = 'e' | lockvar s:HIT_EOF

@@ -1127,6 +1127,32 @@ Buffer.search({regexp}, [flags], [startpos], [stopline], [timeout],
   elements, or otherwise does not adhere to the requirements listed above, or
   if |setpos()| returns -1 when given (a "normalized") [startpos].
 
+Buffer.FindLine({regexp}, [flags], [startpos], [stopline], [timeout],
+  [ignore_badflags])                                       *Buffer.FindLine()*
+  Find and return the number of a line whose text matches against {regexp}.
+
+  This function is like |typevim#Buffer#search()|, taking the same parameters
+  and returning the same value, except that the 'p' flag is not accepted, and
+  [timeout] is currently ignored.
+
+  Unlike that function, it works by iterating over a list of lines from the
+  buffer. Because opening the buffer in a new tab is an expensive operation,
+  this is expected to be faster when matching lines are expected to be close
+  to the cursor. However, this prevents the use of a {regexp} that spans
+  multiple lines; {regexp} will be tested on each line in isolation.
+
+  This function will |string-match| {regexp} against each line of the buffer.
+  Like with |search()| and |searchpos()|, {regexp} is tested on the starting
+  line from column zero and matches before the cursor are discarded. If the
+  'z' flag is given, {regexp} is tested against a substring of the starting
+  line: if 'c' is given, the substring includes the given column number, but
+  if not, then it starts after the given column number. The function will not
+  match against the remainder of that line unless it wraps around the file.
+  This crudely approximates, but does not perfectly replicate, the behavior of
+  |search()| and |searchpos()| with the 'z' flag set.
+
+  Throws ERROR(BadValue) if the 'p' flag is given.
+
 Buffer.OpenSplit({open_vertical}, [cmd], [pos], [size])   *Buffer.OpenSplit()*
   Open this buffer in a split.
 
