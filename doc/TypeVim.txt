@@ -1087,7 +1087,7 @@ Buffer.search({regexp}, [flags], [startpos], [stopline], [timeout],
   flag is set, and other flags that affect movement of the cursor are ignored.
   'b'   search Backward instead of forward
   'c'   accept a match at the Cursor position
-  'p'   return number of matching sub-Pattern (see below)
+  'p'   return number of matching sub-Pattern (see |search()|)
   'w'   Wrap around the end of the file
   'W'   don't Wrap around the end of the file
   'z'   start searching at the cursor column instead of Zero

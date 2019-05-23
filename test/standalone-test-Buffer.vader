@@ -739,6 +739,13 @@ Execute (Buffer: handles 'z' flag correctly):
   call TestSearch(g:buffer, 1, 'brown \zsfox', 'zcW', [1, 1])
   call TestSearch(g:buffer, 0, 'brown \zsfox', 'zcW', [1, 17])
 
+Execute (Buffer: handles 'p' flag correctly):
+  call SearchTestSetup(g:buffer)
+  call TestSearch(g:buffer, 1, '\(brown \)\{0,1}\zsfox', 'cW', [1, 17])
+
+  " optional '\(brown \)' match should fail
+  call TestSearch(g:buffer, 1, '\(brown \)\{0,1}\zsfox', 'zcW', [1, 17])
+
 Execute (Buffer: won't Search() w/ bad flags):
   call SearchTestSetup(g:buffer)
   call TestSearch(g:buffer, 'ERROR(BadValue)', 'the', 'D')
@@ -865,3 +872,179 @@ Execute (Buffer: throws ERROR(NotFound) on CleanUp() when buf no longer exists):
 Execute (Buffer: throws ERROR(NotFound) on search() when buf no longer exists):
   call SearchTestSetup()
   call TestSearch(g:buffer, 'ERROR(NotFound).*buffer.*', '.*', 'c', 1)
+
+Execute (Buffer: NextInterval() returns the interval after the start):
+  let g:interval_size = 10
+  let g:num_lines = 30
+  let g:start_line = 1
+  let g:flags = {
+      \ 'backward': 0
+      \ }
+
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval([0, 0, 0, 0],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 1, g:int_start
+  AssertEqual 10, g:int_end
+  AssertEqual 1, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 0, g:hit_eof, 'Wrong hit_eof flag'
+Then (Buffer: NextInterval() returns the interval after the previous interval):
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval(
+          \ [g:int_start, g:int_end, g:has_startline, g:hit_eof],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 11, g:int_start
+  AssertEqual 20, g:int_end
+  AssertEqual 0, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 0, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() returns the interval till the end):
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval(
+          \ [g:int_start, g:int_end, g:has_startline, g:hit_eof],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 21, g:int_start
+  AssertEqual 30, g:int_end
+  AssertEqual 0, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 1, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() returns the small interval till the end from the start):
+  let g:interval_size = 100
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval(
+          \ [0, 0, 0, 0],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 1, g:int_start
+  AssertEqual 30, g:int_end
+  AssertEqual 1, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 1, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() returns a one-line interval till the end):
+  let g:interval_size = 100
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval(
+          \ [21, 29, 0, 0],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 30, g:int_start
+  AssertEqual 30, g:int_end
+  AssertEqual 0, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 1, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() returns the small interval before the start):
+  let g:interval_size = 10
+  let g:num_lines = 30
+  let g:start_line = 5
+  let g:flags = {
+      \ 'backward': 1
+      \ }
+
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval([0, 0, 0, 0],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 1, g:int_start
+  AssertEqual 5, g:int_end
+  AssertEqual 1, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 1, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() returns a one-line interval till the top):
+  let g:interval_size = 10
+  let g:num_lines = 30
+  let g:start_line = 12
+  let g:flags = {
+      \ 'backward': 1
+      \ }
+
+  let [g:int_start, g:int_end, g:has_startline, g:hit_eof] =
+      \ typevim#Buffer#NextInterval([2, 11, 0, 0],
+          \ g:start_line, g:num_lines, g:flags, g:interval_size)
+
+  AssertEqual 1, g:int_start
+  AssertEqual 1, g:int_end
+  AssertEqual 0, g:has_startline, 'Wrong has_startline flag'
+  AssertEqual 1, g:hit_eof, 'Wrong hit_eof flag'
+
+Execute (Buffer: NextInterval() iterates forward over an interval):
+  let g:interval_size = 5
+  let g:num_lines = 32
+  let g:start_line = 12
+  let g:flags = {
+      \ 'backward': 0
+      \ }
+
+  let g:returned_interval = [0, 0, 0, 0]
+  let g:intervals = []
+  while !g:returned_interval[3]  " until we hit the end of the file
+    let g:returned_interval =
+        \ typevim#Buffer#NextInterval(g:returned_interval,
+            \ g:start_line, g:num_lines, g:flags, g:interval_size)
+    call add(g:intervals, copy(g:returned_interval))
+  endwhile
+
+  AssertEqual [
+      \ [12, 16, 1, 0],
+      \ [17, 21, 0, 0],
+      \ [22, 26, 0, 0],
+      \ [27, 31, 0, 0],
+      \ [32, 32, 0, 1],
+      \ ], g:intervals
+
+Execute (Buffer: NextInterval() iterates forward after a wraparound):
+  let g:intervals = []
+  while !g:returned_interval[2]  " until we hit the startline
+    let g:returned_interval =
+        \ typevim#Buffer#NextInterval(g:returned_interval,
+            \ g:start_line, g:num_lines, g:flags, g:interval_size)
+    call add(g:intervals, copy(g:returned_interval))
+  endwhile
+
+  AssertEqual [
+      \ [ 1,  5, 0, 0],
+      \ [ 6, 10, 0, 0],
+      \ [11, 12, 1, 0],
+      \ ], g:intervals
+
+Execute (Buffer: NextInterval() iterates backward over an interval):
+  let g:interval_size = 5
+  let g:num_lines = 32
+  let g:start_line = 12
+  let g:flags = {
+      \ 'backward': 1
+      \ }
+
+  let g:returned_interval = [0, 0, 0, 0]
+  let g:intervals = []
+  while !g:returned_interval[3]  " until we hit the end of the file
+    let g:returned_interval =
+        \ typevim#Buffer#NextInterval(g:returned_interval,
+            \ g:start_line, g:num_lines, g:flags, g:interval_size)
+    call add(g:intervals, copy(g:returned_interval))
+  endwhile
+
+  AssertEqual [
+      \ [8, 12, 1, 0],
+      \ [3,  7, 0, 0],
+      \ [1,  2, 0, 1],
+      \ ], g:intervals
+
+Execute (Buffer: NextInterval() iterates backward after a wraparound):
+  let g:intervals = []
+  while !g:returned_interval[2]  " until we hit the startline
+    let g:returned_interval =
+        \ typevim#Buffer#NextInterval(g:returned_interval,
+            \ g:start_line, g:num_lines, g:flags, g:interval_size)
+    call add(g:intervals, copy(g:returned_interval))
+  endwhile
+
+  AssertEqual [
+      \ [28, 32, 0, 0],
+      \ [23, 27, 0, 0],
+      \ [18, 22, 0, 0],
+      \ [13, 17, 0, 0],
+      \ [12, 12, 1, 0],
+      \ ], g:intervals

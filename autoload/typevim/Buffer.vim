@@ -511,6 +511,62 @@ function! typevim#Buffer#SetBuffer(bufnr, ...) dict abort
 endfunction
 
 ""
+" Process and perform error checks on the args for
+" @function(typevim#Buffer#search) or @function(typevim#Buffer#FindLine).
+"
+" Returns a list:
+" >
+"   [regexp, flags_to_use, lineno, colno, stopline, timeout]
+" <
+function! s:NormalizeSearchArgs(regexp, ...) abort
+  call maktaba#ensure#IsString(a:regexp)
+  let l:flags = maktaba#ensure#IsString(get(a:000, 0, ''))
+  let l:startpos = maktaba#ensure#TypeMatchesOneOf(get(a:000, 1, 1), [1, []])
+  let l:stopline = maktaba#ensure#IsNumber(get(a:000, 2, 0))
+  let l:timeout = maktaba#ensure#IsNumber(get(a:000, 3, 0))
+  let l:ignore_badflags = typevim#ensure#IsBool(get(a:000, 4, 0))
+
+  " set l:lineno and l:colno with appropriate values
+  if typevim#value#IsList(l:startpos)
+    let l:normalized = []  " 'normalize' to [lineno, colno]
+    let l:len = len(l:startpos)
+    if l:len ==# 2
+      let l:normalized = l:startpos
+    elseif l:len ==# 4 || l:len ==# 5
+      let l:normalized = l:startpos[1:2]
+    else
+      throw maktaba#error#BadValue(
+          \ 'Gave an invalid startpos list (wrong length): '.
+          \ typevim#object#ShallowPrint(l:startpos))
+    endif
+    let l:lineno = maktaba#ensure#IsNumber(l:normalized[0])
+    let l:colno = maktaba#ensure#IsNumber(l:normalized[1])
+  else  " is number
+    let l:lineno = l:startpos
+    let l:colno = 0
+  endif
+  if l:lineno <=# 0
+    throw maktaba#error#BadValue('Gave bad line number: %d', l:lineno)
+  endif
+  if l:colno <# 0
+    throw maktaba#error#BadValue('Gave bad column number: %d', l:colno)
+  endif
+
+  " check the given flags
+  let l:flags_to_use = 'n'
+  let l:i = 0 | while l:i <# len(l:flags)
+    let l:f = l:flags[l:i]
+    if match(s:valid_search_flags, l:f) ==# -1
+      if !l:ignore_badflags
+        throw maktaba#error#BadValue('Unsupported flag in search: %s', l:f)
+      endif
+    else
+      let l:flags_to_use .= l:f
+    endif
+  let l:i += 1 | endwhile
+
+  return [a:regexp, l:flags_to_use, l:lineno, l:colno, l:stopline, l:timeout]
+endfunction
 " @dict Buffer
 " @usage {regexp} [flags] [startpos] [stopline] [timeout] [ignore_badflags]
 " Perform a |search()| in the given buffer and return the result.
@@ -531,7 +587,7 @@ endfunction
 " flag is set, and other flags that affect movement of the cursor are ignored.
 "   - 'b'   search Backward instead of forward
 "   - 'c'   accept a match at the Cursor position
-"   - 'p'   return number of matching sub-Pattern (see below)
+"   - 'p'   return number of matching sub-Pattern (see |search()|)
 "   - 'w'   Wrap around the end of the file
 "   - 'W'   don't Wrap around the end of the file
 "   - 'z'   start searching at the cursor column instead of Zero
@@ -567,53 +623,8 @@ endfunction
 " @throws BadValue if [flags] contains unsupported flags and [ignore_badflags] is 0, or if [startpos] is a list without 2, 4, or 5 elements, or otherwise does not adhere to the requirements listed above, or if |setpos()| returns -1 when given (a "normalized") [startpos].
 function! typevim#Buffer#search(regexp, ...) dict abort
   call s:CheckType(l:self)
-  call maktaba#ensure#IsString(a:regexp)
-  let l:flags = maktaba#ensure#IsString(get(a:000, 0, ''))
-  let l:startpos = maktaba#ensure#TypeMatchesOneOf(get(a:000, 1, 1), [1, []])
-  let l:stopline = maktaba#ensure#IsNumber(get(a:000, 2, 0))
-  let l:timeout = maktaba#ensure#IsNumber(get(a:000, 3, 0))
-  let l:ignore_badflags = typevim#ensure#IsBool(get(a:000, 4, 0))
-
-  " set l:lineno and l:colno with appropriate values
-  if typevim#value#IsList(l:startpos)
-    let l:normalized = []  " 'normalize' to [lineno, colno]
-    let l:len = len(l:startpos)
-    if l:len ==# 2
-      let l:normalized = l:startpos
-    elseif l:len ==# 4 || l:len ==# 5
-      let l:normalized = l:startpos[1:2]
-    else
-      throw maktaba#error#BadValue(
-          \ 'Gave an invalid startpos list (wrong length): '.
-          \ typevim#object#ShallowPrint(l:startpos))
-    endif
-    let l:lineno = maktaba#ensure#IsNumber(l:normalized[0])
-    let l:colno = maktaba#ensure#IsNumber(l:normalized[1])
-  else  " is number
-    let l:lineno = l:startpos
-    let l:colno = 0
-  endif
-  if l:lineno <=# 0
-    throw maktaba#error#BadValue(
-        \ 'Gave bad line number: %d', l:lineno)
-  endif
-  if l:colno <# 0
-    throw maktaba#error#BadValue(
-        \ 'Gave bad column number: %d', l:colno)
-  endif
-
-  " check the given flags
-  let l:flags_to_use = 'n'
-  let l:i = 0 | while l:i <# len(l:flags)
-    let l:f = l:flags[l:i]
-    if match(s:valid_search_flags, l:f) ==# -1
-      if !l:ignore_badflags
-        throw maktaba#error#BadValue('Unsupported flag in search: %s', l:f)
-      endif
-    else
-      let l:flags_to_use .= l:f
-    endif
-  let l:i += 1 | endwhile
+  let [l:regexp, l:flags_to_use, l:lineno, l:colno, l:stopline, l:timeout] =
+      \ call('s:NormalizeSearchArgs', [a:regexp] + a:000)
 
   let l:old_tabpage = tabpagenr()
   let l:old_redraw = &lazyredraw
@@ -624,10 +635,11 @@ function! typevim#Buffer#search(regexp, ...) dict abort
     tabnew
     execute 'buffer '.l:self.bufnr()
     let l:old_curpos = getcurpos()
-    if setpos('.', [0, l:lineno, l:colno, 0]) ==# -1
+    let l:new_curpos = [0, l:lineno, l:colno, 0]
+    if setpos('.', l:new_curpos) ==# -1
       " setpos failed, user gave bad startpos
       throw maktaba#error#BadValue(
-          \ 'Given startpos not valid in buffer: %s', string(l:startpos))
+          \ 'Given startpos not valid in buffer: %s', string(l:new_curpos))
     endif
     let l:to_return = search(a:regexp, l:flags_to_use, l:stopline, l:timeout)
     call setpos('.', l:old_curpos)
@@ -641,6 +653,98 @@ function! typevim#Buffer#search(regexp, ...) dict abort
   return l:to_return
 endfunction
 let s:valid_search_flags = 'bcnpwWz'
+
+""
+" @private
+" Returns `[first_line, last_line, contains_startline, hit_eof]`, start- and
+" end-inclusive, of the next range of lines to retrieve from the buffer in an
+" ongoing FindLine search.
+"
+" Everything beyond `last_line` is a flag. `contains_startline` is true if the
+" first or last line in the interval is {start_line}. `hit_eof` is true if the
+" last line in the interval is the last line in the buffer.
+"
+" {last_interval} is the list of values returned by a previous call to this
+" function, or `[0, 0, 0, 0]` if this is the first interval being returned.
+"
+" {start_line} is the line number of the user's given startpos. {num_lines}
+" is the number of lines in the buffer. {flags} is a set of flags as returned
+" by @function(typevim#Buffer#ParseFlags). {interval_size} is the number of
+" lines to be included in the interval.
+"
+" This function handles the 'backward' flag, but no others. Given a
+" {last_interval} with `hit_eof` set to true, the returned interval will wrap
+" around.
+function! typevim#Buffer#NextInterval(last_interval, start_line, num_lines,
+                                    \ flags, interval_size) abort
+  let l:last_int_sta = a:last_interval[0]
+  let l:last_int_end = a:last_interval[1]
+  let l:last_contains_startline = a:last_interval[2]
+  let l:last_hit_eof = a:last_interval[3]
+
+  " initialize flags
+  let l:contains_startline = 0
+  let l:hit_eof = 0
+
+  " initialize start of interval
+  if a:flags.backward
+    if l:last_hit_eof  " wrap around to the bottommost interval
+      let l:int_end = a:num_lines
+    else  " get the interval before the last
+      if l:last_int_sta  " start before the last hunk
+        let l:int_end = l:last_int_sta - 1
+      else " initialize
+        let l:int_end = a:start_line
+        let l:contains_startline = 1
+      endif
+    endif
+    let l:int_start = l:int_end - a:interval_size + 1
+  else  " search forward
+    if l:last_hit_eof  " wrap around to the topmost interval
+      let l:int_start = 1
+    elseif l:last_int_end  " get the interval after the last
+      let l:int_start = l:last_int_end + 1
+    else  " first interval starts with startline
+      let l:contains_startline = 1
+      let l:int_start = a:start_line
+    endif
+    let l:int_end = l:int_start + a:interval_size - 1
+  endif
+
+  " perform bounds checks
+  if l:int_start <# 1
+    let l:int_start = 1
+    if a:flags.backward | let l:hit_eof = 1 | endif
+  endif
+
+  if l:int_end >=# a:num_lines
+    let l:int_end = a:num_lines
+    if !a:flags.backward | let l:hit_eof = 1 | endif
+  endif
+
+  if a:flags.backward
+    " l:int_start still before l:int_end, but the interval 'moves backward'
+    if l:int_end >=# a:start_line  " we've wrapped around the start
+      " check that contains_startline isn't set, so that we don't
+      " 'double-truncate' on the first interval
+      if l:int_start <=# a:start_line && !l:contains_startline
+        " truncate the top of the interval at the startline
+        let l:contains_startline = 1
+        let l:int_start = a:start_line
+      endif
+    endif
+  else
+    if l:int_start <=# a:start_line  " we've wrapped around the end
+      if l:int_end >= a:start_line && !l:contains_startline
+        let l:contains_startline = 1
+        let l:int_end = a:start_line
+      endif
+    endif
+  endif
+  return [l:int_start, l:int_end, l:contains_startline, l:hit_eof]
+endfunction
+let s:LAST_IS_FIRSTLINE = 'l' | lockvar s:LAST_IS_FIRSTLINE
+let s:HIT_EOF = 'e' | lockvar s:HIT_EOF
 
 ""
 " @dict Buffer
