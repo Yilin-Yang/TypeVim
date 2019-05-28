@@ -324,6 +324,13 @@ typevim#ensure#IsList({Obj})                         *typevim#ensure#IsList()*
 
   See |typevim#value#IsList()| for further details.
 
+typevim#ensure#IsCollection({Obj})             *typevim#ensure#IsCollection()*
+  Throws an ERROR(WrongType) if the given {Obj} is not a |list| or a |dict|.
+
+  Returns {Obj} for convenience.
+
+  See |typevim#value#IsCollection()| for further details.
+
 typevim#ensure#Implements({Obj}, {Interface})    *typevim#ensure#Implements()*
   Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
   {Interface}.
@@ -825,16 +832,22 @@ typevim#value#IsType({Obj}, {typename})               *typevim#value#IsType()*
 typevim#value#IsDict({Obj})                           *typevim#value#IsDict()*
   Returns 1 when the given {Obj} is a |dict|, and 0 otherwise.
 
-  Exactly like |maktaba#ensure#IsDict|, but optimized to be slightly faster.
-  As of the time of writing, vim-maktaba's implementation constructs an empty
+  Exactly like |maktaba#value#IsDict|, but optimized to be slightly faster. As
+  of the time of writing, vim-maktaba's implementation constructs an empty
   dict with every call, while this function simply queries the |type()| of the
   {Obj} and compares that to |typevim#Dict()|.
 
 typevim#value#IsList({Obj})                           *typevim#value#IsList()*
   Returns 1 when the given {Obj} is a |list|, and 0 otherwise.
 
-  Exactly like |maktaba#ensure#IsList|, but optimized to be slightly faster.
+  Exactly like |maktaba#value#IsList|, but optimized to be slightly faster.
   See |typevim#value#IsDict()| for further details.
+
+typevim#value#IsCollection({Obj})               *typevim#value#IsCollection()*
+  Returns 1 when the given {Obj} is a |list|, and 0 otherwise.
+
+  Exactly like |maktaba#value#IsCollection|, but optimized to be slightly
+  faster. See |typevim#value#IsDict()| for further details.
 
 typevim#value#Implements({Obj}, {Interface})      *typevim#value#Implements()*
   Returns 1 when {Obj} is an implementation of {Interface}, and 0 otherwise.

@@ -13,7 +13,7 @@ Execute (typevim#ensure#IsDict: Rejects Objects that Aren't Dicts):
     AssertThrew 'ERROR(WrongType).*Got a '.maktaba#value#TypeName(g:Obj)
   endfor
 
-Execute (typevim#ensure#IsList: Accepts Dict Objects):
+Execute (typevim#ensure#IsList: Accepts List Objects):
   let g:obj = []
   Assert g:obj is typevim#ensure#IsList(g:obj)
 
@@ -23,6 +23,22 @@ Execute (typevim#ensure#IsList: Rejects Objects that Aren't Lists):
 
   for g:Obj in [{}, function('Foo'), 0, 0.0, 'blah']
     AssertThrows call typevim#ensure#IsList(g:Obj)
+    AssertThrew 'ERROR(WrongType).*Got a '.maktaba#value#TypeName(g:Obj)
+  endfor
+
+Execute (typevim#ensure#IsCollection: Accepts Dict and List Objects):
+  let g:obj = {}
+  Assert g:obj is typevim#ensure#IsCollection(g:obj), 'Failed on dict'
+
+  let g:obj = []
+  Assert g:obj is typevim#ensure#IsCollection(g:obj), 'Failed on list'
+
+Execute (typevim#ensure#IsCollection: Rejects Everything Else):
+  function! Foo()
+  endfunction
+
+  for g:Obj in [function('Foo'), 0, 0.0, 'blah']
+    AssertThrows call typevim#ensure#IsCollection(g:Obj)
     AssertThrew 'ERROR(WrongType).*Got a '.maktaba#value#TypeName(g:Obj)
   endfor
 

@@ -384,6 +384,20 @@ endfunction
 let s:LIST_TYPE = typevim#List()
 
 ""
+" Throws an ERROR(WrongType) if the given {Obj} is not a |list| or a |dict|.
+"
+" Returns {Obj} for convenience.
+"
+" See @function(typevim#value#IsCollection) for further details.
+function! typevim#ensure#IsCollection(Obj) abort
+  if !typevim#value#IsCollection(a:Obj)
+    throw maktaba#error#WrongType('Expected a List or a Dictionary. Got a %s.',
+        \ maktaba#value#TypeName(a:Obj))
+  endif
+  return a:Obj
+endfunction
+
+""
 " Throws an ERROR(WrongType) if the given {Obj} is not an implementation of
 " {Interface}.
 "

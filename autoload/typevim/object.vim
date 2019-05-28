@@ -177,13 +177,13 @@ function! s:CheckSelfReference(print_state) abort
   let l:Obj = a:print_state.Obj[0]
   let l:seen_objs = a:print_state.seen_objs
   let l:self_refs = a:print_state.self_refs
-  if !maktaba#value#IsCollection(l:Obj)
+  if !typevim#value#IsCollection(l:Obj)
     return []
   endif
   call typevim#ensure#IsList(l:seen_objs)
   let l:i = 0 | while l:i <# len(a:print_state.seen_objs)
     let l:seen = l:seen_objs[l:i]
-    " if !maktaba#value#IsCollection(l:seen)
+    " if !typevim#value#IsCollection(l:seen)
     "   throw maktaba#error#Failure(
     "       \ 'Seen objects list contained a primitive: '.l:seen)
     " endif
@@ -319,7 +319,7 @@ function! s:PrintSelfReferences(self_refs) abort
 
   let l:str = 'self-referencing objects: [ '
   for l:Obj in a:self_refs
-    if !maktaba#value#IsCollection(l:Obj)
+    if !typevim#value#IsCollection(l:Obj)
       throw maktaba#error#Failure(
           \ 'Self-referencing objects list contained a primitive: '.l:Obj)
     endif
@@ -412,7 +412,7 @@ function! typevim#object#PrettyPrint(Obj) abort
   " note: Obj always goes into a one-element list wrapper, so that dict
   " functions don't bind to the PrintState object.
   call add(l:print_state.Obj, a:Obj)
-  if maktaba#value#IsCollection(a:Obj)
+  if typevim#value#IsCollection(a:Obj)
     call add(l:print_state.seen_objs, a:Obj)
   endif
 
@@ -510,7 +510,7 @@ endfunction
 function! s:ShallowPrintImpl(Obj, cur_depth, max_depth) abort
   call maktaba#ensure#IsNumber(a:cur_depth)
   call maktaba#ensure#IsNumber(a:max_depth)
-  if !(maktaba#value#IsCollection(a:Obj) || maktaba#value#IsFuncref(a:Obj))
+  if !(typevim#value#IsCollection(a:Obj) || maktaba#value#IsFuncref(a:Obj))
     return string(a:Obj)
   endif
   if a:cur_depth ==# a:max_depth

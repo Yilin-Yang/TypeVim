@@ -10,7 +10,7 @@ Execute (typevim#value#IsDict: Returns False for Things that Aren't Dicts):
         \ 'Failed with '.maktaba#value#TypeName(g:Obj)
   endfor
 
-Execute (typevim#value#IsList: Returns True for Dict Objects):
+Execute (typevim#value#IsList: Returns True for List Objects):
   AssertEqual 1, typevim#value#IsList([])
 
 Execute (typevim#value#IsList: Returns False for Things that Aren't Lists):
@@ -18,6 +18,16 @@ Execute (typevim#value#IsList: Returns False for Things that Aren't Lists):
   endfunction
 
   for g:Obj in [{}, function('Foo'), 0, 0.0, 'blah']
+    AssertEqual 0, typevim#value#IsList(g:Obj),
+        \ 'Failed with '.maktaba#value#TypeName(g:Obj)
+  endfor
+
+Execute (typevim#value#IsCollection: Returns False for Dict and List Objects):
+  AssertEqual 1, typevim#value#IsCollection({})
+  AssertEqual 1, typevim#value#IsCollection([])
+
+Execute (typevim#value#IsCollection: Returns False for Everything Else):
+  for g:Obj in [function('Foo'), 0, 0.0, 'blah']
     AssertEqual 0, typevim#value#IsList(g:Obj),
         \ 'Failed with '.maktaba#value#TypeName(g:Obj)
   endfor
