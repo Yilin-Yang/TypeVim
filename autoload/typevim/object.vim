@@ -90,6 +90,31 @@ function! typevim#object#Bind(Funcref, obj, ...) abort
 endfunction
 
 """""""""""""""""""""""""""""""""""PRINTING"""""""""""""""""""""""""""""""""""
+let s:PRINT_STATE_PROTOTYPE = {
+    \ 'Obj': [],
+    \ 'starting_indent': 0,
+    \ 'seen_objs': [],
+    \ 'self_refs': [],
+    \ 'max_recursion': 0x7FFFFFFF,
+    \ }
+lockvar! s:PRINT_STATE_PROTOTYPE
+
+""
+" Construct and return a new PrintState object, used for storing the progress
+" of an ongoing PrettyPrint operation.
+function! s:PrintState_New() abort
+  return deepcopy(s:PRINT_STATE_PROTOTYPE)
+endfunction
+
+""
+" Construct and return a "child" PrintState object, used for storing the
+" progress of an PrettyPrint operation for an element of a parent object.
+function! s:PrintState_NewFrom(parent_state, Obj, incr) abort
+  let l:new = copy(a:parent_state)
+  let l:new.Obj = [a:Obj]
+  let l:new.starting_indent += a:incr
+  return l:new
+endfunction
 
 ""
 " Return a string of spaces that would indent text by {level} "levels." A
@@ -137,41 +162,44 @@ function! typevim#object#GetIndentBlock(level) abort  " expose for tests
 endfunction
 
 ""
-" Check whether or not {Obj} (a list or a dictionary) has been seen
-" before.
+" Check whether or not `Obj` (a list or a dictionary) has been seen
+" before. Takes a {print_state} object as an argument.
 "
-" If it hasn't, appends {Obj} to {seen_objects} if {Obj} is a collection, and
+" If it hasn't, appends `Obj` to `seen_objs` if `Obj` is a collection, and
 " returns an empty list. (This is so that the returned value will be `empty()`,
 " which can be checked in a conditional statement.)
 "
-" If it has, appends {Obj} to {self_refs} (if it's not already present) and
+" If it has, appends `Obj` to `self_refs` (if it's not already present) and
 " returns a two-element list containing the index of the seen object, and a
 " descriptive string, in that order.
 " @throws WrongType
-function! s:CheckSelfReference(Obj, seen_objects, self_refs) abort
-  if !maktaba#value#IsCollection(a:Obj)
+function! s:CheckSelfReference(print_state) abort
+  let l:Obj = a:print_state.Obj[0]
+  let l:seen_objs = a:print_state.seen_objs
+  let l:self_refs = a:print_state.self_refs
+  if !maktaba#value#IsCollection(l:Obj)
     return []
   endif
-  call typevim#ensure#IsList(a:seen_objects)
-  let l:i = 0 | while l:i <# len(a:seen_objects)
-    let l:seen = a:seen_objects[l:i]
-    if !maktaba#value#IsCollection(l:seen)
-      throw maktaba#error#Failure(
-          \ 'Seen objects list contained a primitive: '.l:seen)
-    endif
-    if a:Obj is l:seen
-      let l:j = 0 | while l:j <# len(a:self_refs)
-        let l:known_self_ref = a:self_refs[l:j]
-        if a:Obj is l:known_self_ref | break | endif
+  call typevim#ensure#IsList(l:seen_objs)
+  let l:i = 0 | while l:i <# len(a:print_state.seen_objs)
+    let l:seen = l:seen_objs[l:i]
+    " if !maktaba#value#IsCollection(l:seen)
+    "   throw maktaba#error#Failure(
+    "       \ 'Seen objects list contained a primitive: '.l:seen)
+    " endif
+    if l:Obj is l:seen
+      let l:j = 0 | while l:j <# len(l:self_refs)
+        let l:known_self_ref = l:self_refs[l:j]
+        if l:Obj is l:known_self_ref | break | endif
       let l:j += 1 | endwhile
-      if l:j ==# len(a:self_refs)  " wasn't in list
-        call add(a:self_refs, a:Obj)
+      if l:j ==# len(l:self_refs)  " wasn't in list
+        call add(l:self_refs, l:Obj)
       endif
       return [l:j, l:j ? '{self-reference, idx: '.l:j.'}' : '{self-reference}']
     endif
   let l:i += 1 | endwhile
   " you have not been seen
-  call add(a:seen_objects, a:Obj)
+  call add(l:seen_objs, l:Obj)
   return []
 endfunction
 
@@ -202,38 +230,38 @@ endfunction
 " avoid infinite recursion. See @function(CheckSelfReference).
 "
 " @throws WrongType
-function! s:PrettyPrintDict(Obj, starting_indent, seen_objs, self_refs) abort
-  call typevim#ensure#IsDict(a:Obj)
-  call maktaba#ensure#IsNumber(a:starting_indent)
-  call typevim#ensure#IsList(a:seen_objs)
-  call typevim#ensure#IsList(a:self_refs)
+function! s:PrettyPrintDict(print_state) abort
+  let l:Obj       = typevim#ensure#IsDict(a:print_state.Obj[0])
+  let l:seen_objs = typevim#ensure#IsList(a:print_state.seen_objs)
+  let l:self_refs = typevim#ensure#IsList(a:print_state.self_refs)
+  let l:starting_indent = maktaba#ensure#IsNumber(a:print_state.starting_indent)
 
-  let l:starting_block = s:GetIndentBlock(a:starting_indent)
+  let l:starting_block = s:GetIndentBlock(l:starting_indent)
 
-  if empty(a:Obj)
+  if empty(l:Obj)
     return l:starting_block.'{  }'
   endif
 
   let l:str = l:starting_block."{\n"
-  let l:indent_level = a:starting_indent + 1
+  let l:indent_level = l:starting_indent + 1
   let l:indent_block = s:GetIndentBlock(l:indent_level)
 
   " only sort on keys, not values, so that sort() doesn't recurse into a
   " self-referencing list
-  let l:items = sort(items(a:Obj), 'typevim#value#CompareKeys')
+  let l:items = sort(items(l:Obj), 'typevim#value#CompareKeys')
   for [l:key, l:Val] in l:items
     let l:str .= l:indent_block.'"'.l:key.'": '
 
     " check for, handle self-referencing objects
-    let l:seen_and_msg = s:CheckSelfReference(a:Obj[l:key], a:seen_objs, a:self_refs)
+    let l:seen_and_msg = s:CheckSelfReference(
+        \ s:PrintState_NewFrom(a:print_state, l:Obj[l:key], 0))
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     elseif maktaba#value#IsString(l:Val)
       let l:str .= '"'.l:Val.'"'  " don't 'double-wrap' the string
     else
       let l:str .= s:StripLeadingSpaces(
-          \ s:PrettyPrintImpl(
-            \ l:Val, l:indent_level, a:seen_objs, a:self_refs))
+          \ s:PrettyPrintImpl(s:PrintState_NewFrom(a:print_state, l:Val, 1)))
     endif
 
     let l:str .= ",\n"
@@ -259,22 +287,21 @@ endfunction
 " avoid infinite recursion. See @function(CheckSelfReference).
 "
 " @throws WrongType
-function! s:PrettyPrintList(Obj, cur_indent, seen_objs, self_refs) abort
-  call typevim#ensure#IsList(a:Obj)
-  call maktaba#ensure#IsNumber(a:cur_indent)
-  call typevim#ensure#IsList(a:seen_objs)
-  call typevim#ensure#IsList(a:self_refs)
+function! s:PrettyPrintList(print_state) abort
+  let l:Obj       = typevim#ensure#IsList(a:print_state.Obj[0])
+  let l:seen_objs = typevim#ensure#IsList(a:print_state.seen_objs)
+  let l:self_refs = typevim#ensure#IsList(a:print_state.self_refs)
+  let l:cur_indent = maktaba#ensure#IsNumber(a:print_state.starting_indent)
 
-  if empty(a:Obj) | return '[  ]' | endif
+  if empty(l:Obj) | return '[  ]' | endif
   let l:str = '[ '
-  for l:Item in a:Obj
-    let l:seen_and_msg = s:CheckSelfReference(l:Item, a:seen_objs, a:self_refs)
+  for l:Item in l:Obj
+    let l:seen_and_msg = s:CheckSelfReference(s:PrintState_NewFrom(a:print_state, l:Item, 0))
     if !empty(l:seen_and_msg)
       let l:str .= l:seen_and_msg[1]
     else
       let l:str .= s:StripLeadingSpaces(
-          \ s:PrettyPrintImpl(
-            \ l:Item, a:cur_indent, a:seen_objs, a:self_refs))
+          \ s:PrettyPrintImpl(s:PrintState_NewFrom(a:print_state, l:Item, 0)))
     endif
     let l:str .= ', '
   endfor
@@ -319,57 +346,48 @@ endfunction
 "
 " @default cur_indent_level=0
 " @throws MissingFeature if the current version of vim does not support |Partial|s.
-function! s:PrettyPrintImpl(Obj, cur_indent_level, seen_objects, self_refs) abort
-  call typevim#ensure#HasPartials()
-  call maktaba#ensure#IsNumber(a:cur_indent_level)
-  call typevim#ensure#IsList(a:seen_objects)
-  " if typevim#value#StackHeight() ># 10
-  "   return '{recursed too deep}'
-  " endif
-  if typevim#value#IsDict(a:Obj)
-    if typevim#value#IsValidObject(a:Obj)
-      return s:PrettyPrintObject(
-          \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
+function! s:PrettyPrintImpl(print_state) abort
+  let l:Obj = a:print_state.Obj[0]
+
+  if typevim#value#IsDict(l:Obj)
+    if typevim#value#IsValidObject(l:Obj)
+      return s:PrettyPrintObject(a:print_state)
     else
-      return s:PrettyPrintDict(
-          \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
+      return s:PrettyPrintDict(a:print_state)
     endif
-  elseif typevim#value#IsList(a:Obj)
-    return s:PrettyPrintList(
-        \ a:Obj, a:cur_indent_level, a:seen_objects, a:self_refs)
-  elseif maktaba#value#IsFuncref(a:Obj)
-    let l:str = "function('".get(a:Obj, 'name')
-    if !typevim#value#IsPartial(a:Obj)
+  elseif typevim#value#IsList(l:Obj)
+    return s:PrettyPrintList(a:print_state)
+  elseif maktaba#value#IsFuncref(l:Obj)
+    let l:str = "function('".get(l:Obj, 'name')
+    if !typevim#value#IsPartial(l:Obj)
       return l:str."')"
     endif
     let [l:_, l:F_, l:bound_args, l:bound_dict] =
-        \ typevim#value#DecomposePartial(a:Obj)
+        \ typevim#value#DecomposePartial(l:Obj)
     let l:str .= "'"
 
     if !empty(l:bound_args)
-      let l:seen_and_msg =
-          \ s:CheckSelfReference(l:bound_args, a:seen_objects, a:self_refs)
+      let l:args_print_state = s:PrintState_NewFrom(a:print_state, l:bound_args, 0)
+      let l:seen_and_msg = s:CheckSelfReference(l:args_print_state)
       if !empty(l:seen_and_msg)
         let l:str .= ', ' . l:seen_and_msg[1]
       else
-        let l:str .= ', ' . s:PrettyPrintList(
-            \ l:bound_args, a:cur_indent_level, a:seen_objects, a:self_refs)
+        let l:str .= ', ' . s:PrettyPrintList(l:args_print_state)
       endif
     endif
     if !empty(l:bound_dict)
-      let l:seen_and_msg =
-          \ s:CheckSelfReference(l:bound_dict, a:seen_objects, a:self_refs)
+      let l:dict_print_state = s:PrintState_NewFrom(a:print_state, l:bound_dict, 0)
+      let l:seen_and_msg = s:CheckSelfReference(l:dict_print_state)
       " delegate 'is this a dict or object?' to the recursive call
       if !empty(l:seen_and_msg)
         let l:str .= ', '.  l:seen_and_msg[1]
       else
-        let l:str .= ', ' . s:PrettyPrintImpl(
-            \ l:bound_dict, a:cur_indent_level, a:seen_objects, a:self_refs)
+        let l:str .= ', ' . s:PrettyPrintImpl(l:dict_print_state)
       endif
     endif
     return l:str.')'
   else
-    return string(a:Obj)
+    return string(l:Obj)
   endif
 endfunction
 
@@ -387,14 +405,19 @@ endfunction
 " Use @function(typevim#string#Listify) to convert this function's return
 " value into such a list.
 function! typevim#object#PrettyPrint(Obj) abort
+  call typevim#ensure#HasPartials()
   " TODO support maktaba enums?
-  let l:seen_objs = []
+
+  let l:print_state = s:PrintState_New()
+  " note: Obj always goes into a one-element list wrapper, so that dict
+  " functions don't bind to the PrintState object.
+  call add(l:print_state.Obj, a:Obj)
   if maktaba#value#IsCollection(a:Obj)
-    call add(l:seen_objs, a:Obj)
+    call add(l:print_state.seen_objs, a:Obj)
   endif
-  let l:known_self_refs = []
-  let l:str = s:PrettyPrintImpl(a:Obj, 0, l:seen_objs, l:known_self_refs)
-  let l:self_ref = s:PrintSelfReferences(l:known_self_refs)
+
+  let l:str = s:PrettyPrintImpl(l:print_state)
+  let l:self_ref = s:PrintSelfReferences(l:print_state.self_refs)
   return l:str . (empty(l:self_ref) ? '' : ', '.l:self_ref)
 endfunction
 
