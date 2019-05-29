@@ -12,6 +12,13 @@ Execute (typevim: Rethrow Throws "As Is" Otherwise):
   AssertThrows call typevim#Rethrow("\tVim")
   AssertThrew "^\tVim$"
 
+Do (typevim#input: Permits Input from Vader):
+  :let @" = typevim#input(0, 'prompt: ')\<cr>
+  oh im a lumberjack and im okay\<cr>
+  p
+Expect:
+  oh im a lumberjack and im okay
+
 Execute (typevim: Test Type Constants):
   AssertEqual 6, typevim#Bool(),   'Failed on: Bool'
   AssertEqual 4, typevim#Dict(),   'Failed on: Dict'

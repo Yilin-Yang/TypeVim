@@ -167,6 +167,38 @@ function! typevim#Rethrow(...) abort
 endfunction
 
 ""
+" Call |input()|, calling |inputsave()| and |inputrestore()| before and after
+" the call only if {save_and_restore} is 1.
+"
+" Invoking |inputsave()| and |inputrestore()| is good practice when invoking
+" |input()| "in production," but it can prevent test frameworks like vader.vim
+" from feeding keys to the |input()| prompt. Wrapping the |input()| prompt
+" with this function and passing a flag as {save_and_restore} can expose
+" those input prompts for testing while still saving/restoring typeahead for
+" the end user.
+"
+" It is guaranteed that |inputrestore()| will be called if {save_and_restore}
+" is 1, even if the user CTRL-C's out of the input prompt.
+"
+" Returns the return value of |input()|. Exceptions thrown by |input()| will
+" propagate to the caller.
+"
+" @throws WrongType if {save_and_restore} is not a bool.
+function! typevim#input(save_and_restore, ...) abort
+  call typevim#ensure#IsBool(a:save_and_restore)
+  try
+    if a:save_and_restore
+      call inputsave()
+    endif
+    return call('input', a:000)
+  finally
+    if a:save_and_restore
+      call inputrestore()
+    endif
+  endtry
+endfunction
+
+""
 " Return a numerical constant representing "any type". As of the time of
 " writing, this is the numerical value returned by `type(v:null)` (see
 " |type()|), but this may change in the future.
