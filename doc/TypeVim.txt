@@ -652,8 +652,8 @@ typevim#object#GetIndentBlock({level})       *typevim#object#GetIndentBlock()*
   Throws ERROR(BadValue) if {level} is negative.
   Throws ERROR(WrongType) if {level} is not a number.
 
-typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
-  Converts the given {object} into a string, suitable for error messages and
+typevim#object#PrettyPrint({Obj}, [max_depth])  *typevim#object#PrettyPrint()*
+  Converts the given {Obj} into a string, suitable for error messages and
   debug logging.
 
   If it's already a string, encloses the string in quotes (useful when a
@@ -665,6 +665,23 @@ typevim#object#PrettyPrint({object})            *typevim#object#PrettyPrint()*
   these expect lists of strings where each list element is a single line. Use
   |typevim#string#Listify()| to convert this function's return value into such
   a list.
+
+  Like with |typevim#object#ShallowPrint()|, takes a [max_depth] parameter to
+  control how deeply to recurse into a list or a dictionary. When recursion
+  terminates due to [max_depth] being met or exceeded, lists, dicts, and
+  objects will be printed as `[list]`, `{object}`, and `{dict}`, respectively.
+  If [max_depth] is -1, printing will recurse until |maxfuncdepth| is
+  exceeded.
+
+  Errors that occur during printing will be embedded into the printed output
+  so that an error (like |E132|) won't terminate the entire print.
+
+  [max_depth] is -1 if omitted.
+
+  Throws ERROR(BadValue) if [max_depth] is less than -1.
+  Throws ERROR(MissingFeature) if the current version of vim does not support
+  |Partial|s.
+  Throws ERROR(WrongType) if [max_depth] is not a number.
 
 typevim#object#ShallowPrint({Obj}, [max_depth])
                                                *typevim#object#ShallowPrint()*

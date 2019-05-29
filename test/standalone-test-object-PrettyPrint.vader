@@ -1,3 +1,4 @@
+Include: AssertThrew.vader
 Include: PrintIntoBuffer.vader
 
 Execute (typevim#object#PrettyPrint: Declare Helpers):
@@ -6,8 +7,7 @@ Execute (typevim#object#PrettyPrint: Declare Helpers):
   " For consistency of test cases that use Expect blocks, check that the
   " default clean-upper is present, and delete it from the buffer.
   function! CheckAndWipeCleanUpper()
-    Assert search('"CleanUp": function('), 'Did not print a clean-upper!'
-    normal! dd
+    %s/"CleanUp": function(.\{-})/"CleanUp": {###CLEAN_UPPER###}/ge
   endfunction
 
 Execute (typevim#object#GetIndentBlock: Ordinary):
@@ -35,26 +35,26 @@ Execute (typevim#object#GetIndentBlock: Error Checking):
   AssertEqual 0, match(g:vader_exception, '^ERROR(WrongType)'),
       \ 'Threw wrong exception: '.g:vader_exception
 
-Execute (typevim#object#PrettyPrint: Numbers):
+Execute (typevim#object#PrettyPrint: prints numbers):
   AssertEqual '0', typevim#object#PrettyPrint(0)
   AssertEqual '-78910', typevim#object#PrettyPrint(-78910)
   AssertEqual '25', typevim#object#PrettyPrint(25)
 
-Execute (typevim#object#PrettyPrint: Floats):
+Execute (typevim#object#PrettyPrint: prints floats):
   AssertEqual '0.0', typevim#object#PrettyPrint(0.0)
   AssertEqual '0.25', typevim#object#PrettyPrint(1/4.0)
   AssertEqual '1.5e24', typevim#object#PrettyPrint(1500000000000000000000000.0)
   AssertEqual '0.0', typevim#object#PrettyPrint(1-1.0)
   AssertEqual '-0.5', typevim#object#PrettyPrint(0.5-1.0)
 
-Execute (typevim#object#PrettyPrint: Strings):
+Execute (typevim#object#PrettyPrint: prints strings):
   AssertEqual "'foobar foo'", typevim#object#PrettyPrint('foobar foo')
   AssertEqual "'\n'", typevim#object#PrettyPrint("\n")
   AssertEqual "'     '", typevim#object#PrettyPrint('     ')
   let g:val = '     '
   AssertEqual "'     '", typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#object#PrettyPrint: Funcref):
+Execute (typevim#object#PrettyPrint: prints funcrefs):
   function! Foo(...) dict abort
     echo l:self
   endfunction
@@ -63,7 +63,41 @@ Execute (typevim#object#PrettyPrint: Funcref):
   endfunction
   AssertEqual "function('Foo')", typevim#object#PrettyPrint(function('Foo'))
 
-Execute (typevim#object#PrettyPrint: Arg-Bound Partial):
+Execute (typevim#object#PrettyPrint: max_depth < -1 is an error):
+  AssertThrows call typevim#object#PrettyPrint('foobar', -2)
+  AssertThrew 'ERROR(BadValue)'
+
+Execute (typevim#object#PrettyPrint: non-numeric max_depth is an error):
+  AssertThrows call typevim#object#PrettyPrint('foobar', 2.0)
+  AssertThrew 'ERROR(WrongType)'
+
+Execute (typevim#object#PrettyPrint: prints primitive objects, even when max_depth = 0):
+  AssertEqual "0.0", typevim#object#PrettyPrint(0.0, 0)
+  AssertEqual "1", typevim#object#PrettyPrint(1, 0)
+  AssertEqual "'foobar foo'", typevim#object#PrettyPrint('foobar foo', 0)
+  AssertEqual "function('Foo')", typevim#object#PrettyPrint(function('Foo'), 0)
+
+Execute (typevim#object#PrettyPrint: prints terse collections when max_depth = 0):
+  AssertEqual '{dict}', typevim#object#PrettyPrint({}, 0)
+  AssertEqual '{object}', typevim#object#PrettyPrint(TestBase#New(3.14), 0)
+  AssertEqual '[list]', typevim#object#PrettyPrint([], 0)
+
+Execute (typevim#object#PrettyPrint: prints terse lists on hitting max_depth):
+  let g:val = [0]
+  for _ in range(50)
+    let g:val = [ g:val ]
+  endfor
+  AssertEqual '[ [ [list] ] ]', typevim#object#PrettyPrint(g:val, 3)
+
+Execute (typevim#object#PrettyPrint: embeds error message text when exceptions are thrown):
+  let g:output = typevim#object#PrettyPrint(g:val)
+  " arbitrary cutoff, but should recurse at least 10 levels deep before E132
+  AssertNotEqual -1, match(g:output, '\[ \[ \[ \[ \[ \[ \[ \[ \[ \[.*] ] ] ] ] ] ] ] ] ]'),
+      \ printf('Did not recurse deeply enough before error: %s', g:output)
+  AssertNotEqual -1, match(g:output, 'ERROR: .*E132'),
+      \ printf('Did not embed exception text: %s', g:output)
+
+Execute (typevim#object#PrettyPrint: prints arg-bound partials):
   let g:val = [1, 2]
   call add(g:val, g:val)  " bound args are self-referencing
   " NOTE: binding an argument list to a Funcref effectively *copies* the list;
@@ -72,36 +106,36 @@ Execute (typevim#object#PrettyPrint: Arg-Bound Partial):
   AssertEqual "function('Foo', [ 1, 2, [ 1, 2, {self-reference} ] ])",
       \ typevim#object#PrettyPrint(function('Foo', g:val))
 
-Execute (typevim#object#PrettyPrint: Dict-Bound Partial):
+Execute (typevim#object#PrettyPrint: prints dict-bound partials):
   let g:dict = {'num': 1, 'fun': 2}
   let g:dict['Boo'] = function('Foo')
   AssertEqual "function('Foo', {\n  \"Boo\": function('Foo'),\n  \"fun\": 2,\n  \"num\": 1\n})",
       \ typevim#object#PrettyPrint(function('Foo', g:dict))
 
-Execute (typevim#object#PrettyPrint: One Item List):
+Execute (typevim#object#PrettyPrint: prints one item lists):
   AssertEqual "[ 1 ]", typevim#object#PrettyPrint([1])
 
-Execute (typevim#object#PrettyPrint: Primitive List):
+Execute (typevim#object#PrettyPrint: prints primitive lists):
   let g:val = '   '
   AssertEqual "[ 1, 3, '   ', -0.5, 'foobar' ]",
       \ typevim#object#PrettyPrint([1,3, g:val, 0.5-1, 'foobar'])
 
-Execute (typevim#object#PrettyPrint: List Containing Funcrefs):
+Execute (typevim#object#PrettyPrint: prints lists containing funcrefs):
   AssertEqual "[ function('Foo'), function('Bar') ]",
       \ typevim#object#PrettyPrint([function('Foo'), function('Bar')])
 
-Execute (typevim#object#PrettyPrint: List Containing Lists, Dicts):
+Execute (typevim#object#PrettyPrint: prints lists containing lists, dicts):
   let g:val = [ [1, 2, 3, [] ], 1, {'foo': 'bar', 'bar': [1, 2, 3] } ]
   AssertEqual "[ [ 1, 2, 3, [  ] ], 1, {\n  \"bar\": [ 1, 2, 3 ],\n  \"foo\": \"bar\"\n} ]",
       \ typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#object#PrettyPrint: Self-Referencing List):
+Execute (typevim#object#PrettyPrint: prints self-referencing lists):
   let g:val = [ 0, 1, 2 ]
   call add(g:val, g:val)
   AssertEqual '[ 0, 1, 2, {self-reference} ]',
       \ typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing List):
+Execute (typevim#object#PrettyPrint: prints multilevel self-referencing lists):
   let g:val = [ 0, 1, 2 ]
   let g:grandchild = [ 1, 2, 3, g:val ]
   let g:child = [ g:grandchild, 2, 4 ]
@@ -116,17 +150,17 @@ Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing List):
 
 Given (Empty Buffer):
 
-Execute (typevim#object#PrettyPrint: Primitive Dict):
+Execute (typevim#object#PrettyPrint: prints primitive dicts):
   let g:val = { "a": "bcd" }
   AssertEqual "{\n  \"a\": \"bcd\"\n}", typevim#object#PrettyPrint(g:val)
 
-Execute (typevim#object#PrettyPrint: Empty Dict):
+Execute (typevim#object#PrettyPrint: prints empty dicts):
   call PrintIntoBuffer(typevim#object#PrettyPrint({}))
 Expect:
   
   {  }
 
-Execute (typevim#object#PrettyPrint: Dict, w/ Multiple Levels of Indentation):
+Execute (typevim#object#PrettyPrint: prints dicts, w/ multiple levels of indentation):
   let g:val = { "a": { "foo": "bar", "goo": "bar" }, "b": "bcd" }
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
 Expect:
@@ -139,7 +173,7 @@ Expect:
     "b": "bcd"
   }
 
-Execute (typevim#object#PrettyPrint: Dict Containing Lists, Dicts):
+Execute (typevim#object#PrettyPrint: prints a dict containing lists, dicts):
   let g:val = {
       \ 'abc': 'thoom',
       \ 'bcd': [1, 2, 3],
@@ -159,7 +193,7 @@ Expect:
     "def": 243
   }
 
-Execute (typevim#object#PrettyPrint: Self-Referencing Dict):
+Execute (typevim#object#PrettyPrint: prints self-referencing dicts):
   let g:val = {
       \ 'abc': 'thoom',
       \ 'bcd': [1, 2, 3],
@@ -185,7 +219,27 @@ Expect:
     "def": 243
   }
 
-Execute (typevim#object#PrettyPrint: Multilevel Self-Referencing Dict):
+Execute (typevim#object#PrettyPrint: prints terse multilevel dicts on hitting max_depth):
+  let g:val = {'foo': {}, 'bar': {}}
+  for _ in range(5)  " NOTE: don't set this too high, will create O(2^n) dicts
+    let g:val = { 'foo': deepcopy(g:val), 'bar': deepcopy(g:val) }
+  endfor
+  call PrintIntoBuffer(typevim#object#PrettyPrint(g:val, 3))
+
+Expect:
+
+  {
+    "bar": {
+      "bar": {dict},
+      "foo": {dict}
+    },
+    "foo": {
+      "bar": {dict},
+      "foo": {dict}
+    }
+  }
+
+Execute (typevim#object#PrettyPrint: prints multilevel self-referencing dicts):
   let g:val = {
       \ 'abc': 'thoom',
       \ 'bcd': {},
@@ -206,7 +260,7 @@ Expect:
     "def": [ {self-reference, idx: 1} ]
   }, self-referencing objects: [ { "abc": "thoom", "bcd": {dict}, "cde": 243, "def": [list] }, { "abc": {dict} } ]
 
-Execute (typevim#object#PrettyPrint: Primitive Object):
+Execute (typevim#object#PrettyPrint: prints primitive objects):
   let g:val = TestBase#New(3.14)
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
 Then (Check for Destructor):
@@ -214,6 +268,7 @@ Then (Check for Destructor):
 Expect:
 
   OBJECT: {
+    "CleanUp": {###CLEAN_UPPER###},
     "GetVal": function('TestBase#GetVal'),
     "SetVal": function('TestBase#SetVal'),
     "StringifyVals": function('TestBase#StringifyVals'),
@@ -225,25 +280,25 @@ Expect:
     "__val": 3.14
   }
 
-Execute (typevim#object#ShallowPrint: Derived Object (No Throw Exception)):
+Execute (typevim#object#ShallowPrint: prints derived objects without throwing exceptions):
   let g:val = TestDerived#New(0, 0, 0)
   call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
 
-Execute (typevim#object#ShallowPrint: Empty List):
+Execute (typevim#object#ShallowPrint: prints empty lists):
   let g:val = []
   call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
 Expect:
 
   [  ]
 
-Execute (typevim#object#ShallowPrint: Empty Dict):
+Execute (typevim#object#ShallowPrint: prints empty dicts):
   let g:val = {}
   call PrintIntoBuffer(typevim#object#ShallowPrint(g:val, 2))
 Expect:
 
   {  }
 
-Execute (typevim#object#PrettyPrint: Primitive Object w/ Self-Referencing Funcrefs):
+Execute (typevim#object#PrettyPrint: prints a primitive object w/ self-referencing funcrefs):
   let g:val = TestSelfRef#New(3.14)
   call PrintIntoBuffer(typevim#object#PrettyPrint(g:val))
 Then (Check for Destructor):
@@ -251,6 +306,7 @@ Then (Check for Destructor):
 Expect:
 
   OBJECT: {
+    "CleanUp": {###CLEAN_UPPER###},
     "GetVal": function('TestSelfRef#GetVal', {self-reference}),
     "___CLEAN_UPPERS___": [ 0 ],
     "___TYPES_DICT___": {
@@ -260,7 +316,7 @@ Expect:
     "__val": 3.14
   }
 
-Execute (typevim#Print: Primitive Object w/ Self-Referencing Funcrefs):
+Execute (typevim#Print: prints a primitive object w/ self-referencing funcrefs):
   let g:val = TestSelfRef#New(3.14)
   call PrintIntoBuffer(typevim#Print(g:val))
 Then (Check for Destructor):
@@ -268,6 +324,7 @@ Then (Check for Destructor):
 Expect:
 
   OBJECT: {
+    "CleanUp": {###CLEAN_UPPER###},
     "GetVal": function('TestSelfRef#GetVal', {self-reference}),
     "___CLEAN_UPPERS___": [ 0 ],
     "___TYPES_DICT___": {
@@ -277,13 +334,42 @@ Expect:
     "__val": 3.14
   }
 
-Execute (typevim#PrintShallow: List of Numbers):
+Execute (typevim#PrintShallow: prints a list of numbers):
   let g:val = [0, 1, 2, 3]
   call PrintIntoBuffer(typevim#PrintShallow(g:val, 2))
 Expect:
 
   [ 0, 1, 2, 3 ]
-" Execute (typevim#object#PrettyPrint: Compound Object):
+
+Execute (typevim#object#PrettyPrint: prints compound objects):
+  let g:val = TestSelfRef#New(3.14)
+  let g:child = TestSelfRef#New(6.28)
+  let g:val.child = g:child
+  call PrintIntoBuffer(typevim#Print(g:val))
+Then (Check for Destructor):
+  call CheckAndWipeCleanUpper()
+Expect:
+
+  OBJECT: {
+    "CleanUp": {###CLEAN_UPPER###},
+    "GetVal": function('TestSelfRef#GetVal', {self-reference}),
+    "___CLEAN_UPPERS___": [ 0 ],
+    "___TYPES_DICT___": {
+      "TestSelfRef": 1
+    },
+    "___TYPE___": [ 'TestSelfRef' ],
+    "__val": 3.14,
+    "child": OBJECT: {
+      "CleanUp": {###CLEAN_UPPER###},
+      "GetVal": function('TestSelfRef#GetVal', {self-reference, idx: 1}),
+      "___CLEAN_UPPERS___": [ 0 ],
+      "___TYPES_DICT___": {
+        "TestSelfRef": 1
+      },
+      "___TYPE___": [ 'TestSelfRef' ],
+      "__val": 6.28
+    }
+  }, self-referencing objects: [ OBJECT: { "CleanUp": {###CLEAN_UPPER###}, "GetVal": function('TestSelfRef#GetVal, {partial}'), "___CLEAN_UPPERS___": [list], "___TYPES_DICT___": {dict}, "___TYPE___": [list], "__val": 3.14, "child": {object} }, OBJECT: { "CleanUp": {###CLEAN_UPPER###}, "GetVal": function('TestSelfRef#GetVal, {partial}'), "___CLEAN_UPPERS___": [list], "___TYPES_DICT___": {dict}, "___TYPE___": [list], "__val": 6.28 } ]
 
 " Execute (typevim#object#PrettyPrint: Compound Object w/ Self-Referencing Funcrefs):
 

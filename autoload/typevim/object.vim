@@ -96,6 +96,7 @@ let s:PRINT_STATE_PROTOTYPE = {
     \ 'seen_objs': [],
     \ 'self_refs': [],
     \ 'max_recursion': 0x7FFFFFFF,
+    \ 'cur_recursion': 0,
     \ }
 lockvar! s:PRINT_STATE_PROTOTYPE
 
@@ -207,7 +208,7 @@ endfunction
 " Exactly the same as function(s:PrettyPrintDict), but prepends 'OBJECT: ' to
 " the pretty-print output.
 function! s:PrettyPrintObject(...) abort
-  return 'OBJECT: '.call('<SID>PrettyPrintDict', a:000)
+  return 'OBJECT: '.s:StripLeadingSpaces(call('<SID>PrettyPrintDict', a:000))
 endfunction
 
 ""
@@ -338,16 +339,31 @@ endfunction
 " recursive function. Dispatches to helper functions based on the type of
 " {Obj}.
 "
-" Pretty print {Obj}, given lists of {seen_objects} and known {self_refs}, and
-" (optionally) a [cur_indent_level], used when pretty-printing dicts and
+" Pretty print `Obj`, given lists of `seen_objects` and known `self_refs`, and
+" a current indentation level, used when pretty-printing dicts and
 " objects.
 "
-" Will abort and return if recursing too deeply into a collection.
-"
-" @default cur_indent_level=0
-" @throws MissingFeature if the current version of vim does not support |Partial|s.
 function! s:PrettyPrintImpl(print_state) abort
   let l:Obj = a:print_state.Obj[0]
+  let a:print_state.cur_recursion += 1
+
+  try
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  if a:print_state.cur_recursion >=# a:print_state.max_recursion
+    if typevim#value#IsList(l:Obj)
+      return '[list]'
+    elseif typevim#value#IsValidObject(l:Obj)
+      return '{object}'
+    elseif typevim#value#IsDict(l:Obj)
+      return '{dict}'
+    elseif maktaba#value#IsFuncref(l:Obj)
+      if typevim#value#IsPartial(l:Obj)
+        return "function('".get(l:Obj, 'name').", {partial}')"
+      endif
+      return "function('".get(l:Obj, 'name')."')"  " IsFuncref, but not Partial
+    endif
+    return string(l:Obj)
+  endif
 
   if typevim#value#IsDict(l:Obj)
     if typevim#value#IsValidObject(l:Obj)
@@ -389,10 +405,19 @@ function! s:PrettyPrintImpl(print_state) abort
   else
     return string(l:Obj)
   endif
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  catch
+    " call s:plugin.logger.Warn(
+    "     \ 'Exception thrown while PrettyPrinting: %s', v:exception)
+    return printf('ERROR: %s, from: %s', v:exception, v:throwpoint)
+  finally
+    let a:print_state.cur_recursion -= 1
+  endtry
 endfunction
 
 ""
-" Converts the given {object} into a string, suitable for error messages and
+" Converts the given {Obj} into a string, suitable for error messages and
 " debug logging.
 "
 " If it's already a string, encloses the string in quotes (useful when a
@@ -404,16 +429,42 @@ endfunction
 " as these expect lists of strings where each list element is a single line.
 " Use @function(typevim#string#Listify) to convert this function's return
 " value into such a list.
-function! typevim#object#PrettyPrint(Obj) abort
-  call typevim#ensure#HasPartials()
+"
+" Like with @function(typevim#object#ShallowPrint), takes a [max_depth]
+" parameter to control how deeply to recurse into a list or a dictionary. When
+" recursion terminates due to [max_depth] being met or exceeded, lists, dicts,
+" and objects will be printed as `[list]`, `{object}`, and `{dict}`,
+" respectively. If [max_depth] is -1, printing will recurse until
+" |maxfuncdepth| is exceeded.
+"
+" Errors that occur during printing will be embedded into the printed output
+" so that an error (like |E132|) won't terminate the entire print.
+"
+" @default max_depth=-1
+"
+" @throws BadValue if [max_depth] is less than -1.
+" @throws MissingFeature if the current version of vim does not support |Partial|s.
+" @throws WrongType if [max_depth] is not a number.
+function! typevim#object#PrettyPrint(Obj, ...) abort
   " TODO support maktaba enums?
+  call typevim#ensure#HasPartials()
+  let l:max_depth = maktaba#ensure#IsNumber(get(a:000, 0, -1))
 
   let l:print_state = s:PrintState_New()
   " note: Obj always goes into a one-element list wrapper, so that dict
-  " functions don't bind to the PrintState object.
+  " Funcrefs don't bind to the PrintState object.
   call add(l:print_state.Obj, a:Obj)
   if typevim#value#IsCollection(a:Obj)
     call add(l:print_state.seen_objs, a:Obj)
+  endif
+
+  if l:max_depth ==# -1
+    " -1 means 'print fully', so don't touch default (very large) value
+  elseif l:max_depth <# -1
+    throw maktaba#error#BadValue(
+        \ 'Gave negative max_depth: %d', l:max_depth)
+  else
+    let l:print_state.max_recursion = l:max_depth
   endif
 
   let l:str = s:PrettyPrintImpl(l:print_state)
