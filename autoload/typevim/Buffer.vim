@@ -519,16 +519,18 @@ endfunction
 " additional [flags] may be provided to modify the behavior of the search,
 " which starts from the given [startpos].
 "
-" This function wraps the |search()| function. The managed buffer is silently
-" (with |lazyredraw| enabled) opened in a new tabpage, where the search is
-" performed. Prior to the search, wrapscan is enabled, and the cursor position
-" is set to the given [startpos]. Afterwards, the previous cursor position is
-" restored, the new tab is closed, and |wrapscan| and |lazyredraw| are reset
-" to their previous value. This will have side effects; for instance, any
-" applicable buffer events (e.g. |BufEnter|) will fire.
+" This function wraps the |search()| function. If the managed buffer is not
+" already open in the current window, it is silently (with |lazyredraw|
+" enabled) opened in a new tabpage where the search is performed. This will
+" have side effects; for instance, any applicable buffer events (e.g.
+" |BufEnter|) will fire.
 "
-" The following [flags] are supported. Matching is always done as if the 'n'
-" flag is set, and other flags that affect movement of the cursor are ignored.
+" Prior to the search, wrapscan is enabled, and the cursor position is set to
+" the given [startpos]. Afterwards, the previous cursor position is restored,
+" the new tab (if one was opened) is closed, and |wrapscan| and |lazyredraw|
+" are reset to their previous value.
+"
+" The following [flags] are supported.
 "   - 'b'   search Backward instead of forward
 "   - 'c'   accept a match at the Cursor position
 "   - 'p'   return number of matching sub-Pattern (see below)
@@ -536,9 +538,10 @@ endfunction
 "   - 'W'   don't Wrap around the end of the file
 "   - 'z'   start searching at the cursor column instead of Zero
 "
-" Providing flags not in the above list will cause an ERROR(BadValue) to be
-" thrown, unless [ignore_badflags] is set to 1, in which case, the "bad" flags
-" are silently ignored. The 'n' flag, if provided, is always ignored.
+" Matching is always done as if the 'n' flag is set. Providing flags not in
+" the above list will cause an ERROR(BadValue) to be thrown, unless
+" [ignore_badflags] is set to 1, in which case, the "bad" flags are silently
+" ignored. The 'n' flag, if provided, is always ignored.
 "
 " [startpos] may be a number or a list. If it's a number, the search will
 " start from the start of that line. If it's a list, it must use one of the
@@ -615,16 +618,25 @@ function! typevim#Buffer#search(regexp, ...) dict abort
     endif
   let l:i += 1 | endwhile
 
+  let l:bufnr = l:self.bufnr()
+  let l:open_in_cur_win = bufnr('%') ==# l:bufnr
+
   let l:old_tabpage = tabpagenr()
   let l:old_redraw = &lazyredraw
   let l:old_wrapscan = &wrapscan
   try
     let &lazyredraw = 1
     let &wrapscan = 1
-    tabnew
-    execute 'buffer '.l:self.bufnr()
+
+    " since opening a new buffer in a new tab is expensive, only do so if it's
+    " not already open
+    if !l:open_in_cur_win
+      tabnew
+      execute 'buffer '.l:bufnr
+    endif
+
     let l:old_curpos = getcurpos()
-    if setpos('.', [0, l:lineno, l:colno, 0]) ==# -1
+    keepjumps if setpos('.', [0, l:lineno, l:colno, 0]) ==# -1
       " setpos failed, user gave bad startpos
       throw maktaba#error#BadValue(
           \ 'Given startpos not valid in buffer: %s', string(l:startpos))
@@ -632,8 +644,12 @@ function! typevim#Buffer#search(regexp, ...) dict abort
     let l:to_return = search(a:regexp, l:flags_to_use, l:stopline, l:timeout)
     call setpos('.', l:old_curpos)
   finally
-    tabclose
-    execute 'tabnext '.l:old_tabpage
+
+    if !l:open_in_cur_win
+      tabclose
+      execute 'tabnext '.l:old_tabpage
+    endif
+
     let &wrapscan = l:old_wrapscan
     let &lazyredraw = l:old_redraw
   endtry
