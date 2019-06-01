@@ -17,7 +17,7 @@ Execute (typevim#make#Derived: overrides member functions from base class):
   let g:der = TestDerived#New(0, 0, 0)
   AssertEqual 'overridden', g:der.GetVal()
 
-Execute (typevim#make#Derived: runs CleanUppers i order from most- to least-derived):
+Execute (typevim#make#Derived: runs CleanUppers in order from most- to least-derived):
   let g:der = TestDerived#New(1, 0, 0)
   call g:der.CleanUp()
 Then:
@@ -89,14 +89,32 @@ Execute (typevim#make#Derived: will clobber base class variables if flag is set)
   AssertEqual '-1010', g:der['__val']
 
 Execute (typevim#make#Derived: providing a base class instance to ctor does not modify that instance):
+  let g:global_obj = {}
+  function! NewBase(obj) abort
+    return typevim#make#Class('Base', {
+        \ 'foo': function('Foo'),
+        \ 'obj': a:obj,
+        \ 'global_obj': g:global_obj})
+  endfunction
+
   function! Foo() dict abort
   endfunction
 
   function! Bar() dict abort
   endfunction
 
-  let g:base = typevim#make#Class('Base', {'foo': function('Foo')})
+  let g:base = NewBase({})
   let g:base_copy = deepcopy(g:base)
 
   let g:der = typevim#make#Derived('Derived', g:base, {'foo': function('Bar')})
   AssertEqual g:base, g:base_copy
+
+Execute (typevim#make#Derived: base class member vars are stored as aliases):
+  let g:base = NewBase({})
+  let g:der = typevim#make#Derived('Derived', g:base, {'foo': function('Bar')})
+  Assert g:der.obj is g:base.obj
+
+Execute (typevim#make#Derived: stores aliases even when providing a constructor):
+  let g:der = typevim#make#Derived('Derived', function('NewBase', [{}]),
+      \ {'foo': function('Bar')})
+  Assert g:der.global_obj is g:global_obj

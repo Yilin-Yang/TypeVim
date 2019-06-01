@@ -392,9 +392,10 @@ typevim#make#Derived({typename}, {Parent}, {prototype}, [CleanUp],
   {typename} is the name of the derived type being declared.
 
   {Parent} is either a Funcref to the base class constructor, or a base class
-  prototype. If arguments must be passed to said constructor, in the former
-  case, this should be a Partial. If {Parent} is a prototype, then it will be
-  left in an undefined state.
+  prototype. If arguments must be passed to the constructor in the former
+  case, this should be a Partial. If {Parent} is a prototype, then it will not
+  be modified: if it has dicts or lists as member variables, then the returned
+  object's variables will be aliases to those same objects.
 
   {prototype} is a dictionary object containing member variables (with default
   values) and member functions, which might be virtual. If the parent class
@@ -1393,12 +1394,12 @@ typevim#Promise#New([Doer])                                    *Promise.New()*
   `Reject`). |TypeVim.Promise| detects this automatically:
 >
     " (pseudocode, not actual implementation)
-    function! typevim#Promise#NewDoer() abort
+    function! typevim#Promise#New(Doer) abort
       " ...
       try
-        Doer.SetCallbacks(self.Resolve, self.Reject)
+        a:Doer.SetCallbacks(self.Resolve, self.Reject)
       catch TooManyArguments
-        Doer.SetCallbacks(self.Resolve)
+        a:Doer.SetCallbacks(self.Resolve)
       endtry
       " ...
 <
@@ -1595,10 +1596,10 @@ Finally, test your class, or just start using it!
 DECLARING A DERIVED CLASS (POLYMORPHISM)                   *TypeVim-poly_decl*
 
 
-Declaring a derived class is extremely similar to declaring a class normally:
-the main difference is that, in a derived class's constructor, one only has to
-specify (in addition to the derived class's member variables and functions)
-the base class functions that it overrides.
+Declaring a derived class is similar to declaring a class normally: the main
+difference is that, in a derived class's constructor, one only has to specify
+(in addition to the derived class's member variables and functions) the base
+class functions that it overrides.
 
 Say that we're declaring a `DerivedClass` that inherits from the
 `ExampleClass` declared in |TypeVim-basic_decl|. We could write:

@@ -91,10 +91,10 @@
 " @section Declaring a Derived Class (Polymorphism), poly_decl
 " @parentsection make
 "
-" Declaring a derived class is extremely similar to declaring a class
-" normally: the main difference is that, in a derived class's constructor, one
-" only has to specify (in addition to the derived class's member variables and
-" functions) the base class functions that it overrides.
+" Declaring a derived class is similar to declaring a class normally: the main
+" difference is that, in a derived class's constructor, one only has to
+" specify (in addition to the derived class's member variables and functions)
+" the base class functions that it overrides.
 "
 " Say that we're declaring a `DerivedClass` that inherits from the
 " `ExampleClass` declared in @section(basic_decl). We could write:
@@ -166,6 +166,7 @@
 " and used in the base class.
 
 let s:RESERVED_ATTRIBUTES = typevim#attribute#ATTRIBUTES_AS_DICT()
+let s:ATTRIBUTES_LIST = typevim#attribute#ATTRIBUTES()
 let s:TYPE_ATTR = typevim#attribute#TYPE()
 let s:TYPE_DICT_ATTR = typevim#attribute#TYPE_DICT()
 let s:CLN_UP_LIST_ATTR = typevim#attribute#CLEAN_UPPER_LIST()
@@ -298,9 +299,10 @@ endfunction
 " {typename} is the name of the derived type being declared.
 "
 " {Parent} is either a Funcref to the base class constructor, or a base class
-" prototype. If arguments must be passed to said constructor, in the former
-" case, this should be a Partial. If {Parent} is a prototype, then it will be
-" left in an undefined state.
+" prototype. If arguments must be passed to the constructor in the former
+" case, this should be a Partial. If {Parent} is a prototype, then it will not
+" be modified: if it has dicts or lists as member variables, then the returned
+" object's variables will be aliases to those same objects.
 "
 " {prototype} is a dictionary object containing member variables (with default
 " values) and member functions, which might be virtual. If the parent
@@ -337,7 +339,15 @@ function! typevim#make#Derived(typename, Parent, prototype, ...) abort
   if maktaba#value#IsFuncref(a:Parent)
     let l:base = a:Parent()
   elseif typevim#value#IsDict(a:Parent)
-    let l:base = deepcopy(a:Parent)
+    " copy member variables, but deepcopy attributes (since the latter are
+    " modified)
+    " TODO rebind bound functions?
+    let l:base = copy(a:Parent)
+    for l:attr in s:ATTRIBUTES_LIST
+      if has_key(a:Parent, l:attr)
+        let l:base[l:attr] = deepcopy(a:Parent[l:attr])
+      endif
+    endfor
   else
     if typevim#VerboseErrors()
       throw maktaba#error#WrongType(

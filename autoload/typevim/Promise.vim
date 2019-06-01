@@ -90,12 +90,12 @@ call typevim#make#Class(s:typename, s:PROTOTYPE)
 " `Reject`). @dict(Promise) detects this automatically:
 " >
 "   " (pseudocode, not actual implementation)
-"   function! typevim#Promise#NewDoer() abort
+"   function! typevim#Promise#New(Doer) abort
 "     " ...
 "     try
-"       Doer.SetCallbacks(self.Resolve, self.Reject)
+"       a:Doer.SetCallbacks(self.Resolve, self.Reject)
 "     catch TooManyArguments
-"       Doer.SetCallbacks(self.Resolve)
+"       a:Doer.SetCallbacks(self.Resolve)
 "     endtry
 "     " ...
 " <
