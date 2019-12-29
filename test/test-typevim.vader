@@ -53,32 +53,3 @@ Execute (typevim: Test Type Constants to TypeNames):
     AssertEqual maktaba#value#TypeName(v:true),
               \ typevim#value#ConstantToTypeName(typevim#Bool())
   endif
-
-Execute (typevim: VarOrDefault type checks vs. default when no type is given):
-  let g:setting = 3    " int
-  AssertEqual g:setting, typevim#VarOrDefault('g:setting', 6)
-  AssertThrows call typevim#VarOrDefault('g:setting', 3.1)
-  AssertThrew 'ERROR(WrongType)'
-  AssertThrows call typevim#VarOrDefault('g:setting', 3.1, -1)
-  AssertThrew 'ERROR(WrongType)'
-
-Execute (typevim: VarOrDefault compares against explicit type when given):
-  let g:setting = 3
-  " shouldn't throw
-  AssertEqual g:setting, typevim#VarOrDefault('g:setting', 'foobar', typevim#Number())
-
-Execute (typevim: VarOrDefault returns default when the named var isn't set):
-  unlet! g:setting
-  AssertEqual 3, typevim#VarOrDefault('g:setting', 3)
-
-  " a default dictionary/list/etc. should be returned by reference
-  let g:default = {}
-  Assert typevim#VarOrDefault('g:setting', g:default) is g:default
-  let g:default = []
-  Assert typevim#VarOrDefault('g:setting', g:default) is g:default
-
-  function! Foo()
-    return 0
-  endfunction
-  let g:Default = function('Foo')
-  Assert typevim#VarOrDefault('g:setting', g:Default) is g:Default
